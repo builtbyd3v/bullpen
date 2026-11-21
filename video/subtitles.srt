@@ -1,123 +1,131 @@
 1
-00:00:00,000 --> 00:00:01,386
-Two AI agents, two branches.
+00:00:00,000 --> 00:00:00,755
+This is Bullpen.
 
 2
-00:00:01,386 --> 00:00:02,773
-Both are green against main.
+00:00:00,755 --> 00:00:02,123
+Source control for AI agents.
 
 3
-00:00:04,067 --> 00:00:06,622
-But both rewrite the same lines of auth.ts.
+00:00:04,333 --> 00:00:05,720
+Two AI agents, two branches.
 
 4
-00:00:07,933 --> 00:00:09,178
-Git only finds out at merge.
+00:00:05,720 --> 00:00:07,106
+Both are green against main.
 
 5
-00:00:09,178 --> 00:00:10,602
-One lands, and the other breaks.
+00:00:08,400 --> 00:00:10,955
+But both rewrite the same lines of auth.ts.
 
 6
-00:00:11,900 --> 00:00:13,327
-Bullpen stops it before it happens.
+00:00:12,267 --> 00:00:13,512
+Git only finds out at merge.
 
 7
-00:00:15,133 --> 00:00:15,961
-You type one ask.
+00:00:13,512 --> 00:00:14,935
+One lands, and the other breaks.
 
 8
-00:00:17,767 --> 00:00:19,233
-Three Claude Code agents start work,
+00:00:16,233 --> 00:00:17,660
+Bullpen stops it before it happens.
 
 9
-00:00:19,233 --> 00:00:20,170
-each on its own branch.
+00:00:18,867 --> 00:00:19,694
+You type one ask.
 
 10
-00:00:21,467 --> 00:00:22,849
-Two of them want the same file.
+00:00:21,500 --> 00:00:22,966
+Three Claude Code agents start work,
 
 11
-00:00:22,849 --> 00:00:23,652
-One gets the lock.
+00:00:22,966 --> 00:00:23,903
+each on its own branch.
 
 12
-00:00:24,967 --> 00:00:25,805
-The other waits in line,
+00:00:25,200 --> 00:00:26,582
+Two of them want the same file.
 
 13
-00:00:25,805 --> 00:00:26,714
-so nothing is overwritten.
+00:00:26,582 --> 00:00:27,385
+One gets the lock.
 
 14
-00:00:28,000 --> 00:00:29,374
-A guarded folder needs a human.
+00:00:28,700 --> 00:00:29,539
+The other waits in line,
 
 15
-00:00:29,374 --> 00:00:30,749
-Bullpen shows an approval card.
+00:00:29,539 --> 00:00:30,447
+so nothing is overwritten.
 
 16
-00:00:32,033 --> 00:00:33,021
-Deny it, and the agent
+00:00:31,733 --> 00:00:33,108
+A guarded folder needs a human.
 
 17
-00:00:33,021 --> 00:00:34,008
-writes a plan instead.
+00:00:33,108 --> 00:00:34,482
+Bullpen shows an approval card.
 
 18
-00:00:35,300 --> 00:00:36,755
-Don't like one agent's work?
+00:00:35,767 --> 00:00:36,754
+Deny it, and the agent
 
 19
-00:00:36,755 --> 00:00:37,587
-Undo that agent.
+00:00:36,754 --> 00:00:37,741
+writes a plan instead.
 
 20
-00:00:37,587 --> 00:00:38,990
-Only its branch rolls back.
+00:00:39,033 --> 00:00:40,489
+Don't like one agent's work?
 
 21
-00:00:40,100 --> 00:00:40,979
-Happy with another?
+00:00:40,489 --> 00:00:41,320
+Undo that agent.
 
 22
-00:00:40,979 --> 00:00:41,766
-Merge it to main.
+00:00:41,320 --> 00:00:42,724
+Only its branch rolls back.
 
 23
-00:00:43,567 --> 00:00:44,997
-The other branches sync with it at once.
+00:00:43,833 --> 00:00:44,713
+Happy with another?
 
 24
-00:00:46,700 --> 00:00:48,092
-Every edit is checked by a referee,
+00:00:44,713 --> 00:00:45,499
+Merge it to main.
 
 25
-00:00:48,092 --> 00:00:49,843
-on separate hardware the agents can't touch.
+00:00:47,300 --> 00:00:48,731
+The other branches sync with it at once.
 
 26
-00:00:51,133 --> 00:00:53,234
-Pause the referee, and every edit is denied.
+00:00:50,433 --> 00:00:51,826
+Every edit is checked by a referee,
 
 27
-00:00:53,234 --> 00:00:53,999
-It fails closed.
+00:00:51,826 --> 00:00:53,576
+on separate hardware the agents can't touch.
 
 28
-00:00:55,300 --> 00:00:56,823
-And every edit is a commit, tagged
+00:00:54,867 --> 00:00:56,968
+Pause the referee, and every edit is denied.
 
 29
-00:00:56,823 --> 00:00:58,077
-with the agent that made it.
+00:00:56,968 --> 00:00:57,732
+It fails closed.
 
 30
-00:00:59,367 --> 00:01:00,420
-Git tracks what changed.
+00:00:59,033 --> 00:01:00,556
+And every edit is a commit, tagged
 
 31
-00:01:00,420 --> 00:01:02,352
+00:01:00,556 --> 00:01:01,810
+with the agent that made it.
+
+32
+00:01:03,100 --> 00:01:04,154
+Git tracks what changed.
+
+33
+00:01:04,154 --> 00:01:06,085
 Bullpen controls who's allowed to change it.

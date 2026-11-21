@@ -19,6 +19,15 @@
   },
   "slots": [
     {
+      "id": "00-title",
+      "kind": "title",
+      "fit": true,
+      "pad": 2.2,
+      "dur": 5,
+      "tagline": "Source control for AI agents",
+      "vo": "This is Bullpen. Source control for AI agents."
+    },
+    {
       "id": "01-green",
       "kind": "clip",
       "fit": true,
@@ -76,15 +85,23 @@
       "pad": 1.3
     },
     {
-      "id": "04-title",
-      "kind": "title",
+      "id": "04-stops",
+      "kind": "clip",
       "fit": true,
-      "pad": 1.8,
-      "dur": 4,
-      "speed": 1.5,
-      "tagline": "Source control for AI agents",
-      "vo": "Bullpen stops it before it happens.",
-      "shot": "campus wide shot"
+      "pad": 1.2,
+      "dur": 3,
+      "src": "take-live",
+      "from": "ask",
+      "start": -1.8,
+      "rate": 0.5,
+      "zoom": {
+        "scale": 1.3,
+        "x": 0,
+        "y": 20
+      },
+      "label": "The same agents, in Bullpen",
+      "shot": "campus wide shot before the run",
+      "vo": "Bullpen stops it before it happens."
     },
     {
       "id": "05-ask",
@@ -330,8 +347,16 @@
         "x": 0,
         "y": 30
       },
-      "pad": 3.4,
+      "pad": 1.2,
       "overlay": "Git tracks what changed. Bullpen controls who's allowed to change it."
+    },
+    {
+      "id": "18-end",
+      "kind": "title",
+      "dur": 4.5,
+      "still": true,
+      "tagline": "Git tracks what changed. Bullpen controls who's allowed to change it.",
+      "vo": ""
     }
   ]
 }
