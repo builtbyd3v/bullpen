@@ -58,7 +58,7 @@ Every request, response and event is specified in [`shared/events.md`](shared/ev
 
 | Part | Tech | Model |
 |---|---|---|
-| Orchestrator and the 3 agents | Claude Code (`claude` CLI) on the user's subscription | Claude |
+| Orchestrator and the 3 agents | Claude Code (`claude` CLI) on the user's subscription | Claude Haiku (orchestrator), Claude Sonnet (agents) |
 | Referee `/check` and secret guard `/scan` | FastAPI on a Jetson Orin Nano Super | rules only, no model |
 | Commit messages `/commit_msg` | Ollama on the Jetson | qwen2.5-coder:3b |
 | Branch intent `/summarize` | Ollama on the Jetson | llama3.2:3b |
@@ -73,9 +73,10 @@ Every request, response and event is specified in [`shared/events.md`](shared/ev
 | Part | Port | Run |
 |---|---|---|
 | Server | 8600 | `cd server && uv sync && uv run uvicorn main:app --port 8600` |
+| Orchestrator | 8650 | `cd orchestrator && uv sync && uv run uvicorn main:app --port 8650` |
 | Web | 5173 | `cd web && npm install && npm run dev`, then open http://localhost:5173 |
 | Jetson | 8700 | Deploy and start per [`jetson/README.md`](jetson/README.md). `JETSON_URL=http://192.168.55.1:8700` |
-| Hook and demo repo | none | `./scripts/make_demo.sh` creates a demo repo with 3 worktrees and wires the hook into each |
+| Hook and demo repo | none | `./scripts/make_demo.sh` creates a demo repo with 3 worktrees and wires the hook into each. `scripts/demo_reset.sh` resets it between runs, `scripts/demo_start.sh` starts the agents |
 
 - The web app runs without a server at http://localhost:5173/?fake. "Play demo" runs a scripted sequence.
 - Copy `.env.example` to `.env` for `SERVER_URL` and `JETSON_URL`.
@@ -85,13 +86,16 @@ Every request, response and event is specified in [`shared/events.md`](shared/ev
 
 ```
 campus/        campus.json: folder -> building map
-docs/          DEMO.md: the demo script
+demo-seed/     the seed app the demo agents work on
+design/        Caua's campus design prototype and mockups
+docs/          DEMO.md: the demo script; BASELINE.md: lost edits without Bullpen
 hooks/         bullpen_hook.py: the Claude Code hook
 jetson/        referee and local-model service (runs on the Jetson)
-orchestrator/  chat ask -> 3 tasks -> agents (port 8650, in progress)
-scripts/       demo repo and demo kit
-server/        referee backend and event hub (runs on the Mac)
+orchestrator/  chat ask -> 3 tasks -> agents (port 8650)
+scripts/       demo repo, demo kit and campus generator
+server/        referee backend and event hub (runs on the Mac), with tests
 shared/        events.md: the contract between every part
+video/         backup demo video pipeline (Remotion)
 web/           Next.js + Phaser campus view
 ```
 
@@ -113,14 +117,21 @@ Everything in this repo was built during HackJam '26, starting at 11:00 AM on No
 
 **AI tools we used to build it**
 
-- **Claude Code** (Anthropic), with the Claude Opus 5.5 and Claude Fable 5.2 models, run through T3 Code. It wrote most of the code, docs, tests and design mockups, and reviewed its own changes, under our direction. We set the product, the architecture, the contract in `shared/events.md`, the work split and the demo, and we reviewed and tested what it produced.
-- **Local models through Ollama**, used by the product at run time: qwen2.5-coder:3b, llama3.2:3b, nomic-embed-text, and lfm3:1.7b during development.
+- **Claude Code** (Anthropic), with the Claude Opus 5.5 and Claude Fable 5.2 models, run through T3 Code and the Claude Code extension for VS Code. It wrote most of the code, docs, tests and design mockups, and reviewed its own changes, under our direction. We set the product, the architecture, the contract in `shared/events.md`, the work split and the demo, and we reviewed and tested what it produced.
+
+**AI the product uses at run time**
+
+- **Claude Code** (`claude` CLI, on the user's subscription): Claude Sonnet runs the three demo agents, and Claude Haiku splits the ask into tasks in the orchestrator.
+- **Local models through Ollama on the Jetson**: qwen2.5-coder:3b (commit messages), llama3.2:3b (branch intent and ask-why), nomic-embed-text (ask-why retrieval). lfm3:1.7b was used during development.
 
 **What Bullpen is not:** it is not a reskin of an AI tool. Claude Code is the agent being controlled. What we built is the layer around it: the hook, the referee and its rules, file leases, approvals, auto-commits, undo and merge, the orchestrator, and the campus view.
 
 **Frameworks and libraries**
 
-- Web: Next.js 16, React 19, TypeScript, Tailwind CSS 4, Phaser 3.
-- Server and Jetson: Python, FastAPI, uvicorn, websockets, httpx, pydantic, uv.
-- Models and speech: Ollama, whisper.cpp, Piper.
-- Tooling: git worktrees, tmux, GitHub Actions, ruff.
+- Web: Next.js 16, React 19, TypeScript, Tailwind CSS 4, Phaser 3, Node.js.
+- Design prototype: HTML, CSS and JavaScript, with the Pixelify Sans and Press Start 2P fonts from Google Fonts.
+- Server, orchestrator and Jetson: Python, FastAPI, uvicorn, websockets, httpx, pydantic, uv.
+- Models and speech: Ollama; whisper.cpp and Piper for voice (stretch).
+- Video: Remotion, ffmpeg, and macOS `say` for placeholder voiceover.
+- Testing: pytest (Jetson, orchestrator), Python unittest (server), the Node.js test runner (web).
+- Tooling: git worktrees, tmux, GitHub Actions, ruff, npm.
