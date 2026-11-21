@@ -102,6 +102,7 @@ function Tabs({ onStartOpener }: { onStartOpener: () => void }) {
   const store = useStore();
   const tab = useBullpen((s) => s.ui.tab);
   const worktrees = useBullpen((s) => s.data.worktrees);
+  const search = useSyncExternalStore(noSubscribe, () => window.location.search, () => "");
   const tabs = [
     { id: "main", label: "main", color: "#ffffff", ahead: null as number | null },
     ...worktrees.map((w) => ({ id: w.agent, label: w.agent, color: w.color, ahead: w.ahead })),
@@ -132,6 +133,12 @@ function Tabs({ onStartOpener }: { onStartOpener: () => void }) {
           10s opener
         </button>
         <PlayDemo />
+        <a
+          href={`/settings${search}`}
+          className="rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-white/10"
+        >
+          Settings
+        </a>
       </div>
     </nav>
   );
@@ -206,6 +213,14 @@ function CampusPane() {
       <div className="min-h-0 flex-1">
         <Campus store={store} />
       </div>
+      <p className="flex justify-between border-t border-[#cfc493]/15 px-4 py-1.5 font-mono text-xs text-white/55">
+        <span>
+          {state.ui.tab === "main"
+            ? "main · repo folders on the USF map · hover or click a building"
+            : `agent/${state.ui.tab} · its layer at full color, the rest dimmed`}
+        </span>
+        <span>{campus.repo}</span>
+      </p>
       <BuildingInteriorDrawer store={store} state={state} />
       <ProblemOpener open={openerOpen} onClose={() => setOpenerOpen(false)} />
     </div>
@@ -232,11 +247,12 @@ const DECISION_CLASS: Record<CheckDecision, string> = {
 
 const BUTTON = "rounded-md px-3 py-1.5 text-sm font-semibold";
 
-type SectionProps = { title: string; hint?: string; children: ReactNode };
+type SectionProps = { title: string; hint?: string; src?: string; children: ReactNode };
 
-function Section({ title, hint, children }: SectionProps) {
+// A panel card per mockups-v3: title, a `?` hint, and the data source it reads on the right.
+function Section({ title, hint, src, children }: SectionProps) {
   return (
-    <section className="border-b border-[#cfc493]/15 p-4">
+    <section className="m-3 rounded-lg border border-[#cfc493]/20 bg-[#0d231b] p-4">
       <h2 className="mb-3 flex items-center gap-2 text-base font-bold tracking-widest text-[#cfc493] uppercase">
         {title}
         {hint && (
@@ -248,6 +264,7 @@ function Section({ title, hint, children }: SectionProps) {
             ?
           </span>
         )}
+        {src && <span className="ml-auto font-mono text-[11px] font-normal tracking-normal text-white/40 normal-case">{src}</span>}
       </h2>
       {children}
     </section>
@@ -269,6 +286,13 @@ function AgentChip({ agent, color }: AgentChipProps) {
     </span>
   );
 }
+
+// Asks that reliably hit the core beats: three agents, api and web both edit shared/auth.ts first, db edits db/schema.sql.
+const SUGGESTED_ASKS = [
+  "Add login with roles: API checks the role, web shows it, and the db stores it.",
+  "Add a role field to login across api, web and db",
+  "Add an account-locked flag: api rejects locked users, web shows a banner, db stores it",
+];
 
 // ============================================================================
 // ISSUE #27 — Orchestrator chat box (POST /orchestrate + POST /ask)
@@ -325,7 +349,7 @@ function OrchestratorBox() {
   };
 
   return (
-    <Section title="Orchestrator">
+    <Section title="Orchestrator" src="POST :8650/orchestrate">
       <form onSubmit={handleOrchestrate} className="flex gap-2">
         <input
           type="text"
@@ -343,6 +367,18 @@ function OrchestratorBox() {
           {orchestrating ? "Planning..." : "Run"}
         </button>
       </form>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {SUGGESTED_ASKS.map((ask) => (
+          <button
+            key={ask}
+            type="button"
+            onClick={() => setAskInput(ask)}
+            className="rounded-full border border-[#cfc493]/40 bg-[#005432]/40 px-2.5 py-1 text-left text-xs text-[#edebd1] hover:bg-[#005432]"
+          >
+            {ask}
+          </button>
+        ))}
+      </div>
       {orchError && <p className="mt-1.5 text-xs text-red-300">{orchError}</p>}
 
       {plan && (
@@ -477,7 +513,7 @@ function LeasesAndApprovals() {
   if (leases.length === 0 && approvals.length === 0) return null;
 
   return (
-    <Section title="Locks" hint="One agent edits a file at a time (a lease); the others wait in line. Guarded folders (the fence) need your approval.">
+    <Section title="Locks" src="/state leases, approvals" hint="One agent edits a file at a time (a lease); the others wait in line. Guarded folders (the fence) need your approval.">
       {/* Pending human approvals */}
       {approvals.length > 0 && (
         <div className="mb-3 space-y-2">
@@ -572,7 +608,7 @@ function CommitTimeline() {
   const name = (id: string) => campus.buildings.find((b) => b.id === id)?.name ?? id;
 
   return (
-    <Section title="Commits" hint="Every saved edit is committed on the agent's own branch; Undo drops the branch, Merge lands it on main.">
+    <Section title="Commits" src="git log agent/*" hint="Every saved edit is committed on the agent's own branch; Undo drops the branch, Merge lands it on main.">
       {worktrees.map((w) => (
         <div key={w.agent} style={agentColor(w.color)} className="mb-3 rounded-lg border-l-4 border-(--agent) bg-white/5 p-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -646,7 +682,7 @@ function CommitTimeline() {
 function RefereeLog() {
   const checks = useBullpen((s) => s.checks);
   return (
-    <Section title="Referee" hint="The Jetson checks every edit before it runs; unplugged, it blocks them all.">
+    <Section title="Referee" src="check events" hint="The Jetson checks every edit before it runs; unplugged, it blocks them all.">
       {checks.length === 0 ? (
         <p className="text-base text-white/55">No edits checked yet.</p>
       ) : (
@@ -740,7 +776,7 @@ function Activity() {
     return last ? ["done", `saved ${last.split("/").pop()}`] : [status, STATUS_LABEL[status]];
   };
   return (
-    <Section title="Activity" hint="What each agent is doing right now, from live events.">
+    <Section title="Activity" src="/state" hint="What each agent is doing right now, from live events.">
       <ul className="space-y-2">
         {worktrees.map((w) => {
           const [kind, text] = line(w.agent, w.status, w.commits);

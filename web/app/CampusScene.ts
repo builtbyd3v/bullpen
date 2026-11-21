@@ -209,7 +209,12 @@ export class CampusScene extends Phaser.Scene {
       (o.getByName("mark") as Phaser.GameObjects.Text).setText(mark).setColor(markColor);
       (o.getByName("badge") as Phaser.GameObjects.Text).setText(`WAIT #${s.wait}`).setVisible(s.wait > 0);
       (o.getByName("hourglass") as Phaser.GameObjects.Graphics).setVisible(s.wait > 0);
-      o.setData({ wait: s.wait, door: s.door });
+      // A held lease means the agent is editing that file; a waiting Bull edits nothing.
+      const file = s.wait ? undefined : (data.leases ?? []).find((l) => l.agent === s.agent)?.file;
+      const editing = file !== undefined;
+      this.say(o.getByName("bubble") as Phaser.GameObjects.Container, editing ? (file.split("/").pop() ?? file) : null);
+      (o.getByName("hammer") as Phaser.GameObjects.Graphics).setVisible(editing);
+      o.setData({ wait: s.wait, door: s.door, editing });
       (o.getByName("ring") as Phaser.GameObjects.Ellipse).setVisible(sel?.kind === "bull" && sel.agent === s.agent);
       return this.walk(o, s);
     };
@@ -259,10 +264,12 @@ export class CampusScene extends Phaser.Scene {
       label.setText(`🔒 ${label.getData("holder")} · ${sec}s`).setColor(label.getData("color") as string);
     }
     const phase = Math.floor(time / 250) % 4;
+    const swing = Math.floor(time / 200) % 2;
     this.tethers.clear();
     for (const bull of this.bulls.values()) {
       const body = bull.getByName("body") as Phaser.GameObjects.Graphics;
       const wait = bull.getData("wait") as number | undefined;
+      (bull.getByName("hammer") as Phaser.GameObjects.Graphics).setAngle(bull.getData("editing") ? (swing ? 30 : -40) : 0);
       if (!wait) {
         body.y = 0;
         continue;
@@ -366,12 +373,35 @@ export class CampusScene extends Phaser.Scene {
     return bull;
   }
 
+  // White rounded bubble with a tail, sized to its text; null hides it.
+  private say(bubble: Phaser.GameObjects.Container, text: string | null) {
+    bubble.setVisible(text !== null);
+    if (text === null) return;
+    const t = bubble.getByName("t") as Phaser.GameObjects.Text;
+    if (t.text === text) return;
+    t.setText(text);
+    const w = t.width + 12;
+    (bubble.getByName("g") as Phaser.GameObjects.Graphics)
+      .clear()
+      .fillStyle(0xffffff)
+      .fillRoundedRect(-w / 2, -20, w, 20, 5)
+      .fillTriangle(-4, 0, 4, 0, 0, 6);
+  }
+
   private bull({ agent, color }: BullSpec) {
     const bull = this.add
       .container(slotX(bullrunner, 0, 1), bullY(bullrunner), [
         this.add.ellipse(4, -2, 48, 40).setStrokeStyle(3, 0xffe066).setVisible(false).setName("ring"),
         ...makeBull(this, color).map((o, i) => (i === 0 ? o.setName("body") : o)),
         this.add.graphics({ x: 28, y: -18 }).setVisible(false).setName("hourglass"),
+        this.hammer(),
+        this.add
+          .container(2, -36, [
+            this.add.graphics().setName("g"),
+            this.add.text(0, -10, "", { fontFamily: "monospace", fontSize: "12px", color: "#0d231b" }).setOrigin(0.5).setName("t"),
+          ])
+          .setVisible(false)
+          .setName("bubble"),
         this.add
           .text(2, -26, "", {
             fontFamily: "monospace",
@@ -387,7 +417,7 @@ export class CampusScene extends Phaser.Scene {
         this.add
           .text(0, 10, agent, {
             fontFamily: "monospace",
-            fontSize: "12px",
+            fontSize: "14px",
             fontStyle: "bold",
             color: "#ffffff",
             stroke: "#0d231b",
@@ -403,10 +433,23 @@ export class CampusScene extends Phaser.Scene {
           .setName("mark"),
       ])
       .setDepth(4)
+      .setScale(1.5)
       .setSize(44, 36)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.store.setUi({ selected: { kind: "bull", agent } }));
     return bull;
+  }
+
+  // Pivot is the handle base, so rotating the Graphics swings the head.
+  private hammer() {
+    return this.add
+      .graphics({ x: -30, y: 2 })
+      .fillStyle(0x8b5a2b)
+      .fillRect(0, -14, 2, 14)
+      .fillStyle(0xcfc493)
+      .fillRect(-4, -20, 10, 6)
+      .setVisible(false)
+      .setName("hammer");
   }
 
   // Branch changes on a building: a see-through grid in the agent's color, offset per agent so layers stay visible.
