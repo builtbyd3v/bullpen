@@ -1,0 +1,10 @@
+[project]
+name = "jetson"
+version = "0.1.0"
+description = "Bullpen jetson"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.165.0",
+    "uvicorn>=0.54.0",
+]

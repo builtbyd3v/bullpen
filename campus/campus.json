@@ -1,0 +1,15 @@
+{
+  "width": 960,
+  "height": 640,
+  "buildings": [
+    { "id": "msc", "name": "Marshall Student Center", "folder": "web/", "x": 380, "y": 60, "w": 200, "h": 110, "guarded": false },
+    { "id": "library", "name": "Library", "folder": "docs/", "x": 120, "y": 60, "w": 180, "h": 110, "guarded": false },
+    { "id": "enb", "name": "ENB", "folder": "api/", "x": 660, "y": 60, "w": 180, "h": 110, "guarded": false },
+    { "id": "enc", "name": "ENC", "folder": "tests/", "x": 660, "y": 260, "w": 180, "h": 110, "guarded": false },
+    { "id": "muma", "name": "Muma Business", "folder": "config/", "x": 120, "y": 260, "w": 180, "h": 110, "guarded": false },
+    { "id": "cooper", "name": "Cooper Hall", "folder": "scripts/", "x": 120, "y": 460, "w": 180, "h": 110, "guarded": false },
+    { "id": "sundome", "name": "Sun Dome", "folder": "db/", "x": 660, "y": 460, "w": 180, "h": 110, "guarded": true },
+    { "id": "juniper", "name": "Juniper-Poplar", "folder": null, "x": 380, "y": 460, "w": 200, "h": 110, "guarded": false },
+    { "id": "bullrunner", "name": "Bull Runner stop", "folder": "", "x": 400, "y": 270, "w": 160, "h": 90, "guarded": false }
+  ]
+}
