@@ -1,12 +1,13 @@
-# Demo script (3 min showcase + 1 min questions)
+# Demo plan (3 min showcase + 1 min questions)
 
-- One ask to the orchestrator starts 3 agents; Bullpen keeps them from overwriting each other.
-- Live beats: collision, Sun Dome deny, ask why, undo, merge, then unplug the Jetson.
-- Fallback: `GET /replay` on the server, or `?fake` plus "Play demo" in the web app.
-- Before judging: run `scripts/demo_reset.sh`, check the health strip is all green.
-- Start the server with `BULLPEN_RELEASE_ON_COMMIT=0` (in `server/`: `BULLPEN_RELEASE_ON_COMMIT=0 uv run uvicorn main:app --host 0.0.0.0 --port 8600`). Without it the lease drops at each auto-commit (about 1 s), so the second agent almost never waits and the collision beat does not show.
+- **The video is the demo.** It plays at the table; script and timings in `video/SCRIPT.md`, recorder in `video/`.
+- **In person:** open the site (`/` landing, then `/campus`), let it run at rest, and optionally click one preset prompt chip and Run. All 3 chips reliably give the collision on `shared/auth.ts` and the Sun Dome approval within about 25 s. Click **Deny** on the approval card (no answer = deny after 60 s).
+- **Between runs:** Settings, **Reset demo** (or `scripts/demo_reset.sh`). It also releases leftover locks through the server's undo.
+- **Before judging:** start the server with `BULLPEN_RELEASE_ON_COMMIT=0` (in `server/`: `BULLPEN_RELEASE_ON_COMMIT=0 uv run uvicorn main:app --host 0.0.0.0 --port 8600`); without it the lock drops at each auto-commit (about 1 s) and the collision does not show. Pre-warm the Jetson (`POST /reset` on port 8700, about 70 s cold). Check the health strip. Click the page once and answer the browser's notification prompt so it does not pop up on stage.
+- **Fallback:** `/campus?fake` plus "Play demo", or `GET /replay` on the server.
 - Never cut: claims, the fence, undo.
-- Timeline: project done by 3:00 PM, testing until 5:00 PM, pitch prep 5:30 PM, submit on MLH before 6:00 PM, judging 6:20 to 7:50 PM.
+
+## Beats (what the video shows, and what a chip run shows live)
 
 | Time | Beat | What the judge sees |
 |---|---|---|
