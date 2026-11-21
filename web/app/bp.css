@@ -152,3 +152,29 @@
 .bp .ask > * { min-width: 0; }
 .bp .ask .flex .btn { white-space: normal; text-align: left; }
 .bp .card > h2 .src { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Orchestrator, option B: terminal with agent panes */
+.bp .orch > h2 { gap: 8px; }
+.bp .orch .term { background: #04100a; font: 13px/1.6 var(--font-mono); padding: 12px 14px; min-height: 170px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bp .orch .term .p { color: var(--green); }
+.bp .orch .term .m { color: var(--ink-3); }
+.bp .orch .term .g { color: var(--gold); }
+.bp .orch .term .bad { color: var(--red); }
+@keyframes bp-blink { 50% { opacity: 0; } }
+.bp .orch .caret { display: inline-block; width: 8px; height: 15px; background: var(--green); vertical-align: -2px; animation: bp-blink 1s steps(1) infinite; }
+.bp .orch .panes { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); border-top: 1px solid var(--line-2); }
+.bp .orch .pane { padding: 9px 10px; font: 12px/1.5 var(--font-mono); border-right: 1px solid var(--line-2); min-width: 0; }
+.bp .orch .pane:last-child { border-right: 0; }
+.bp .orch .pane .t { display: flex; gap: 6px; align-items: center; font-weight: 600; margin-bottom: 4px; }
+.bp .orch .pane .l { color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp .orch .status { font: 600 11px var(--font-mono); padding: 1px 6px; }
+.bp .orch .s-run { background: var(--green-bg); color: var(--green); }
+.bp .orch .s-wait { background: var(--amber-bg); color: var(--amber); }
+.bp .orch .s-ask { background: var(--gold-bg); color: var(--gold); }
+.bp .orch .s-idle { background: var(--line-2); color: var(--ink-3); }
+.bp .orch .ghosts { display: grid; border-top: 1px solid var(--line-2); padding: 6px 0; }
+.bp .orch .ghosts button { text-align: left; background: none; border: 0; color: var(--ink-3); font: 12.5px var(--font-mono); padding: 3px 14px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bp .orch .ghosts button:hover { color: var(--ink); background: var(--line-2); }
+.bp .orch .termin { display: flex; gap: 8px; padding: 9px 14px; border-top: 1px solid var(--line-2); align-items: center; font: 13.5px var(--font-mono); }
+.bp .orch .termin .p { color: var(--green); }
+.bp .orch .termin input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--ink); font: 13.5px var(--font-mono); padding: 6px 0; outline: none; }
+.bp .orch .termin input::placeholder { color: var(--ink-3); }
