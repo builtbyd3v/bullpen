@@ -23,7 +23,7 @@ export const FAKE_STATE: BullpenState = {
         {
           sha: "a1b2c3d",
           message: "Add users route",
-          files: ["api/users.py"],
+          files: ["api/users.py", "shared/auth.ts"],
           at: pastIso(45),
           task: "Add /users endpoint",
         },
@@ -42,7 +42,7 @@ export const FAKE_STATE: BullpenState = {
       branch: "agent/web",
       path: "/demo/demo-web",
       task: "Users page",
-      changed_files: ["web/Users.tsx", "api/client.py", "notes/todo.txt"],
+      changed_files: ["web/Users.tsx", "api/client.py", "shared/auth.ts", "notes/todo.txt"],
       ahead: 1,
       claims: ["msc"],
       status: "working",
@@ -51,7 +51,7 @@ export const FAKE_STATE: BullpenState = {
         {
           sha: "4c5d6e7",
           message: "Add users page",
-          files: ["web/Users.tsx", "api/client.py"],
+          files: ["web/Users.tsx", "api/client.py", "shared/auth.ts"],
           at: pastIso(60),
           task: "Users page",
         },
@@ -141,6 +141,26 @@ export const FAKE_CHECKS: CheckEvent[] = [
     latency_ms: 2,
     model: "rules",
     at: pastIso(50),
+  },
+  {
+    agent: "web",
+    tool: "Edit",
+    file: "shared/auth.ts",
+    decision: "allow",
+    rule: "default",
+    latency_ms: 3,
+    model: "rules",
+    at: pastIso(62),
+  },
+  {
+    agent: "api",
+    tool: "Edit",
+    file: "shared/auth.ts",
+    decision: "allow",
+    rule: "default",
+    latency_ms: 2,
+    model: "rules",
+    at: pastIso(47),
   },
 ];
 
@@ -274,8 +294,42 @@ export function fakeAsk(question: string): string {
   return "Three agents (api, web, db) are working in isolated git worktrees coordinated by Bullpen leases and Jetson policy rules.";
 }
 
+// Both branches replace the same placeholder line in shared/auth.ts: each merges into main alone, together they collide.
+const AUTH_DIFFS = {
+  api: [
+    "diff --git a/shared/auth.ts b/shared/auth.ts",
+    "--- a/shared/auth.ts",
+    "+++ b/shared/auth.ts",
+    "@@ -10,4 +10,8 @@ import { decode } from \"./jwt\";",
+    " ",
+    " // Token helpers shared by api and web.",
+    "-export const TODO_AUTH = true;",
+    "+export function verifyToken(token: string): Session | null {",
+    "+  const claims = decode(token);",
+    "+  if (!claims || claims.exp < Date.now() / 1000) return null;",
+    "+  return { user: claims.sub, role: claims.role };",
+    "+}",
+    " ",
+  ].join("\n"),
+  web: [
+    "diff --git a/shared/auth.ts b/shared/auth.ts",
+    "--- a/shared/auth.ts",
+    "+++ b/shared/auth.ts",
+    "@@ -10,4 +10,7 @@ import { decode } from \"./jwt\";",
+    " ",
+    " // Token helpers shared by api and web.",
+    "-export const TODO_AUTH = true;",
+    "+export function parseSession(cookie: string): Session | null {",
+    "+  const token = cookie.split(\"session=\")[1]?.split(\";\")[0];",
+    "+  return token ? { user: decode(token).sub, role: \"member\" } : null;",
+    "+}",
+    " ",
+  ].join("\n"),
+};
+
 export function fakeDiff(agent: string, file: string): string {
   const target = file || "api/users.ts";
+  if (target === "shared/auth.ts") return AUTH_DIFFS[agent === "web" ? "web" : "api"];
   if (target.startsWith("db/")) {
     return [
       `diff --git a/${target} b/${target}`,

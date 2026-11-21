@@ -14,6 +14,7 @@ import {
 import campus from "../../campus/campus.json" with { type: "json" };
 import { DEMO } from "@/lib/fake.ts";
 import { act, askWhy, connect, isFake, orchestrate, SERVER_URL } from "@/lib/server.ts";
+import { overlaps } from "@/lib/overlap.ts";
 import { createStore, type Store, type StoreState } from "@/lib/store.ts";
 import type { CheckDecision, Status } from "@/lib/types.ts";
 import { Alerts } from "./Alerts";
@@ -103,6 +104,7 @@ function Tabs({ onStartOpener }: { onStartOpener: () => void }) {
   const tab = useBullpen((s) => s.ui.tab);
   const worktrees = useBullpen((s) => s.data.worktrees);
   const search = useSyncExternalStore(noSubscribe, () => window.location.search, () => "");
+  const conflicts = overlaps(worktrees).length;
   const tabs = [
     { id: "main", label: "main", color: "#ffffff", ahead: null as number | null },
     ...worktrees.map((w) => ({ id: w.agent, label: w.agent, color: w.color, ahead: w.ahead })),
@@ -133,6 +135,13 @@ function Tabs({ onStartOpener }: { onStartOpener: () => void }) {
           10s opener
         </button>
         <PlayDemo />
+        <a
+          href={`/prs${search}`}
+          className="flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white/85 hover:bg-white/10"
+        >
+          Pull requests
+          {conflicts > 0 && <span className="rounded bg-red-500/30 px-1.5 font-mono text-xs text-red-100">{conflicts}</span>}
+        </a>
         <a
           href={`/settings${search}`}
           className="rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-white/10"
@@ -257,7 +266,7 @@ type SectionProps = { title: string; hint?: string; src?: string; children: Reac
 function Section({ title, hint, src, children }: SectionProps) {
   return (
     <section className="m-3 rounded-lg border border-[#cfc493]/20 bg-[#0d231b] p-4">
-      <h2 className="mb-3 flex items-center gap-2 text-base font-bold tracking-widest text-[#cfc493] uppercase">
+      <h2 className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-[#EDEBD1]">
         {title}
         {hint && (
           <span
@@ -268,7 +277,7 @@ function Section({ title, hint, src, children }: SectionProps) {
             ?
           </span>
         )}
-        {src && <span className="ml-auto font-mono text-[11px] font-normal tracking-normal text-white/40 normal-case">{src}</span>}
+        {src && <span className="ml-auto font-mono text-xs font-normal text-white/55">{src}</span>}
       </h2>
       {children}
     </section>
@@ -810,10 +819,69 @@ function Activity() {
   );
 }
 
+// Source control at a glance: each agent branch against main, and files two branches both change.
+function SourceControl() {
+  const store = useStore();
+  const worktrees = useBullpen((s) => s.data.worktrees);
+  const search = useSyncExternalStore(noSubscribe, () => window.location.search, () => "");
+  const clashes = overlaps(worktrees);
+  const clashing = new Set(clashes.flatMap((o) => o.agents));
+  return (
+    <Section title="Branches" src="agent/* vs main" hint="Each agent works on its own branch. Merge lands it on main; Undo drops it. Two branches that change the same file collide even when each is clean against main.">
+      {clashes.map((o) => (
+        <a
+          key={o.file}
+          href={`/prs${search}`}
+          className="mb-3 flex items-center gap-3 rounded-md border border-red-400/50 bg-red-950/50 px-3 py-2.5 text-sm text-red-50 no-underline hover:bg-red-900/50"
+        >
+          <span className="rounded bg-red-500/30 px-1.5 py-0.5 font-mono text-xs font-semibold">overlap</span>
+          <span className="min-w-0 flex-1">
+            <b>{o.agents.map((a) => `agent/${a}`).join(" and ")}</b> both change <span className="font-mono">{o.file}</span>
+          </span>
+          <span className="shrink-0 font-semibold text-red-100">Review →</span>
+        </a>
+      ))}
+      {worktrees.length === 0 ? (
+        <p className="text-sm text-white/65">No agent branches yet. Send the orchestrator an ask.</p>
+      ) : (
+        <ul className="divide-y divide-white/10 rounded-md border border-white/10">
+          {worktrees.map((w) => (
+            <li key={w.agent} style={agentColor(w.color)} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5">
+              <Dot color={w.color} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono text-sm font-semibold text-white">{w.branch}</span>
+                <span className="block truncate text-[13px] text-white/70" title={w.task}>{w.task || "No task yet"}</span>
+              </span>
+              <span className="font-mono text-sm text-emerald-300" title="Commits ahead of main">↑{w.ahead}</span>
+              <span className="font-mono text-[13px] text-white/70" title="Files changed">{w.changed_files.length} files</span>
+              <span
+                className={`rounded px-1.5 py-0.5 font-mono text-xs font-semibold ${
+                  clashing.has(w.agent) ? "bg-red-500/25 text-red-200" : w.ahead > 0 ? "bg-emerald-500/20 text-emerald-200" : "bg-white/10 text-white/60"
+                }`}
+              >
+                {clashing.has(w.agent) ? "overlap" : w.ahead > 0 ? "clean" : "empty"}
+              </span>
+              <span className="flex gap-1.5">
+                <button type="button" onClick={() => act(store, { kind: "merge", agent: w.agent })} className={`${BUTTON} bg-[#006747] text-white hover:bg-[#008a5e]`}>
+                  Merge to main
+                </button>
+                <button type="button" onClick={() => act(store, { kind: "undo", agent: w.agent })} className={`${BUTTON} border border-red-400/50 text-red-200 hover:bg-red-900/40`}>
+                  Undo
+                </button>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
 function SidePanel() {
   return (
     <aside className="h-full w-[35%] overflow-y-auto border-l-2 border-[#cfc493]/30 bg-[#0a1f16]">
       <Notice />
+      <SourceControl />
       <Activity />
       <OrchestratorBox />
       <MergeIntentCards />
