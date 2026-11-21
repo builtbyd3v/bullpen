@@ -12,11 +12,11 @@ JETSON_URL = os.environ.get("JETSON_URL", "http://192.168.55.1:8700").rstrip("/"
 CAMPUS_FILE = Path(os.environ.get("BULLPEN_CAMPUS", ROOT / "campus" / "campus.json"))
 EVENTS_LOG = Path(os.environ.get("BULLPEN_EVENTS_LOG", Path(__file__).resolve().parent / "events.log"))
 
-LEASE_TTL = 90  # seconds, events.md section 2
-APPROVAL_TIMEOUT = 60  # seconds
+LEASE_TTL = int(os.environ.get("BULLPEN_LEASE_TTL", 90))  # seconds, events.md section 2
+APPROVAL_TIMEOUT = int(os.environ.get("BULLPEN_APPROVAL_TIMEOUT", 60))  # seconds
 # events.md section 2: leases are released when the edit is committed.
-# Set False to keep a lease until Stop, undo or expiry instead.
-RELEASE_ON_COMMIT = True
+# Set BULLPEN_RELEASE_ON_COMMIT=0 to keep a lease until Stop, undo or expiry instead.
+RELEASE_ON_COMMIT = os.environ.get("BULLPEN_RELEASE_ON_COMMIT", "1") != "0"
 
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 COLORS = {"api": "#e5484d", "web": "#3e63dd", "db": "#f5b400"}
