@@ -1,4 +1,8 @@
-# Bullpen
+<p align="center">
+  <img src="web/public/logo.svg" alt="Bullpen bull logo" width="120">
+</p>
+<h1 align="center">Bullpen</h1>
+<p align="center"><b>Git tracks what changed. Bullpen controls who's allowed to change it.</b></p>
 
 **Version control for AI agents.** You give one orchestrator an ask. It starts 3 Claude Code agents, each in its own git worktree and branch, and a referee on a Jetson checks every edit: file locks, guarded folders, an auto-commit per edit, per-agent undo, and merge with a stated intent.
 
@@ -21,6 +25,22 @@ Git was built for humans. Bullpen puts a referee in front of every agent edit:
 - **A live map.** The repo is the USF campus: each top-level folder is a building, `main` is the campus, each agent's branch is a colored layer.
 
 > Your sub writes the code. The Jetson keeps it honest, free, and private.
+
+## Screenshots
+
+Dark UI on `main`, in the scripted `?fake` mode.
+
+**Landing** (`/`)
+
+![Bullpen landing page with the pixel campus](docs/screenshots/landing.png)
+
+**Campus dashboard** (`/campus?fake`): the conflict and approval cards, branches, cross-branch check and file locks next to the campus.
+
+![Campus dashboard in fake mode](docs/screenshots/campus.png)
+
+**Pull requests** (`/prs?fake`): the cross-PR conflict on `shared/auth.ts`, caught before either branch merges.
+
+![Pull request conflict view in fake mode](docs/screenshots/prs.png)
 
 ## Architecture
 
