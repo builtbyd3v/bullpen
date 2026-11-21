@@ -3,7 +3,7 @@
 // Missing clip -> labeled placeholder slate. Missing voiceover -> macOS `say` placeholder.
 // Usage: node scripts/build.mjs [--no-render]
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -12,8 +12,14 @@ const p = (...parts) => join(root, ...parts);
 const run = (cmd, args) => execFileSync(cmd, args, { cwd: root, stdio: ["ignore", "pipe", "pipe"] }).toString();
 const ffmpeg = (args) => run("ffmpeg", ["-y", "-loglevel", "error", ...args]);
 const seconds = (file) => Number(run("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]));
-const newer = (src, out) => !existsSync(out) || statSync(src).mtimeMs > statSync(out).mtimeMs;
-const find = (dir, id) => readdirSync(p(dir)).find((f) => f.startsWith(id + "."));
+const MEDIA = /\.(mp4|mov|m4v|mkv|webm|m4a|wav|mp3|aiff)$/i;
+const find = (dir, id) => {
+  const hits = readdirSync(p(dir)).filter((f) => f.startsWith(id + ".") && MEDIA.test(f));
+  if (hits.length > 1) throw new Error(`${dir}/ has ${hits.length} files for ${id}: ${hits.join(", ")}. Keep one.`);
+  return hits[0];
+};
+// Cuts dead air from both ends of a take, so captions and the length check follow the speech.
+const TRIM = "silenceremove=start_periods=1:start_threshold=-45dB";
 
 const VO_MARGIN = 0.3;
 const timeline = JSON.parse(readFileSync(p("timeline.json"), "utf8"));
@@ -31,13 +37,12 @@ for (const slot of timeline.slots) {
     const out = `public/clips/${slot.id}.mp4`;
     const transfer = run("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=color_transfer", "-of", "csv=p=0", p("raw", raw)]).trim();
     if (transfer === "arib-std-b67" || transfer === "smpte2084") console.warn(`WARNING ${raw} is HDR and will look washed out. Record again with HDR video off.`);
-    if (newer(p("raw", raw), p(out))) {
-      ffmpeg([
-        "-i", p("raw", raw),
-        "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0D231B,fps=30,format=yuv420p",
-        "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-crf", "18", "-preset", "veryfast", "-c:a", "aac", p(out),
-      ]);
-    }
+    // Converted on every run: a cache keyed on file dates kept old takes after a swap in Finder.
+    ffmpeg([
+      "-i", p("raw", raw),
+      "-vf", "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=0x0D231B,fps=30,format=yuv420p",
+      "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "libx264", "-crf", "18", "-preset", "veryfast", "-c:a", "aac", p(out),
+    ]);
     const need = (slot.start ?? 0) + slot.dur * (slot.rate ?? 1);
     const have = seconds(p(out));
     if (have + 0.05 < need) problems.push(`${slot.id}: clip is ${have.toFixed(1)} s, the slot needs ${need.toFixed(1)} s (start + dur x rate)`);
@@ -48,21 +53,23 @@ for (const slot of timeline.slots) {
   const voOut = `public/vo/${slot.id}.wav`;
   const take = find("raw/vo", slot.id);
   if (take) {
-    if (newer(p("raw/vo", take), p(voOut))) ffmpeg(["-i", p("raw/vo", take), "-ar", "48000", "-ac", "2", p(voOut)]);
-  } else {
+    ffmpeg(["-i", p("raw/vo", take), "-af", `${TRIM},areverse,${TRIM},areverse`, "-ar", "48000", "-ac", "2", p(voOut)]);
+  } else if (slot.vo) {
     const spoken = slot.vo.replaceAll("auth.ts", "auth dot T S");
     run("say", ["-r", "150", "-o", p("out/say.aiff"), spoken]);
     ffmpeg(["-i", p("out/say.aiff"), "-ar", "48000", "-ac", "2", p(voOut)]);
   }
-  slot.voFile = `vo/${slot.id}.wav`;
-  const voDur = seconds(p(voOut));
+  // A slot with no line and no take stays silent and gets no captions.
+  const silent = !take && !slot.vo;
+  slot.voFile = silent ? null : `vo/${slot.id}.wav`;
+  const voDur = silent ? 0 : seconds(p(voOut));
   if (voDur > slot.dur - VO_MARGIN) {
     problems.push(`${slot.id}: voiceover is ${voDur.toFixed(1)} s, the slot is ${slot.dur} s. Cut words or raise "dur".`);
   }
 
   // Captions: lines of up to 8 words, timed by their share of the characters in the take.
   const lines = [];
-  for (const sentence of slot.vo.split(/(?<=[.?!])\s+/)) {
+  for (const sentence of slot.vo ? slot.vo.split(/(?<=[.?!])\s+/) : []) {
     const words = sentence.split(" ");
     const parts = Math.ceil(words.length / 8);
     const size = Math.ceil(words.length / parts);
