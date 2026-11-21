@@ -5,6 +5,7 @@ import {
   createContext,
   use,
   useEffect,
+  useRef,
   useState,
   useSyncExternalStore,
   type CSSProperties,
@@ -12,7 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import campus from "../../campus/campus.json" with { type: "json" };
-import { DEMO } from "@/lib/fake.ts";
+import { AUTOPLAY, autoplayReset, DEMO } from "@/lib/fake.ts";
 import { act, askWhy, connect, isFake, orchestrate, SERVER_URL } from "@/lib/server.ts";
 import { overlaps } from "@/lib/overlap.ts";
 import { createStore, type Store, type StoreState } from "@/lib/store.ts";
@@ -1140,6 +1141,63 @@ function SideColumn() {
   );
 }
 
+// ?fake&autoplay: plays the fake story on a loop for the table. Manual clicks pause it for 10 s; Restart jumps to beat 1.
+const BEAT_MS = 4500;
+const PAUSE_MS = 10000;
+
+function Autoplay() {
+  const store = useStore();
+  const on = useSyncExternalStore(noSubscribe, () => isFake() && new URLSearchParams(window.location.search).has("autoplay"), () => false);
+  const [caption, setCaption] = useState("");
+  const [beat, setBeat] = useState(0);
+  const next = useRef(0);
+  const pausedUntil = useRef(0);
+  const restart = () => {
+    autoplayReset().forEach(store.dispatch);
+    pausedUntil.current = 0;
+    AUTOPLAY[0].run().forEach(store.dispatch);
+    setCaption(AUTOPLAY[0].caption);
+    setBeat(1);
+    next.current = 1;
+  };
+  useEffect(() => {
+    if (!on) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!(e.target instanceof Element) || !e.target.closest("[data-autoplay]")) pausedUntil.current = Date.now() + PAUSE_MS;
+    };
+    document.addEventListener("pointerdown", onPointer, true);
+    const id = window.setInterval(() => {
+      if (Date.now() < pausedUntil.current) return;
+      if (next.current >= AUTOPLAY.length) {
+        autoplayReset().forEach(store.dispatch);
+        next.current = 0;
+        setCaption("Starting over");
+        setBeat(0);
+        return;
+      }
+      const b = AUTOPLAY[next.current];
+      b.run().forEach(store.dispatch);
+      setCaption(b.caption);
+      next.current += 1;
+      setBeat(next.current);
+    }, BEAT_MS);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("pointerdown", onPointer, true);
+    };
+  }, [on, store]);
+  if (!on) return null;
+  return (
+    <div data-autoplay className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 border border-[#CFC493]/50 bg-[#0d231b]/95 px-4 py-2.5 text-[15px] text-[#EDEBD1] shadow-[3px_3px_0_rgba(0,0,0,0.4)]">
+      <span className="font-mono text-xs text-[#CFC493]">{beat}/{AUTOPLAY.length}</span>
+      <span aria-live="polite">{caption || "Watch: Bullpen runs the story on its own"}</span>
+      <button type="button" onClick={restart} className="border border-[#CFC493]/60 px-3 py-1 text-sm font-semibold text-[#EDEBD1] hover:bg-white/10">
+        Restart demo
+      </button>
+    </div>
+  );
+}
+
 export default function Bullpen() {
   return (
     <BullpenProvider>
@@ -1160,6 +1218,7 @@ export default function Bullpen() {
         </div>
       </div>
       <AlertsHost />
+      <Autoplay />
     </BullpenProvider>
   );
 }

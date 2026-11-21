@@ -468,3 +468,20 @@ export const DEMO: { at: number; run: () => Envelope[] }[] = [
   { at: 16000, run: () => [fakeCheck("web", "web/.env", "deny", "secrets")] },
   { at: 19000, run: () => [fakeCheck("api", "api/users.ts", "deny", "offline")] },
 ];
+
+// Table autoplay (?fake&autoplay): the whole story, one beat every few seconds, then a reset and a loop. Fake only, no network.
+export const AUTOPLAY: { caption: string; run: () => Envelope[] }[] = [
+  { caption: "One ask: the orchestrator splits it across 3 Claude Code agents", run: () => [{ type: "plan", data: fakeOrchestrate("Add a users feature: endpoint, page and table") }] },
+  { caption: "api locks shared/auth.ts. web waits at the Library door", run: () => fakeCommit("api", { sha: "b7c8d9e", message: "Verify token in shared/auth.ts", files: ["shared/auth.ts"] }) },
+  { caption: "Two branches both change shared/auth.ts. Bullpen flags the conflict", run: () => fakeWait("db", "api/users.ts") },
+  { caption: "db wants to edit db/schema.sql. The folder is guarded: Deny", run: () => fakeServer({ kind: "approve", id: "ap1", decision: "deny" }) },
+  { caption: "Undo web: only web's commits roll back", run: () => fakeServer({ kind: "undo", agent: "web" }) },
+  { caption: "Merge api: its branch lands on main", run: () => fakeServer({ kind: "merge", agent: "api" }) },
+  { caption: "Jetson unplugged: every edit is denied, fail closed", run: () => [fakeCheck("api", "api/users.ts", "deny", "offline")] },
+];
+
+// Back to the opening state of ?fake.
+export function autoplayReset(): Envelope[] {
+  resetFake();
+  return [{ type: "state", data: FAKE_STATE }];
+}
