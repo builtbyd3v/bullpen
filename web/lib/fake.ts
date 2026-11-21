@@ -1,4 +1,4 @@
-import type { Action, BullpenState, Envelope, Worktree } from "./types.ts";
+import type { Action, BullpenState, Commit, Envelope, Worktree } from "./types.ts";
 
 export const FAKE_STATE: BullpenState = {
   main: "main",
@@ -77,3 +77,35 @@ export function fakeServer(action: Action): Envelope[] {
     action.kind === "merge" ? { type: "merge", data: { agent: action.agent, sha } } : { type: "undo", data: { agent: action.agent } };
   return [first, { type: "state", data }];
 }
+
+// What the server's /state would show after an agent commits on its branch.
+export function withCommit(state: BullpenState, agent: string, commit: Commit): BullpenState {
+  return {
+    ...state,
+    worktrees: state.worktrees.map((w) =>
+      w.agent !== agent
+        ? w
+        : {
+            ...w,
+            commits: [commit, ...w.commits],
+            ahead: w.ahead + 1,
+            changed_files: [...new Set([...w.changed_files, ...commit.files])],
+          },
+    ),
+  };
+}
+
+function fakeCommit(agent: string, commit: Commit): Envelope[] {
+  data = withCommit(data, agent, commit);
+  return [{ type: "commit", data: { agent, ...commit } }, { type: "state", data }];
+}
+
+// "Play demo" in ?fake mode: about 15 seconds of envelopes, fed through store.dispatch like the live socket.
+export const DEMO: { at: number; run: () => Envelope[] }[] = [
+  { at: 1500, run: () => fakeCommit("api", { sha: "b7c8d9e", message: "Test users route", files: ["tests/test_users.py"] }) },
+  { at: 4000, run: () => fakeCommit("web", { sha: "e1f2a3b", message: "Fetch users from API", files: ["web/api.ts"] }) },
+  { at: 7000, run: () => fakeServer({ kind: "approve", id: "ap1", decision: "allow" }) },
+  { at: 8500, run: () => fakeCommit("db", { sha: "c4d5e6f", message: "Add users table", files: ["db/schema.sql"] }) },
+  { at: 11000, run: () => fakeServer({ kind: "merge", agent: "api" }) },
+  { at: 14000, run: () => fakeServer({ kind: "undo", agent: "web" }) },
+];

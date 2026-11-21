@@ -5,7 +5,7 @@ import type { Action, BullpenState, Envelope } from "./types.ts";
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:8600";
 const TYPES = new Set(["hook", "state", "commit", "undo", "merge"]);
 
-const isFake = () => new URLSearchParams(window.location.search).has("fake");
+export const isFake = () => new URLSearchParams(window.location.search).has("fake");
 
 // The server still sends some bare hook bodies (events.md section 4 TODO); drop anything without a known type.
 function isEnvelope(msg: unknown): msg is Envelope {

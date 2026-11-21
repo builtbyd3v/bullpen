@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { FAKE_STATE, fakeServer } from "./fake.ts";
+import { DEMO, FAKE_STATE, fakeServer, withCommit } from "./fake.ts";
 import { reduce, type Snapshot } from "./reduce.ts";
 import type { Fx } from "./types.ts";
 
@@ -62,4 +62,24 @@ test("fake undo resets the agent and fires an undo fx", () => {
   assert.deepEqual(fx, [{ kind: "undo", agent: "api" }]);
   const api = snapshot.data.worktrees.find((w) => w.agent === "api");
   assert.deepEqual([api?.changed_files, api?.claims, api?.building], [[], [], "bullrunner"]);
+});
+
+test("withCommit bumps ahead and adds the commit and its files to that agent only", () => {
+  const next = withCommit(FAKE_STATE, "web", { sha: "x1", message: "m", files: ["web/api.ts"] });
+  const web = next.worktrees.find((w) => w.agent === "web");
+  assert.equal(web?.ahead, 2);
+  assert.equal(web?.commits[0].sha, "x1");
+  assert.ok(web?.changed_files.includes("web/api.ts"));
+  assert.equal(next.worktrees[0], FAKE_STATE.worktrees[0]);
+});
+
+test("the demo ends with no approvals, api merged, web undone, and every commit in the feed", () => {
+  let snapshot = reduce(start, { type: "state", data: FAKE_STATE }).snapshot;
+  for (const step of DEMO) for (const envelope of step.run()) snapshot = reduce(snapshot, envelope).snapshot;
+  const byAgent = Object.fromEntries(snapshot.data.worktrees.map((w) => [w.agent, w]));
+  assert.deepEqual(snapshot.data.approvals, []);
+  assert.equal(byAgent.api.status, "done");
+  assert.equal(byAgent.web.ahead, 0);
+  assert.equal(byAgent.db.ahead, 2);
+  for (const sha of ["b7c8d9e", "e1f2a3b", "c4d5e6f", "a1b2c3d"]) assert.ok(snapshot.feed.some((f) => f.sha === sha), sha);
 });

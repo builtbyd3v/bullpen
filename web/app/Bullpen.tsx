@@ -4,7 +4,8 @@ import dynamic from "next/dynamic";
 import { createContext, use, useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import campus from "../../campus/campus.json" with { type: "json" };
 import { buildingForFile } from "@/lib/campus.ts";
-import { act, connect } from "@/lib/server.ts";
+import { DEMO } from "@/lib/fake.ts";
+import { act, connect, isFake } from "@/lib/server.ts";
 import { createStore, type Store, type StoreState } from "@/lib/store.ts";
 import type { Status } from "@/lib/types.ts";
 
@@ -35,6 +36,24 @@ export function BullpenProvider({ children }: BullpenProviderProps) {
 // The one dynamic value Tailwind can't express: classes read it as bg-(--agent), text-(--agent), etc.
 const agentColor = (color: string) => ({ "--agent": color }) as CSSProperties;
 
+const noSubscribe = () => () => {};
+
+function PlayDemo() {
+  const store = useStore();
+  const fake = useSyncExternalStore(noSubscribe, isFake, () => false);
+  const [played, setPlayed] = useState(false);
+  if (!fake) return null;
+  const play = () => {
+    setPlayed(true);
+    DEMO.forEach((step) => setTimeout(() => step.run().forEach(store.dispatch), step.at));
+  };
+  return (
+    <button onClick={play} disabled={played} className="ml-auto rounded-lg bg-emerald-600 px-4 py-2 font-semibold hover:bg-emerald-500 disabled:opacity-40">
+      Play demo
+    </button>
+  );
+}
+
 function Tabs() {
   const store = useStore();
   const tab = useBullpen((s) => s.ui.tab);
@@ -59,6 +78,7 @@ function Tabs() {
           {t.ahead !== null && <span className="font-mono text-sm text-white/60">+{t.ahead}</span>}
         </button>
       ))}
+      <PlayDemo />
     </nav>
   );
 }
