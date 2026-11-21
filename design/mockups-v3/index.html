@@ -1,0 +1,2065 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bullpen Mockups v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=Pixelify+Sans:wght@500;600;700&family=Press+Start+2P&display=swap">
+<style>
+/* Bullpen v3 shared tokens. One ink (USF green) on sand; gold is the second voice. Dark = deep forest. */
+:root {
+  --bg: #EDEBD1;
+  --surface: #F7F6EA;
+  --surface-2: #E2DFC0;
+  --fg: #0D231B;
+  --muted: #466069;
+  --accent: #006747;
+  --accent-fg: #F7F6EA;
+  --gold: #CFC493;
+  --rule: #CFC493;
+  --frame: #0D231B;
+  --ok: #1F8A5B;
+  --warn: #B07A00;
+  --bad: #C4373C;
+  /* App chrome (the product UI itself is always dark forest, like main) */
+  --app-bg: #08120D;
+  --app-panel: #0F1F17;
+  --app-panel-2: #132a1f;
+  --app-line: rgba(237, 235, 209, 0.12);
+  --app-fg: #EDEBD1;
+  --app-muted: rgba(237, 235, 209, 0.62);
+  --api: #e5484d;
+  --web: #3e63dd;
+  --db: #f5b400;
+  --orch: #8e4ec6;
+  --font-pixel: 'Press Start 2P', 'Courier New', monospace;
+  --font-display: 'Pixelify Sans', 'Courier New', monospace;
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #072E20; --surface: #0B3B2A; --surface-2: #0F4532; --fg: #EDEBD1; --muted: #9DBFB7; --accent: #CFC493; --accent-fg: #072E20;
+  --rule: #005432; --frame: #CFC493; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #072E20; --surface: #0B3B2A; --surface-2: #0F4532; --fg: #EDEBD1; --muted: #9DBFB7; --accent: #CFC493; --accent-fg: #072E20;
+  --rule: #005432; --frame: #CFC493; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1360px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+p { margin: 0; text-wrap: pretty; }
+code { font-family: var(--font-mono); font-size: 0.9em; }
+a { color: inherit; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid #DBE442; outline-offset: 2px; }
+canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+
+/* Page scaffolding for the mockup sheet */
+.sheet-head { padding-block: 40px 8px; display: grid; gap: 14px; }
+.sheet-head h1 { font-size: clamp(26px, 4vw, 40px); color: var(--accent); }
+.sheet-head .lede { color: var(--muted); max-width: 72ch; }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; }
+.toc a { font-size: 14px; text-decoration: none; padding: 5px 11px; border: 2px solid var(--frame); background: var(--surface-2); transition: background 160ms var(--ease-out); }
+.toc a:hover { background: var(--rule); }
+main.sheet { display: grid; gap: 72px; padding-block: 28px 80px; }
+.sec { display: grid; gap: 18px; min-width: 0; scroll-margin-top: 16px; }
+.sec-head { display: grid; gap: 8px; border-top: 4px solid var(--rule); padding-top: 18px; }
+.sec-head h2 { font-size: clamp(20px, 2.6vw, 28px); color: var(--accent); }
+.sec-head p { color: var(--muted); max-width: 76ch; }
+.num { font-family: var(--font-pixel); font-size: 11px; color: var(--muted); }
+.note { font-size: 14px; color: var(--muted); }
+.real { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+/* Browser frame around every product screen */
+.frame { border: 3px solid var(--frame); box-shadow: 0 0 0 3px var(--rule); background: var(--app-bg); overflow: hidden; min-width: 0; }
+.frame-bar { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: #0D231B; color: #9DBFB7; font-family: var(--font-mono); font-size: 12px; border-bottom: 2px solid #005432; }
+.frame-bar i { width: 9px; height: 9px; background: #466069; display: inline-block; }
+.frame-bar .url { flex: 1; min-width: 0; padding: 3px 10px; background: #072E20; color: #CFC493; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.frame-body { position: relative; }
+.scroll-x { overflow-x: auto; max-width: 100%; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
+
+</style>
+<script>window.CAMPUS = {"repo":"demo","width":960,"height":640,"buildings":[{"id":"msc","name":"Marshall Student Center","folder":"web/","guarded":false,"x":380,"y":60,"w":200,"h":110,"files":7,"rooms":[{"name":"session.ts","path":"web/session.ts","files":1},{"name":"login.tsx","path":"web/login.tsx","files":1},{"name":"TaskList.tsx","path":"web/TaskList.tsx","files":1},{"name":"App.tsx","path":"web/App.tsx","files":1},{"name":"Header.tsx","path":"web/Header.tsx","files":1},{"name":"index.html","path":"web/index.html","files":1}]},{"id":"library","name":"Library","folder":"shared/","guarded":false,"x":120,"y":60,"w":180,"h":110,"files":6,"rooms":[{"name":"auth.ts","path":"shared/auth.ts","files":1},{"name":"session.ts","path":"shared/session.ts","files":1},{"name":"types.ts","path":"shared/types.ts","files":1},{"name":"errors.ts","path":"shared/errors.ts","files":1},{"name":"roles.ts","path":"shared/roles.ts","files":1},{"name":"log.ts","path":"shared/log.ts","files":1}]},{"id":"enb","name":"ENB","folder":"api/","guarded":false,"x":660,"y":60,"w":180,"h":110,"files":5,"rooms":[{"name":"users.ts","path":"api/users.ts","files":1},{"name":"tasks.ts","path":"api/tasks.ts","files":1},{"name":"router.ts","path":"api/router.ts","files":1},{"name":"index.ts","path":"api/index.ts","files":1},{"name":"login.ts","path":"api/login.ts","files":1}]},{"id":"enc","name":"ENC","folder":"tests/","guarded":false,"x":660,"y":260,"w":180,"h":110,"files":4,"rooms":[{"name":"auth.test.ts","path":"tests/auth.test.ts","files":1},{"name":"tasks.test.ts","path":"tests/tasks.test.ts","files":1},{"name":"users.test.ts","path":"tests/users.test.ts","files":1},{"name":"session.test.ts","path":"tests/session.test.ts","files":1}]},{"id":"muma","name":"Muma Business","folder":"config/","guarded":false,"x":120,"y":260,"w":180,"h":110,"files":3,"rooms":[{"name":"app.json","path":"config/app.json","files":1},{"name":"roles.json","path":"config/roles.json","files":1},{"name":"auth.json","path":"config/auth.json","files":1}]},{"id":"cooper","name":"Cooper Hall","folder":"docs/","guarded":false,"x":120,"y":460,"w":180,"h":110,"files":2,"rooms":[{"name":"architecture.md","path":"docs/architecture.md","files":1},{"name":"api.md","path":"docs/api.md","files":1}]},{"id":"rec","name":"Recreation Center","folder":"scripts/","guarded":false,"x":380,"y":175,"w":200,"h":85,"files":1,"rooms":[{"name":"build.sh","path":"scripts/build.sh","files":1}]},{"id":"sundome","name":"Sun Dome","folder":"db/","guarded":true,"x":660,"y":460,"w":180,"h":110,"files":2,"rooms":[{"name":"schema.sql","path":"db/schema.sql","files":1},{"name":"seed.sql","path":"db/seed.sql","files":1}]},{"id":"juniper","name":"Juniper-Poplar","folder":null,"guarded":false,"x":380,"y":460,"w":200,"h":110,"files":1,"rooms":[{"name":".claude","path":".claude/","files":1}]},{"id":"bullrunner","name":"Bull Runner stop","folder":"","guarded":false,"x":400,"y":270,"w":160,"h":90,"files":1,"rooms":[{"name":"README.md","path":"README.md","files":1}]}]};</script>
+<script>
+/* Bullpen v3 shared helpers: window.BP. Every part script uses these; nothing else is global. */
+(() => {
+  const USF = {
+    green: '#006747', gold: '#CFC493', white: '#FFFFFF', evergreen: '#005432', sand: '#EDEBD1',
+    lemongrass: '#DBE442', apple: '#9CCB3B', teal: '#009374', seaglass: '#80B0A6', storm: '#006484', sky: '#29AFCE',
+    silver: '#CAD2D8', gray: '#7E96A0', slate: '#466069',
+    deepForest: '#003822', ink: '#0D231B', turfLight: '#A9C97E', turfMid: '#7FA95B', turfDark: '#4E7F47',
+    bldgLight: '#F3D99C', bldgMid: '#E2BE74', bldgDark: '#A68344', roadLight: '#E6EAE7', roadMid: '#C8D1CC', roadDark: '#8B9B95',
+  };
+  // Agent colors are the ones on main (web/lib/fake.ts). orch has no color on main; purple sits outside green and gold.
+  const AGENT = {
+    api: { B: '#e5484d', b: '#a3262c', h: '#ff9d9f' },
+    web: { B: '#3e63dd', b: '#253c96', h: '#a2b6ff' },
+    db:  { B: '#f5b400', b: '#a87400', h: '#ffe58a' },
+    orch: { B: '#8e4ec6', b: '#56287f', h: '#d4aef7' },
+  };
+  // The 20x15 bull from web/app/bullSprite.ts on main (#55). c body, d shade, t muzzle, n nostril, h horns, H horn tip, e eye, p pupil, k hooves.
+  const BULL_ROWS = [
+    '..............H....H',
+    '..............h....h',
+    '..............hh..hh',
+    '.....cccc.....hhhh..',
+    '....cccccccc..ccccc.',
+    '.d.ccccccccccdccccc.',
+    '.dcccccccccccdeepcc.',
+    '.dcccccccccccdccttnn',
+    '..cccccccccccccctttt',
+    '..ddddddddddddddddd.',
+    '...cc.dd....cc.dd...',
+    '...cc.dd....cc.dd...',
+    '...cc.dd....cc.dd...',
+    '...cc.dd....cc.dd...',
+    '...kk.kk....kk.kk...',
+  ];
+  const shade = (hex, amt) => { // amt -1..1, negative darkens
+    const n = parseInt(hex.slice(1), 16); let r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+    const f = v => Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt);
+    return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join('');
+  };
+  const bullPal = color => ({ c: color, d: shade(color, -0.4), t: '#d9b382', n: '#a67f54', h: '#f5f0e1', H: '#ffffff', e: '#ffffff', p: '#1b1b2f', k: '#2a2a40' });
+
+  const rgbC = {};
+  const rgb = hex => rgbC[hex] || (rgbC[hex] = (n => [n >> 16 & 255, n >> 8 & 255, n & 255])(parseInt(hex.slice(1), 16)));
+  const grid = (w, h, ch = '.') => Array.from({ length: h }, () => Array(w).fill(ch));
+  const mirror = (half, swap = {}) => half.map(r => r + [...r].reverse().map(c => swap[c] || c).join(''));
+  const flipH = rows => rows.map(r => [...r].reverse().join(''));
+  // Add a 1px outline of `ch` around every filled cell (4-neighbour). `only`: restrict to these source chars.
+  function outline(rows, ch, only) {
+    const g = rows.map(r => [...r]); const H = g.length, W = g[0].length, add = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (g[y][x] !== '.') continue;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const c = g[y + b] && g[y + b][x + a];
+        if (c && c !== '.' && c !== ch && (!only || only.includes(c))) { add.push([x, y]); break; }
+      }
+    }
+    add.forEach(([x, y]) => { g[y][x] = ch; });
+    return g.map(r => r.join(''));
+  }
+  // EPX 2x upscale for 16 -> 32 px marks.
+  function scale2x(rows) {
+    const H = rows.length, W = rows[0].length, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? '.' : rows[y][x];
+    const out = Array.from({ length: H * 2 }, () => Array(W * 2).fill('.'));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const P = at(x, y), A = at(x, y - 1), B = at(x + 1, y), C = at(x - 1, y), D = at(x, y + 1);
+      out[y * 2][x * 2] = (C === A && C !== D && A !== B) ? A : P;
+      out[y * 2][x * 2 + 1] = (A === B && A !== C && B !== D) ? B : P;
+      out[y * 2 + 1][x * 2] = (D === C && D !== B && C !== A) ? C : P;
+      out[y * 2 + 1][x * 2 + 1] = (B === D && B !== A && D !== C) ? D : P;
+    }
+    return out.map(r => r.join(''));
+  }
+  function rowsToCanvas(rows, pal) {
+    const h = rows.length, w = rows[0].length, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const c = rows[y][x]; if (c === '.') continue; const col = pal[c]; if (!col) continue;
+      const [r, g, b] = rgb(col), i = (y * w + x) * 4; img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0); return cv;
+  }
+  // Draw pixel rows straight into a ctx at (x, y) with `cell` px per pixel. alpha optional.
+  function drawRows(ctx, rows, pal, x, y, cell = 1, alpha = 1) {
+    if (alpha <= 0) return;
+    const pa = ctx.globalAlpha; ctx.globalAlpha = pa * alpha;
+    for (let j = 0; j < rows.length; j++) { const r = rows[j];
+      for (let i = 0; i < r.length; i++) { const c = r[i]; if (c === '.' || !pal[c]) continue;
+        ctx.fillStyle = pal[c]; ctx.fillRect(Math.round(x + i * cell), Math.round(y + j * cell), Math.ceil(cell), Math.ceil(cell)); } }
+    ctx.globalAlpha = pa;
+  }
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  // A canvas showing `rows` at `scale` CSS px per pixel, crisp at any DPR.
+  function pixCanvas(rows, pal, scale, label) {
+    const src = rowsToCanvas(rows, pal), cv = document.createElement('canvas');
+    cv.width = src.width * scale * DPR; cv.height = src.height * scale * DPR;
+    cv.style.width = src.width * scale + 'px'; cv.style.height = src.height * scale + 'px';
+    cv.className = 'px';
+    const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(src, 0, 0, cv.width, cv.height);
+    cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', label || 'pixel art'); return cv;
+  }
+  // A logical-pixel canvas: draw at world size W x H, shown at W*scale CSS px. Returns { cv, ctx }. Set CSS width yourself for fluid.
+  function plate(cv, W, H, scale = 2) {
+    cv.width = W * scale * DPR; cv.height = H * scale * DPR; cv.classList.add('px');
+    if (!cv.style.width) cv.style.width = W * scale + 'px';
+    const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.setTransform(scale * DPR, 0, 0, scale * DPR, 0, 0);
+    return { cv, ctx, W, H };
+  }
+
+  // 5x7 pixel font. Lowercase maps to uppercase.
+  const G = {
+    A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'], B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+    C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'], D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+    E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'], F: ['#####', '#....', '#....', '####.', '#....', '#....', '#....'],
+    G: ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.####'], H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+    I: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '#####'], J: ['..###', '...#.', '...#.', '...#.', '...#.', '#..#.', '.##..'],
+    K: ['#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#'], L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
+    M: ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'], N: ['#...#', '##..#', '##..#', '#.#.#', '#..##', '#..##', '#...#'],
+    O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
+    Q: ['.###.', '#...#', '#...#', '#...#', '#.#.#', '#..#.', '.##.#'], R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+    S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'], T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
+    U: ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], V: ['#...#', '#...#', '#...#', '#...#', '#...#', '.#.#.', '..#..'],
+    W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '#.#.#', '.#.#.'], X: ['#...#', '#...#', '.#.#.', '..#..', '.#.#.', '#...#', '#...#'],
+    Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'], Z: ['#####', '....#', '...#.', '..#..', '.#...', '#....', '#####'],
+    0: ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'], 1: ['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.'],
+    2: ['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'], 3: ['####.', '....#', '....#', '.###.', '....#', '....#', '####.'],
+    4: ['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'], 5: ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'],
+    6: ['.###.', '#....', '#....', '####.', '#...#', '#...#', '.###.'], 7: ['#####', '....#', '...#.', '..#..', '.#...', '.#...', '.#...'],
+    8: ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'], 9: ['.###.', '#...#', '#...#', '.####', '....#', '....#', '.###.'],
+    ' ': ['.....', '.....', '.....', '.....', '.....', '.....', '.....'], '.': ['.....', '.....', '.....', '.....', '.....', '.##..', '.##..'],
+    ',': ['.....', '.....', '.....', '.....', '.##..', '..#..', '.#...'], ':': ['.....', '.##..', '.##..', '.....', '.##..', '.##..', '.....'],
+    '/': ['....#', '....#', '...#.', '..#..', '.#...', '#....', '#....'], '-': ['.....', '.....', '.....', '#####', '.....', '.....', '.....'],
+    '_': ['.....', '.....', '.....', '.....', '.....', '.....', '#####'], "'": ['..#..', '..#..', '.#...', '.....', '.....', '.....', '.....'],
+    '!': ['..#..', '..#..', '..#..', '..#..', '..#..', '.....', '..#..'], '?': ['.###.', '#...#', '....#', '...#.', '..#..', '.....', '..#..'],
+    '#': ['.#.#.', '.#.#.', '#####', '.#.#.', '#####', '.#.#.', '.#.#.'], '(': ['...#.', '..#..', '.#...', '.#...', '.#...', '..#..', '...#.'],
+    ')': ['.#...', '..#..', '...#.', '...#.', '...#.', '..#..', '.#...'], '+': ['.....', '..#..', '..#..', '#####', '..#..', '..#..', '.....'],
+    '>': ['.#...', '..#..', '...#.', '....#', '...#.', '..#..', '.#...'], '<': ['...#.', '..#..', '.#...', '#....', '.#...', '..#..', '...#.'],
+    '%': ['##..#', '##..#', '...#.', '..#..', '.#...', '#..##', '#..##'], '=': ['.....', '.....', '#####', '.....', '#####', '.....', '.....'],
+  };
+  const textWidth = (s, cell = 1, gap = 1) => s.length ? (s.length * (5 + gap) - gap) * cell : 0;
+  // Pixel text at (x, y) top-left. opts: { cell, color, shadow, gap, align: 'left'|'center'|'right' }
+  function drawText(ctx, s, x, y, opts = {}) {
+    const { cell = 1, color = USF.sand, shadow = null, gap = 1, align = 'left', alpha = 1 } = opts;
+    s = String(s).toUpperCase();
+    let x0 = x; const w = textWidth(s, cell, gap);
+    if (align === 'center') x0 = x - w / 2; else if (align === 'right') x0 = x - w;
+    const pa = ctx.globalAlpha; ctx.globalAlpha = pa * alpha;
+    const pass = (dx, dy, col) => { ctx.fillStyle = col;
+      [...s].forEach((ch, i) => { const g = G[ch] || G['?'];
+        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) if (g[r][c] === '#')
+          ctx.fillRect(Math.round(x0 + (i * (5 + gap) + c) * cell + dx), Math.round(y + r * cell + dy), Math.ceil(cell), Math.ceil(cell)); }); };
+    if (shadow) pass(cell, cell, shadow);
+    pass(0, 0, color);
+    ctx.globalAlpha = pa;
+    return w;
+  }
+  // Text as pixel rows (for stamping into grids). Returns rows of '#'/'.'.
+  function textRows(s, gap = 1) {
+    s = String(s).toUpperCase(); const W = Math.max(1, textWidth(s, 1, gap)), g = grid(W, 7);
+    [...s].forEach((ch, i) => (G[ch] || G['?']).forEach((row, y) => { for (let x = 0; x < 5; x++) if (row[x] === '#') g[y][i * (5 + gap) + x] = '#'; }));
+    return g.map(r => r.join(''));
+  }
+
+  // Deterministic randomness: same seed, same sequence. Use for dust, sparks, anything in an intro.
+  function rand(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const hash = (i, s = 1) => rand(i * 9973 + s * 7919)();
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = {
+    linear: t => t, expoOut: t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t), cubicOut: t => 1 - Math.pow(1 - t, 3),
+    cubicInOut: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, backOut: t => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); },
+    quadIn: t => t * t,
+  };
+  // Progress of t inside [a, b], eased.
+  const seg = (t, a, b, e = ease.linear) => e(clamp((t - a) / (b - a)));
+
+  // Animation registry. draw(t, dt) with t in seconds since mount. Paused off-screen; reduced motion draws one still frame at `still`.
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const loops = [];
+  function animate(el, draw, opts = {}) {
+    const L = { el, draw, visible: true, t0: performance.now(), still: opts.still ?? 2.5, period: opts.period || 0 };
+    loops.push(L);
+    if ('IntersectionObserver' in window) new IntersectionObserver(es => es.forEach(e => { L.visible = e.isIntersecting; }), { rootMargin: '200px' }).observe(el);
+    draw(reduce ? L.still : 0);
+    return L;
+  }
+  function tick(now) {
+    for (let i = loops.length - 1; i >= 0; i--) if (!loops[i].el.isConnected && loops[i].mounted) loops.splice(i, 1); else loops[i].mounted = true;
+    if (!reduce) for (const L of loops) if (L.visible && !document.hidden) {
+      let t = Math.max(0, (now - L.t0) / 1000); if (L.period) t %= L.period; L.draw(t);
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  function el(tag, attrs = {}, html) { const e = document.createElement(tag); for (const k in attrs) { if (k === 'class') e.className = attrs[k]; else if (k === 'style') e.style.cssText = attrs[k]; else e.setAttribute(k, attrs[k]); } if (html !== undefined) e.innerHTML = html; return e; }
+
+  window.BP = { USF, AGENT, BULL_ROWS, bullPal, shade, rgb, grid, mirror, flipH, outline, scale2x, rowsToCanvas, drawRows, pixCanvas, plate, DPR,
+    GLYPHS: G, drawText, textWidth, textRows, rand, hash, clamp, lerp, ease, seg, animate, reduce, el };
+})();
+
+</script>
+<script>
+/* Pixel campus renderer. Draws campus/campus.json (960x640 world) at half size (480x320 logical px).
+   Data mirrors web/lib/fake.ts on main: agent state, leases with waiters, approvals, check events. */
+(() => {
+  const { USF, AGENT, BULL_ROWS, bullPal, drawRows, drawText, textWidth, hash, shade, flipH, plate, animate } = BP;
+  const C = window.CAMPUS, K = 0.5, W = C.width * K, H = C.height * K;
+  const B = Object.fromEntries(C.buildings.map(b => [b.id, { ...b, X: b.x * K, Y: b.y * K, w2: b.w * K, h2: b.h * K }]));
+
+  // Same data as ?fake on main.
+  const DATA = {
+    worktrees: [
+      { agent: 'api', branch: 'agent/api', task: 'Add /users endpoint', status: 'working', building: 'enb', claims: ['enb', 'library'], ahead: 2 },
+      { agent: 'web', branch: 'agent/web', task: 'Users page', status: 'working', building: 'msc', claims: ['msc'], ahead: 1 },
+      { agent: 'db', branch: 'agent/db', task: 'Users table', status: 'waiting', building: 'enb', claims: [], ahead: 1 },
+    ],
+    leases: [
+      { file: 'api/users.ts', agent: 'api', ttl: 78, waiters: ['db'] },
+      { file: 'shared/auth.ts', agent: 'api', ttl: 64, waiters: ['web'] },
+      { file: 'web/login.tsx', agent: 'web', ttl: 85, waiters: [] },
+    ],
+    approvals: [{ id: 'ap1', agent: 'db', tool: 'Edit', target: 'db/schema.sql', reason: 'Sun Dome is guarded', ttl: 48 }],
+  };
+  const folderOf = f => { let best = null; for (const b of C.buildings) if (b.folder && f.startsWith(b.folder) && b.folder.length > (best?.folder.length || 0)) best = b; return best ? best.id : 'bullrunner'; };
+  // Same rule as waitQueue() in web/lib/campus.ts.
+  const queue = new Map();
+  DATA.leases.forEach(l => l.waiters.forEach((a, i) => { if (!queue.has(a)) queue.set(a, { file: l.file, building: folderOf(l.file), pos: i + 1 }); }));
+
+  // ---------- static terrain: main's dark emerald campus (web/app/buildingSprite.ts, #20), at half size ----------
+  const M = { bg: '#0d1b14', patch: '#11241b', walk: '#142920', edge: '#1e3d2f', seam: '#0f2018', ink: '#07120d', shadow: '#040a07',
+    roofDark: '#12241c', roofMid: '#1a3328', terra: '#7c432e', terraHi: '#9c573c', wall: '#1f3a2e', wallHi: '#2a4d3d',
+    glassD: '#133847', glass: '#22687d', glassHi: '#5cc4d8', warm: '#f4d57c', soft: '#9bd6b8', gDark: '#381316', gMid: '#521d22', gLight: '#70282e', gTrim: '#ff6b6b', mint: '#7fd1a8' };
+  const PL = 13; // plaque strip (main: 26 world px)
+  function terrain() {
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const o = cv.getContext('2d');
+    const r = (x, y, w, h, c, a = 1) => { o.globalAlpha = a; o.fillStyle = c; o.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); o.globalAlpha = 1; };
+    r(0, 0, W, H, M.bg);
+    for (let y = 8; y < H - 8; y += 24) for (let x = 8; x < W - 8; x += 32) if (((x + y) / 8) % 2 === 0) r(x, y, 14, 9, M.patch, 0.7);
+    const path = (x, y, w, h) => { r(x - 1, y - 1, w + 2, h + 2, M.edge); r(x, y, w, h, M.walk);
+      if (w > h) for (let sx = x + 8; sx < x + w - 4; sx += 12) r(sx, y + 1, 1, h - 2, M.seam, 0.7); else for (let sy = y + 8; sy < y + h - 4; sy += 12) r(x + 1, sy, w - 2, 1, M.seam, 0.7); };
+    path(36, 106, W - 72, 12); path(36, 204, W - 72, 12); path(164, 24, 12, H - 48); path(304, 24, 12, H - 48); path(234, 24, 12, H - 48);
+    const hb = B.bullrunner; r(hb.X - 8, hb.Y - 6, hb.w2 + 16, hb.h2 + 14, '#264c3b'); r(hb.X - 7, hb.Y - 5, hb.w2 + 14, hb.h2 + 12, '#162d23');
+    const palm = (cx, cy) => { r(cx - 3, cy + 4, 7, 2, M.shadow, 0.55); r(cx - 1, cy - 1, 2, 6, '#5c4631'); r(cx, cy - 4, 2, 4, '#73583e'); r(cx - 5, cy - 6, 5, 2, '#1e5c3a'); r(cx + 1, cy - 6, 5, 2, '#1e5c3a'); r(cx - 4, cy - 8, 9, 2, '#2d7a4d'); r(cx - 2, cy - 9, 5, 2, '#4ca163'); };
+    const oak = (cx, cy) => { r(cx - 5, cy + 2, 11, 3, M.shadow, 0.5); r(cx - 1, cy, 3, 4, '#4a3525'); r(cx - 6, cy - 5, 13, 7, '#17442c'); r(cx - 5, cy - 7, 11, 7, '#215c3b'); r(cx - 3, cy - 8, 7, 4, '#327c4e'); r(cx - 2, cy - 7, 3, 2, '#52a367'); };
+    [[22, 33, 1], [26, 90, 0], [21, 159, 1], [26, 246, 0], [23, 293, 1], [W - 24, 37, 0], [W - 22, 102, 1], [W - 25, 171, 0], [W - 22, 253, 1], [W - 26, 295, 0], [170, 14, 1], [310, 14, 1], [170, H - 11, 0], [310, H - 11, 0]]
+      .forEach(([x, y, p]) => (p ? palm : oak)(x, y));
+    Object.values(B).forEach(b => building(o, b));
+    return cv;
+  }
+  function building(o, b) {
+    const r = (x, y, w, h, c, a = 1) => { o.globalAlpha = a; o.fillStyle = c; o.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); o.globalAlpha = 1; };
+    const { X, Y, w2: w, h2: h } = b, cx = X + w / 2;
+    if (b.id === 'bullrunner') { // shelter on the plaza
+      r(X + 2, Y + 3, w, h, M.shadow, 0.6); r(X - 1, Y - 1, w + 2, h + 2, M.ink); r(X, Y, w, h, '#162d23');
+      r(X + 10, Y + PL + 6, w - 20, 12, M.ink); r(X + 11, Y + PL + 7, w - 22, 6, USF.green); r(X + 11, Y + PL + 13, w - 22, 1, USF.gold);
+      for (let x = X + 14; x < X + w - 12; x += 10) r(x, Y + PL + 18, 1, 10, '#264c3b');
+      r(X + w - 18, Y + PL + 4, 2, 24, M.ink); r(X + w - 21, Y + PL + 2, 8, 7, USF.gold); drawText(o, 'B', X + w - 19, Y + PL + 2, { color: M.ink });
+      return;
+    }
+    const guard = b.guarded, unm = b.folder === null;
+    const wallH = Math.min(19, Math.round((h - PL) * 0.55)), wallY = Y + h - wallH, roofH = wallY - Y - PL;
+    const roof = guard ? M.gMid : b.id === 'msc' ? M.terra : (b.id === 'enb' || b.id === 'enc') ? '#16292e' : M.roofMid;
+    const wall = guard ? M.gDark : unm ? '#2a3533' : b.id === 'library' ? M.wallHi : M.wall, trim = guard ? M.gTrim : unm ? '#5d6e6a' : USF.gold;
+    r(X + 2, Y + 3, w, h, M.shadow, 0.72); r(X - 1, Y - 1, w + 2, h + 2, M.ink); r(X, Y, w, wallY - Y, roof);
+    r(X + 1, Y + PL, 1, roofH, trim, 0.35); r(X, wallY, w, wallH, wall); r(X, wallY - 1, w, 2, trim);
+    const aY = Y + PL;
+    if (b.id === 'msc') { r(X + 4, aY + 3, 18, roofH - 6, M.roofMid); r(X + w - 22, aY + 3, 18, roofH - 6, M.roofMid); r(X + 5, aY + 4, 16, 2, M.terraHi); r(X + w - 21, aY + 4, 16, 2, M.terraHi);
+      const sh = Math.max(9, roofH - 5); r(cx - 16, aY + 2, 32, sh, M.ink); r(cx - 15, aY + 3, 30, sh - 2, M.glass); for (let gx = cx - 9; gx <= cx + 9; gx += 6) r(gx, aY + 3, 1, sh - 2, USF.gold); r(cx - 14, aY + 4, 9, 2, M.glassHi, 0.85); }
+    else if (b.id === 'library') { r(X + 6, aY + 2, w - 12, roofH - 5, M.roofDark); r(X + 13, aY + 4, w - 26, roofH - 9, M.wall); r(X + 14, aY + 5, w - 28, 2, USF.gold, 0.65); }
+    else if (b.id === 'enb' || b.id === 'enc') { r(X + 6, aY + 3, 14, roofH - 6, '#29484d'); r(X + w - 21, aY + 3, 14, roofH - 6, '#29484d'); r(X + 10, aY + 6, 6, roofH - 12, '#4b777d'); r(X + w - 17, aY + 6, 6, roofH - 12, M.mint, 0.45);
+      r(cx - 1, aY + 4, 2, roofH - 6, USF.silver); r(cx - 5, aY + 7, 10, 1, USF.silver); r(cx - 1, aY + 2, 2, 2, '#4ade80'); }
+    else if (b.id === 'sundome') { const dh = roofH - 2; r(cx - w / 2 + 6, aY + 2, w - 12, dh, M.gLight); for (let k = 0; k < 5; k++) r(cx - w / 2 + 10 + k * ((w - 20) / 4), aY + 2, 1, dh, M.gTrim, 0.4); r(cx - 8, aY + 1, 16, 2, '#f5b400'); }
+    else if (unm) { for (let x = X + 4; x < X + w - 4; x += 8) r(x, aY + 3, 4, roofH - 6, '#3a4744'); }
+    else { r(X + 5, aY + 3, w - 10, roofH - 6, M.roofDark); for (let x = X + 8; x < X + w - 8; x += 10) r(x, aY + 5, 5, 3, M.wallHi); }
+    // warm windows along the wall, door gap in the middle
+    for (let x = X + 5; x + 6 <= X + w - 5; x += 10) { if (Math.abs(x + 3 - cx) < 8) continue; r(x - 1, wallY + 3, 8, wallH - 6, M.ink); r(x, wallY + 4, 6, wallH - 8, guard ? '#ff9a9a' : unm ? '#55605d' : M.warm); r(x, wallY + 4, 6, 1, '#fff', 0.35); }
+    r(cx - 5, Y + h - 8, 10, 8, M.ink); r(cx - 4, Y + h - 7, 8, 7, guard ? M.gMid : USF.evergreen); r(cx + 2, Y + h - 4, 1, 1, USF.gold);
+  }
+  function plaque(o, b, alpha = 1) {
+    const name = ({ msc: 'MARSHALL', library: 'LIBRARY', enb: 'ENB', enc: 'ENC', muma: 'MUMA', cooper: 'COOPER', rec: 'REC', sundome: 'SUN DOME', juniper: 'JUNIPER', bullrunner: 'BULL RUNNER' })[b.id] || b.name;
+    const folder = b.folder === null ? 'unmapped' : b.folder || '/';
+    o.globalAlpha = 0.9 * alpha; o.fillStyle = '#08140f'; o.fillRect(b.X, b.Y, b.w2, PL); o.globalAlpha = alpha;
+    o.fillStyle = b.guarded ? M.gTrim : M.mint; o.fillRect(b.X, b.Y, b.w2, 1); o.globalAlpha = 1;
+    drawText(o, name, b.X + 2, b.Y + 3, { color: '#ffffff', alpha });
+    drawText(o, folder, b.X + b.w2 - 2, b.Y + 3, { color: b.guarded ? '#ffb4b4' : USF.gold, align: 'right', alpha });
+  }
+
+  // ---------- sprites ----------
+  const bulls = {}; ['api', 'web', 'db'].forEach(a => { const O = BP.outline(BULL_ROWS, 'o'); bulls[a] = { R: O, L: flipH(O), pal: { ...bullPal(AGENT[a].B), o: '#07120d' } }; });
+  const HG = ['ccccc', '.gGg.', '.gGg.', '..g..', '.ggg.', '.ggg.', 'ccccc'];
+  function hourglass(o, x, y, phase) {
+    const r = HG.map(s => [...s]); const sand = (yy, a, b) => { for (let i = a; i <= b; i++) r[yy][i] = 's'; };
+    if (phase === 0) (sand(1, 1, 3), sand(2, 1, 3)); if (phase === 1) (sand(2, 1, 3), sand(3, 2, 2), sand(5, 2, 2)); if (phase === 2) (sand(2, 2, 2), sand(3, 2, 2), sand(5, 1, 3)); if (phase === 3) (sand(4, 1, 3), sand(5, 1, 3));
+    drawRows(o, r.map(s => s.join('')), { c: USF.gold, g: '#9fd3e8', G: '#fff', s: USF.lemongrass }, x, y, 1);
+  }
+  function badge(o, text, x, y, bg, fg = USF.sand) { const w = textWidth(text) + 4; o.fillStyle = USF.ink; o.fillRect(x - w / 2 - 1, y - 1, w + 2, 11); o.fillStyle = bg; o.fillRect(x - w / 2, y, w, 9); drawText(o, text, x - w / 2 + 2, y + 1, { color: fg }); }
+  function flag(o, x, y, color, t, i) { o.fillStyle = USF.ink; o.fillRect(x, y - 16, 1, 16); const wave = Math.sin(t * 4 + i) > 0 ? 1 : 0; o.fillStyle = color; o.fillRect(x + 1, y - 16, 6, 4 + wave); o.fillStyle = shade(color, -0.35); o.fillRect(x + 1, y - 12 + wave, 6, 1); }
+  function scaffold(o, b, color, off, t) {
+    const x0 = b.X - 3 + off, y0 = b.Y - 3 + off, w = b.w2 + 6 - off * 2, h = b.h2 + 6 - off * 2; o.globalAlpha = 0.9; o.fillStyle = color;
+    for (let x = x0; x <= x0 + w; x += 10) o.fillRect(x, y0, 1, h); for (let y = y0; y <= y0 + h; y += 9) o.fillRect(x0, y, w, 1);
+    o.globalAlpha = 0.3; for (let x = x0; x < x0 + w - 9; x += 10) for (let y = y0; y < y0 + h - 8; y += 9) if (((x + y) / 9 | 0) % 3 === 0) for (let k = 0; k < 9; k++) o.fillRect(x + k, y + k, 1, 1);
+    o.globalAlpha = 1;
+    o.fillStyle = USF.ink; o.fillRect(x0 + w - 10, y0 - 22, 1, 22); o.fillRect(x0 + w - 24, y0 - 22, 24, 1); // crane
+    const swing = Math.round(Math.sin(t * 1.4) * 3); o.fillRect(x0 + w - 20 + swing, y0 - 21, 1, 8); o.fillStyle = color; o.fillRect(x0 + w - 22 + swing, y0 - 13, 5, 3);
+  }
+  // conflict banner (two layers on one building)
+  function drawBull(o, a, x, y, t, st) {
+    const s = bulls[a], face = st.face ?? 1, bob = st.status === 'working' ? (Math.sin(t * 8 + x) > 0.4 ? -1 : 0) : 0;
+    o.fillStyle = 'rgba(13,35,27,0.35)'; o.fillRect(x - 9, y + 13, 18, 2);
+    drawRows(o, face > 0 ? s.R : s.L, s.pal, x - 11, y - 3 + bob, 1, st.alpha ?? 1);
+    if (st.status === 'working') { const k = (t * 3 + x) % 1; if (k < 0.35) { o.fillStyle = USF.lemongrass; o.fillRect(x + 11 * face, y - 1, 1, 1); o.fillRect(x + 13 * face, y - 3, 1, 1); o.fillStyle = '#fff'; o.fillRect(x + 12 * face, y - 2, 1, 1); } }
+    drawText(o, a, x, y - 11, { color: USF.sand, shadow: USF.ink, align: 'center', alpha: st.alpha ?? 1 });
+  }
+
+  // ---------- frame ----------
+  const STATIC = { cv: null };
+  function frame(o, t, opts) {
+    if (!STATIC.cv) STATIC.cv = terrain();
+    o.drawImage(STATIC.cv, 0, 0);
+    const tab = opts.tab || 'main', shown = a => tab === 'main' || tab === a;
+    if (tab !== 'main') { o.fillStyle = 'rgba(11,16,51,0.55)'; o.fillRect(0, 0, W, H); o.fillStyle = AGENT[tab].B; o.globalAlpha = 0.1; o.fillRect(0, 0, W, H); o.globalAlpha = 1; }
+    // Scaffolds per claim, in agent color, offset per agent index (main: offset = index * 6 world = 3 px)
+    DATA.worktrees.forEach((w, i) => { if (!shown(w.agent)) return; w.claims.forEach(id => scaffold(o, B[id], AGENT[w.agent].B, i * 3, t + i)); });
+    DATA.worktrees.forEach((w, i) => { if (!shown(w.agent)) return; w.claims.forEach(id => flag(o, B[id].X + 5 + i * 6, B[id].Y + B[id].h2, AGENT[w.agent].B, t, i)); });
+    Object.values(B).forEach(b => plaque(o, b));
+    // Guarded approval bubble on the Sun Dome
+    const sd = B.sundome; if (shown('db')) { const p = Math.sin(t * 3) > 0 ? 0 : -1; badge(o, '? APPROVE', sd.X + sd.w2 / 2, sd.Y - 13 + p, USF.gold, USF.ink); }
+    // Bulls: queued ones stand in line right of the door; others in their slot below the building.
+    DATA.worktrees.forEach((w, i) => {
+      if (!shown(w.agent)) return;
+      const q = queue.get(w.agent);
+      if (q) {
+        const b = B[q.building], dx = b.X + b.w2 / 2, dy = b.Y + b.h2;
+        const x = b.X + b.w2 / 2 + 48 + (q.pos - 1) * 20, y = b.Y + b.h2 + 22 - 12;
+        o.fillStyle = USF.sand; for (let k = 0; k < 1; k += 0.06) { const px = BP.lerp(x - 10, dx, k), py = BP.lerp(y + 6, dy + 2, k); if (((k * 100 | 0) + (t * 20 | 0)) % 2 === 0) o.fillRect(px | 0, py | 0, 1, 1); }
+        const tap = Math.floor(t * 4) % 2; drawBull(o, w.agent, x, y - tap * 0, t, { status: 'waiting', face: -1 });
+        o.fillStyle = bulls[w.agent].pal.k; if (tap) o.fillRect(x - 7, y + 12, 2, 1);
+        hourglass(o, x + 10, y - 12, Math.floor(t * 2) % 4);
+        badge(o, 'WAIT #' + q.pos, x, y - 23, USF.ink, USF.gold);
+      } else {
+        const b = B[w.building], x = b.X + b.w2 / 2 + 5 + (i - 1) * 22, y = b.Y + b.h2 + 10;
+        drawBull(o, w.agent, x, y, t, { status: w.status, face: 1 });
+      }
+    });
+    if (opts.selected && B[opts.selected]) { const b = B[opts.selected], p = (Math.sin(t * 5) + 1) / 2; o.strokeStyle = USF.lemongrass; o.globalAlpha = 0.6 + p * 0.4; o.lineWidth = 1; o.strokeRect(b.X - 6.5, b.Y - 6.5, b.w2 + 13, b.h2 + 13); o.globalAlpha = 1; }
+    if (opts.hover && B[opts.hover] && opts.hover !== opts.selected) { const b = B[opts.hover]; o.strokeStyle = USF.sand; o.setLineDash([2, 2]); o.strokeRect(b.X - 4.5, b.Y - 4.5, b.w2 + 9, b.h2 + 9); o.setLineDash([]); }
+  }
+
+  // Mount on a canvas. opts: { variant, scale, tab, selected, onPick(id) }. Returns { set(patch) }.
+  BP.mountCampus = (cv, opts = {}) => {
+    const state = { tab: 'main', selected: null, hover: null, ...opts };
+    if (!cv.style.width) cv.style.width = '100%';
+    cv.style.height = 'auto'; cv.style.aspectRatio = W + ' / ' + H;
+    const { ctx } = plate(cv, W, H, opts.scale || 2);
+    const hit = e => { const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+      return Object.values(B).find(b => x >= b.X - 4 && x <= b.X + b.w2 + 4 && y >= b.Y - 12 && y <= b.Y + b.h2 + 4)?.id || null; };
+    if (opts.onPick) {
+      cv.style.cursor = 'pointer';
+      cv.addEventListener('pointermove', e => { state.hover = hit(e); cv.style.cursor = state.hover ? 'pointer' : 'default'; });
+      cv.addEventListener('pointerleave', () => { state.hover = null; });
+      cv.addEventListener('click', e => { const id = hit(e); if (id) opts.onPick(id); });
+    }
+    animate(cv, t => frame(ctx, t, state), { still: 1.2 });
+    return { set: p => Object.assign(state, p), W, H };
+  };
+  BP.CAMPUS_DATA = DATA; BP.CAMPUS_B = B; BP.campusFolderOf = folderOf;
+})();
+
+</script>
+</head>
+<body>
+<!-- ===== part: header ===== -->
+<header class="wrap sheet-head">
+  <span class="num">BULLPEN · DESIGN v3 · NOV 21</span>
+  <h1>Bullpen mockups v3</h1>
+  <p class="lede">The full product as a premium site and app. Screens 02, 03 and 05 match what is on <code>main</code> at <code>4a5692c</code>: the Phaser campus built from repo folders with the new pixel USF buildings, the door wait queue, click-to-zoom interiors, the evidence panel, the health strip, the orchestrator chat and the 10 s opener. The pixel nameplates, rooms and panel styling are the proposal. Screens 01 and 04 are new. Everything moves, and every number comes from <code>?fake</code> data on main.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#landing">01 Website</a><a href="#dashboard">02 App</a><a href="#interior">03 Interior</a><a href="#settings">04 Settings</a><a href="#opener">05 Opener</a><a href="#logos">06 Logos</a><a href="#intros">07 Intro</a><a href="#notes">08 Notes</a>
+  </nav>
+</header>
+<main class="wrap sheet">
+
+<!-- ===== part: landing ===== -->
+<style>
+#landing .frame-body { background: var(--bg); color: var(--fg); }
+#landing .lp { display: grid; gap: clamp(56px, 8vw, 104px); padding: 0 clamp(16px, 4vw, 56px) 56px; }
+#landing .lp * { min-width: 0; }
+#landing .mono { font-family: var(--font-mono); }
+
+/* nav */
+#landing .lp-nav { display: flex; align-items: center; gap: 18px; padding-block: 18px; border-bottom: 2px solid var(--rule); flex-wrap: wrap; }
+#landing .lp-brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--accent); text-decoration: none; }
+#landing .lp-links { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+#landing .lp-links a { font-size: 14px; text-decoration: none; padding: 6px 10px; color: var(--muted); transition: color 200ms var(--ease-out), background 200ms var(--ease-out); }
+#landing .lp-links a:hover { color: var(--fg); background: var(--surface-2); }
+
+/* buttons: a pixel key that lifts on hover and seats on press */
+#landing .btn { display: inline-flex; align-items: center; gap: 8px; font: 600 15px/1 var(--font-body); padding: 13px 18px; text-decoration: none; border: 2px solid var(--fg); cursor: pointer;
+  background: var(--surface); color: var(--fg); box-shadow: 3px 3px 0 var(--fg); transition: transform 260ms var(--ease-out), box-shadow 260ms var(--ease-out), background 200ms var(--ease-out); }
+#landing .btn:hover { transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--fg); }
+#landing .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--fg); transition-duration: 80ms; }
+#landing .btn-primary { background: var(--accent); color: var(--accent-fg); }
+#landing .btn-sm { padding: 8px 12px; font-size: 13px; box-shadow: 2px 2px 0 var(--fg); }
+#landing .ctas { display: flex; flex-wrap: wrap; gap: 14px; }
+
+/* hero */
+#landing .lp-hero { display: grid; gap: 28px; padding-top: clamp(28px, 5vw, 64px); }
+#landing .lp-hero-copy { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px 48px; align-items: end; }
+#landing .lp-hero h3 { font-size: clamp(40px, 7vw, 84px); line-height: 0.98; color: var(--accent); letter-spacing: 0; }
+#landing .lp-sub { font-size: clamp(17px, 1.6vw, 20px); max-width: 44ch; }
+#landing .lp-hero-copy .side { display: grid; gap: 20px; }
+#landing .stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 0; border: 3px solid var(--fg); background: var(--surface); }
+#landing .stage-cv { background: #003822; position: relative; }
+#landing .stage-cv canvas { width: 100% !important; height: auto !important; }
+#landing .rail { display: grid; align-content: start; gap: 10px; padding: 16px; border-left: 3px solid var(--fg); }
+#landing .rail-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+#landing .live { display: inline-flex; align-items: center; gap: 6px; }
+#landing .live::before { content: ''; width: 8px; height: 8px; background: var(--ok); animation: lp-breathe 2.4s var(--ease-out) infinite; }
+@keyframes lp-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+#landing .chip { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 12px; background: var(--bg); border: 2px solid var(--rule);
+  font-family: var(--font-mono); font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; transition: transform 260ms var(--ease-out), border-color 200ms var(--ease-out); }
+#landing .chip:hover { transform: translateX(-3px); border-color: var(--fg); }
+#landing .chip i { width: 10px; height: 10px; margin-top: 4px; display: block; }
+#landing .chip small { display: block; color: var(--muted); font-size: 11px; }
+#landing .chip b { font-weight: 600; }
+#landing .tag-ask { color: var(--warn); }
+#landing .rail-foot { font-size: 12px; color: var(--muted); }
+
+/* section heads inside the site */
+#landing .lp-h { display: grid; gap: 10px; max-width: 60ch; }
+#landing .lp-h .k { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+#landing .lp-h h3 { font-size: clamp(28px, 3.6vw, 44px); line-height: 1.05; color: var(--accent); }
+#landing .lp-h p { color: var(--muted); font-size: 17px; }
+
+/* problem */
+#landing .lp-problem { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr); gap: 40px; align-items: start; }
+#landing .vignette { display: grid; gap: 0; border: 3px solid var(--fg); background: var(--surface); font-family: var(--font-mono); font-size: 13px; }
+#landing .v-bar { display: flex; justify-content: space-between; gap: 10px; padding: 8px 12px; background: var(--fg); color: var(--bg); font-size: 12px; flex-wrap: wrap; }
+#landing .v-log { padding: 12px; display: grid; gap: 4px; border-bottom: 2px solid var(--rule); }
+#landing .v-log div { display: grid; grid-template-columns: 74px 54px minmax(0, 1fr); gap: 8px; overflow-wrap: anywhere; }
+#landing .v-log time { color: var(--muted); }
+#landing .who { font-weight: 600; }
+#landing .who-api { color: var(--api); } #landing .who-web { color: var(--web); }
+#landing .diff { padding: 10px 0; overflow-x: auto; }
+#landing .diff div { display: grid; grid-template-columns: 34px 18px max-content; white-space: pre; padding-right: 12px; }
+#landing .diff .n { color: var(--muted); text-align: right; padding-right: 8px; }
+#landing .diff .del { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+#landing .diff .add { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+#landing .diff .del .g { color: var(--bad); } #landing .diff .add .g { color: var(--ok); }
+#landing .v-out { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-top: 2px solid var(--rule); }
+#landing .v-out > div { padding: 12px; display: grid; gap: 4px; align-content: start; }
+#landing .v-out > div + div { border-left: 2px solid var(--rule); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+#landing .v-out b { font-family: var(--font-body); font-size: 14px; }
+#landing .bad { color: color-mix(in srgb, var(--bad) 75%, var(--fg)); } #landing .ok { color: color-mix(in srgb, var(--ok) 70%, var(--fg)); }
+
+/* how it works */
+#landing .flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; counter-reset: st; }
+#landing .flow li { counter-increment: st; display: grid; gap: 8px; align-content: start; padding: 0 20px 0 0; position: relative; }
+#landing .flow li::before { content: counter(st); font-family: var(--font-display); font-weight: 700; font-size: 44px; line-height: 1; color: var(--accent); }
+#landing .flow li::after { content: ''; position: absolute; top: 20px; left: 40px; right: 12px; border-top: 3px dotted var(--rule); }
+#landing .flow li:last-child::after { display: none; }
+#landing .flow b { font-size: 17px; }
+#landing .flow p { color: var(--muted); font-size: 15px; }
+#landing .flow code { overflow-wrap: anywhere; }
+
+/* architecture */
+#landing .arch { display: grid; gap: 0; justify-items: stretch; border: 3px solid var(--fg); padding: clamp(14px, 3vw, 32px); background: var(--surface);
+  background-image: radial-gradient(var(--rule) 1px, transparent 1px); background-size: 12px 12px; }
+#landing .arch-zone { display: grid; gap: 0; }
+#landing .row { display: grid; gap: 12px; }
+#landing .row-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+#landing .row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#landing .row-ref { grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr); align-items: stretch; }
+#landing .node { background: var(--bg); border: 2px solid var(--fg); box-shadow: 3px 3px 0 var(--rule); padding: 10px 12px; display: grid; gap: 4px; align-content: start; }
+#landing .node b { font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+#landing .node .port { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+#landing .node p, #landing .node li { font-size: 13px; color: var(--muted); }
+#landing .node ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; font-family: var(--font-mono); }
+#landing .node ul li { overflow-wrap: anywhere; }
+#landing .node ul li span { color: var(--fg); }
+#landing .node-agent { border-color: var(--c); box-shadow: 3px 3px 0 var(--c); }
+#landing .node-agent b { color: var(--c); }
+#landing .node-jet { border: 3px solid var(--fg); background: var(--surface-2); box-shadow: 4px 4px 0 var(--fg); }
+#landing .link { display: grid; justify-items: center; padding: 8px 0; font-family: var(--font-mono); font-size: 12px; color: var(--muted); text-align: center; }
+#landing .link::before { content: ''; width: 3px; height: 16px; background: repeating-linear-gradient(var(--fg) 0 4px, transparent 4px 7px); }
+#landing .link::after { content: ''; width: 0; height: 0; border: 6px solid transparent; border-top: 7px solid var(--fg); border-bottom: 0; }
+#landing .link-h { display: grid; align-content: center; justify-items: center; gap: 4px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: center; }
+#landing .link-h .bar { width: 100%; height: 3px; background: repeating-linear-gradient(90deg, var(--fg) 0 4px, transparent 4px 7px); }
+#landing .zone-label { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+#landing .zone-label b { color: var(--fg); font-weight: 600; }
+
+/* own sub ledger */
+#landing .lp-sub-sec { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr); gap: 40px; align-items: start; }
+#landing .ledger { margin: 0; border-top: 3px solid var(--fg); }
+#landing .ledger div { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr) 104px; gap: 16px; padding: 16px 0; border-bottom: 2px solid var(--rule); align-items: baseline; }
+#landing .ledger dt { font-weight: 600; font-size: 17px; }
+#landing .ledger dd { margin: 0; color: var(--muted); font-size: 15px; }
+#landing .ledger .val { font-family: var(--font-mono); font-size: 13px; color: var(--accent); white-space: nowrap; text-align: right; }
+
+/* proof strip */
+#landing .proof { display: grid; gap: 20px; }
+#landing .maps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; border: 3px solid var(--fg); background: var(--rule); }
+#landing .maps > div { padding: 16px; display: grid; gap: 6px; align-content: start; background: var(--surface); }
+#landing .maps b { font-size: 15px; }
+#landing .maps .src { font-family: var(--font-mono); font-size: 12px; color: var(--accent); overflow-wrap: anywhere; }
+#landing .maps .arrow { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+/* footer */
+#landing .lp-cta { display: grid; gap: 24px; padding: clamp(28px, 5vw, 56px); background: var(--accent); color: var(--accent-fg); border: 3px solid var(--fg); }
+#landing .lp-cta h3 { font-size: clamp(28px, 4.4vw, 52px); line-height: 1.04; max-width: 20ch; }
+#landing .lp-cta .btn { border-color: var(--accent-fg); box-shadow: 3px 3px 0 var(--accent-fg); }
+#landing .lp-cta .btn:hover { box-shadow: 5px 5px 0 var(--accent-fg); }
+#landing .lp-cta .btn:active { box-shadow: 0 0 0 var(--accent-fg); }
+#landing .lp-cta .btn-primary { background: var(--accent-fg); color: var(--accent); }
+#landing .lp-cta .btn:not(.btn-primary) { background: transparent; color: var(--accent-fg); }
+#landing .lp-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); border-top: 2px solid var(--rule); padding-top: 18px; margin-top: -56px; }
+
+@media (max-width: 980px) {
+  #landing .stage { grid-template-columns: minmax(0, 1fr); }
+  #landing .rail { border-left: 0; border-top: 3px solid var(--fg); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  #landing .rail-head, #landing .rail-foot { grid-column: 1 / -1; }
+  #landing .flow { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  #landing .flow li { grid-template-columns: 48px minmax(0, 1fr); padding: 0; }
+  #landing .flow li::before { grid-row: span 2; }
+  #landing .flow li::after { display: none; }
+  #landing .maps { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  #landing .maps > div:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  #landing .lp-links { display: none; }
+  #landing .lp-nav .btn { margin-left: auto; }
+  #landing .lp-hero-copy, #landing .lp-problem, #landing .lp-sub-sec { grid-template-columns: minmax(0, 1fr); }
+  #landing .row-2, #landing .row-3, #landing .row-ref { grid-template-columns: minmax(0, 1fr); }
+  #landing .link-h { padding: 8px 0; }
+  #landing .link-h .bar { width: 3px; height: 16px; background: repeating-linear-gradient(var(--fg) 0 4px, transparent 4px 7px); }
+  #landing .ledger div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  #landing .ledger .val { text-align: left; }
+  #landing .maps { grid-template-columns: minmax(0, 1fr); }
+  #landing .v-out { grid-template-columns: minmax(0, 1fr); }
+  #landing .v-out > div + div { border-left: 0; border-top: 2px solid var(--rule); }
+  #landing .v-log div { grid-template-columns: 64px 36px minmax(0, 1fr); }
+}
+</style>
+
+<section class="sec" id="landing">
+  <div class="sec-head">
+    <span class="num">01</span>
+    <h2>Website: landing page</h2>
+    <p>The marketing site at bullpen.dev. The live campus is the hero, and each chip next to it is a real field from <code>/state</code> or a <code>check</code> event. Green on sand, gold as the second voice.</p>
+  </div>
+
+  <div class="frame">
+    <div class="frame-bar"><i></i><i></i><i></i><span class="url">https://bullpen.dev</span></div>
+    <div class="frame-body">
+      <div class="lp">
+
+        <nav class="lp-nav" aria-label="Site">
+          <a class="lp-brand" href="#land-top"><span data-land-bull></span>Bullpen</a>
+          <div class="lp-links">
+            <a href="#land-how">How it works</a>
+            <a href="#land-arch">Architecture</a>
+            <a href="#land-proof">Proof</a>
+            <a href="#land-cta">Docs</a>
+          </div>
+          <a class="btn btn-sm btn-primary" href="#land-cta">Run the demo</a>
+        </nav>
+
+        <header class="lp-hero" id="land-top">
+          <div class="lp-hero-copy">
+            <h3>Source control for AI agents</h3>
+            <div class="side">
+              <p class="lp-sub">Tell one orchestrator what you want. Three Claude Code agents build it on your own sub, and a Jetson referee checks every edit before it lands.</p>
+              <div class="ctas">
+                <a class="btn btn-primary" href="#land-cta">Run the demo</a>
+                <a class="btn" href="#land-arch">Read the docs</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="stage">
+            <div class="stage-cv" data-land-campus></div>
+            <aside class="rail" aria-label="Live evidence">
+              <div class="rail-head"><span class="live">live</span><span>GET /state</span></div>
+              <div class="chip"><i style="background:var(--api)"></i><span><b>api</b> holds <b>shared/auth.ts</b><small>lease, <span data-land-ttl>64</span> s left</small></span></div>
+              <div class="chip"><i style="background:var(--web)"></i><span><b>web</b> waits at the door, #1<small>Library, queue for shared/auth.ts</small></span></div>
+              <div class="chip"><i style="background:var(--gold)"></i><span>Jetson: <b class="tag-ask">ask</b> db/schema.sql<small>rule db/**, 3 ms, model rules</small></span></div>
+              <div class="chip"><i style="background:var(--api)"></i><span>commit <b>a1b2c3d</b><small>Bullpen-Agent: api, Bullpen-Task: t1</small></span></div>
+              <p class="rail-foot">Every chip is a field the web app reads. Nothing here is drawn by hand.</p>
+            </aside>
+          </div>
+        </header>
+
+        <section class="lp-problem" aria-labelledby="land-prob-h">
+          <div class="lp-h">
+            <span class="k">The problem</span>
+            <h3 id="land-prob-h">Git was built for humans.</h3>
+            <p>Two agents on one repo open the same file. The second save wins, the first agent's work is gone, and there is no commit to bring it back.</p>
+          </div>
+          <div class="vignette" aria-label="Two agents overwrite shared/auth.ts">
+            <div class="v-bar"><span>shared/auth.ts</span><span>two agents, one file, no referee</span></div>
+            <div class="v-log">
+              <div><time>14:02:11</time><span class="who who-api">api</span><span>Edit: adds verifyToken()</span></div>
+              <div><time>14:02:13</time><span class="who who-web">web</span><span>Write: the whole file, from its stale copy</span></div>
+            </div>
+            <div class="diff" role="img" aria-label="Diff: api's verifyToken lines are deleted by web's write">
+              <div class="del"><span class="n">12</span><span class="g">-</span><span>export function verifyToken(t: string) {</span></div>
+              <div class="del"><span class="n">13</span><span class="g">-</span><span>  return jwt.verify(t, SECRET) as Session;</span></div>
+              <div class="del"><span class="n">14</span><span class="g">-</span><span>}</span></div>
+              <div class="add"><span class="n">12</span><span class="g">+</span><span>export const login = (u: User) =&gt; session.start(u);</span></div>
+            </div>
+            <div class="v-out">
+              <div><b class="bad">Without Bullpen</b><span>git log shared/auth.ts</span><span class="bad">(no commits)</span></div>
+              <div><b class="ok">With Bullpen</b><span>api holds the lease, web waits</span><span class="ok">a1b2c3d auth: add verifyToken</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="lp-how" id="land-how" aria-labelledby="land-how-h" style="display:grid;gap:32px">
+          <div class="lp-h">
+            <span class="k">How it works</span>
+            <h3 id="land-how-h">One ask, three agents, one referee.</h3>
+          </div>
+          <ol class="flow">
+            <li><b>Ask once</b><p>Type or say what you want in the chat box.</p></li>
+            <li><b>Split</b><p>The orchestrator turns it into three tasks: api, web and db.</p></li>
+            <li><b>Branch</b><p>Each agent works in its own git worktree and branch.</p></li>
+            <li><b>Referee</b><p>Every edit asks first. A file lease lasts 90 s; <code>db/**</code> needs your approval.</p></li>
+            <li><b>Commit</b><p>Each edit auto-commits with its agent and task. Undo or merge one agent at a time.</p></li>
+          </ol>
+        </section>
+
+        <section id="land-arch" aria-labelledby="land-arch-h" style="display:grid;gap:32px">
+          <div class="lp-h">
+            <span class="k">Architecture</span>
+            <h3 id="land-arch-h">The rules live on hardware the agents cannot reach.</h3>
+          </div>
+          <div class="arch">
+            <div class="zone-label"><b>Your Mac</b>, next to the git worktrees</div>
+            <div class="arch-zone">
+              <div class="row row-2">
+                <div class="node"><b>Chat or voice</b><p>One ask, typed or spoken</p></div>
+                <div class="node"><b>Orchestrator</b><span class="port">:8650 POST /orchestrate</span><p>Claude Code splits the ask into tasks</p></div>
+              </div>
+              <div class="link">scripts/demo_start.sh starts 3 agents</div>
+              <div class="row row-3">
+                <div class="node node-agent" style="--c:var(--api)"><b>api</b><p>Claude Code, worktree demo-api</p></div>
+                <div class="node node-agent" style="--c:var(--web)"><b>web</b><p>Claude Code, worktree demo-web</p></div>
+                <div class="node node-agent" style="--c:var(--db)"><b>db</b><p>Claude Code, worktree demo-db</p></div>
+              </div>
+              <div class="link">every Edit, Write and Bash</div>
+              <div class="node"><b>Hook</b><span class="port">hooks/bullpen_hook.py</span><p>PreToolUse asks <code>/checkout</code>, PostToolUse and Stop post to <code>/hook</code></p></div>
+              <div class="link">POST /checkout, POST /hook</div>
+              <div class="row row-ref">
+                <div class="node"><b>Server</b><span class="port">:8600</span>
+                  <ul><li><span>leases</span> 90 s TTL, wait queue</li><li><span>auto-commit</span> with trailers</li><li><span>undo, merge</span> per agent</li><li><span>approvals</span> 60 s, then deny</li></ul></div>
+                <div class="link-h"><span>POST /check</span><span class="bar"></span><span>allow, ask, deny</span></div>
+                <div class="node node-jet"><b>Jetson referee</b><span class="port">:8700, over USB</span>
+                  <ul><li><span>/check</span> rules, no model</li><li><span>/commit_msg</span> qwen2.5-coder:3b</li><li><span>/summarize</span> llama3.2:3b</li><li><span>/ask</span> nomic-embed-text + llama3.2:3b</li><li><span>/scan</span> secret guard</li></ul></div>
+              </div>
+              <div class="link">WebSocket /ws: state, commit, check</div>
+              <div class="node"><b>Web campus</b><span class="port">:5173, Next.js 16 + Phaser 3</span><p>Buildings are folders, main is the campus, each branch is a colored layer</p></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="lp-sub-sec" aria-labelledby="land-sub-h">
+          <div class="lp-h">
+            <span class="k">Cost and privacy</span>
+            <h3 id="land-sub-h">Runs on your own Claude sub, refereed locally.</h3>
+            <p>Your sub writes the code. The Jetson keeps it honest, free, and private.</p>
+          </div>
+          <dl class="ledger">
+            <div><dt>No API key</dt><dd>Agents run through the <code>claude</code> CLI on the subscription you already pay for.</dd><span class="val">claude CLI</span></div>
+            <div><dt>No code leaves the room</dt><dd>Commit messages, summaries and ask-why run on local models on the Jetson.</dd><span class="val">local</span></div>
+            <div><dt>History is free</dt><dd>Writing the history costs zero Claude usage.</dd><span class="val">0 tokens</span></div>
+            <div><dt>Fails closed</dt><dd>Server down or Jetson unplugged: every edit is denied until it comes back.</dd><span class="val">rule offline</span></div>
+          </dl>
+        </section>
+
+        <section class="proof" id="land-proof" aria-labelledby="land-proof-h">
+          <div class="lp-h">
+            <span class="k">Proof</span>
+            <h3 id="land-proof-h">Every animation maps to real data.</h3>
+          </div>
+          <div class="maps">
+            <div><b>Commit timeline</b><span class="arrow">reads</span><span class="src">git log of each worktree branch</span></div>
+            <div><b>Leases panel</b><span class="arrow">reads</span><span class="src">GET /state leases, approvals</span></div>
+            <div><b>Referee log</b><span class="arrow">reads</span><span class="src">check events: rule, latency, model</span></div>
+            <div><b>Building click</b><span class="arrow">reads</span><span class="src">GET /diff?agent=&amp;file=</span></div>
+            <div><b>The campus</b><span class="arrow">reads</span><span class="src">campus/campus.json from make_campus.py</span></div>
+          </div>
+        </section>
+
+        <section class="lp-cta" id="land-cta" aria-labelledby="land-cta-h">
+          <h3 id="land-cta-h">Point it at any repo. It builds your campus.</h3>
+          <div class="ctas">
+            <a class="btn btn-primary" href="#land-top">Run the demo</a>
+            <a class="btn" href="#land-arch">Read the docs</a>
+          </div>
+        </section>
+        <footer class="lp-foot"><span>Bullpen, built at HackJam '26, USF Tampa.</span><span class="mono">Git was built for humans. Bullpen is version control for agents.</span></footer>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const root = document.getElementById('landing');
+  const BP = window.BP;
+
+  root.querySelector('[data-land-bull]').append(BP.pixCanvas(BP.BULL_ROWS, BP.bullPal(BP.USF.green), 2, 'Bullpen bull'));
+
+  const host = root.querySelector('[data-land-campus]');
+  const cv = document.createElement('canvas');
+  cv.style.width = '100%';
+  cv.setAttribute('role', 'img');
+  cv.setAttribute('aria-label', 'Pixel campus: api holds shared/auth.ts at the Library, web waits at its door, db is held at the Sun Dome');
+  host.append(cv);
+  let mounted = false;
+  if (BP.mountCampus) { try { BP.mountCampus(cv, { variant: 'hero' }); mounted = true; } catch (e) { console.warn('mountCampus failed, using placeholder', e); } }
+  if (!mounted) { // placeholder: buildings from campus.json at half size
+    const { ctx } = BP.plate(cv, 480, 320, 1), U = BP.USF;
+    ctx.fillStyle = U.turfMid; ctx.fillRect(0, 0, 480, 320);
+    for (const b of (window.CAMPUS && window.CAMPUS.buildings) || []) {
+      const x = b.x / 2, y = b.y / 2, w = b.w / 2, h = b.h / 2;
+      ctx.fillStyle = b.guarded ? U.gold : U.bldgMid; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = U.bldgDark; ctx.fillRect(x, y + h - 3, w, 3);
+      if (b.folder) BP.drawText(ctx, b.folder, x + 3, y + 3, { color: U.ink });
+    }
+    BP.drawText(ctx, 'campus', 240, 300, { color: U.sand, align: 'center', shadow: U.deepForest });
+  }
+
+  // Lease countdown: 90 s TTL, renewed by the holder, so it loops.
+  const ttl = root.querySelector('[data-land-ttl]');
+  let left = 64;
+  setInterval(() => { left = left <= 1 ? 90 : left - 1; ttl.textContent = left; }, 1000);
+})();
+</script>
+
+<!-- ===== part: dashboard ===== -->
+<style>
+/* App chrome shared by 02 and 03 (scoped by .app) */
+.app { color: var(--app-fg); font-family: var(--font-body); font-size: 14px; line-height: 1.45; background: var(--app-bg); }
+.app button { font: inherit; color: inherit; cursor: pointer; }
+.app .health { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 12px; background: #06100b; border-bottom: 1px solid var(--app-line); }
+.app .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 7px; border: 1px solid var(--app-line); background: rgba(237,235,209,0.04); font-size: 12px; white-space: nowrap; }
+.app .pill b { font-weight: 500; color: var(--app-muted); }
+.app .pill code { font-size: 11px; color: var(--app-fg); }
+.app .dot { width: 8px; height: 8px; display: inline-block; flex: none; background: #4ade80; box-shadow: 0 0 0 2px rgba(74,222,128,0.18); }
+.app .dot.warn { background: #f5b400; box-shadow: 0 0 0 2px rgba(245,180,0,0.18); }
+.app .dot.bad { background: #ff5a5f; box-shadow: 0 0 0 2px rgba(255,90,95,0.2); animation: dashPulse 1.2s steps(2) infinite; }
+@keyframes dashPulse { 50% { opacity: 0.35; } }
+.app .health .spacer { flex: 1; }
+.app .btn { padding: 5px 11px; border: 1px solid var(--app-line); background: rgba(237,235,209,0.06); font-size: 13px; font-weight: 600; transition: background 160ms var(--ease-out), transform 120ms var(--ease-out); }
+.app .btn:hover { background: rgba(237,235,209,0.12); }
+.app .btn:active { transform: translateY(1px); }
+.app .btn.go { background: #006747; border-color: #1f8a5b; color: #F7F6EA; }
+.app .btn.go:hover { background: #0a7a55; }
+.app .btn.gold { background: rgba(207,196,147,0.14); border-color: rgba(207,196,147,0.5); color: #E9E2B8; }
+.app .btn.no { background: rgba(229,72,77,0.16); border-color: rgba(229,72,77,0.5); color: #ffb3b5; }
+.app .btn.sm { padding: 3px 8px; font-size: 12px; }
+.app .tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--app-line); }
+.app .tab { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border: 2px solid transparent; background: none; color: var(--app-muted); font-weight: 600; font-size: 14px; transition: background 160ms var(--ease-out); }
+.app .tab:hover { background: rgba(237,235,209,0.05); }
+.app .tab[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 22%, transparent); color: #fff; }
+.app .tab i { width: 10px; height: 10px; background: var(--c); display: inline-block; }
+.app .tab small { font-family: var(--font-mono); font-size: 11px; color: var(--app-muted); }
+.app .tabs .right { margin-left: auto; display: flex; gap: 6px; }
+.app .body { display: grid; grid-template-columns: minmax(0, 65fr) minmax(0, 35fr); min-height: 0; }
+.app .stage { position: relative; min-width: 0; background: #0b1711; border-right: 1px solid var(--app-line); }
+.app .stage canvas { width: 100%; }
+.app .stage-cap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; padding: 7px 12px; font-size: 12px; color: var(--app-muted); border-top: 1px solid var(--app-line); }
+.app .side { height: 0; min-height: 100%; overflow: auto; min-width: 0; }
+.app .stage { display: flex; flex-direction: column; }
+.app .stage-cap { margin-top: auto; }
+.app .panel { padding: 13px 14px 15px; border-bottom: 1px solid var(--app-line); }
+.app .panel h3 { font-family: var(--font-display); font-weight: 600; font-size: 15px; color: #E9E2B8; margin: 0 0 9px; display: flex; align-items: center; gap: 8px; }
+.app .panel h3 .src { margin-left: auto; font-family: var(--font-mono); font-size: 10.5px; font-weight: 400; color: var(--app-muted); }
+.app .mono { font-family: var(--font-mono); }
+.app .muted { color: var(--app-muted); }
+.app .sw { width: 9px; height: 9px; display: inline-block; background: var(--c); flex: none; }
+.app .input { display: flex; gap: 6px; }
+.app .input input { flex: 1; min-width: 0; padding: 6px 9px; background: rgba(0,0,0,0.3); border: 1px solid rgba(237,235,209,0.16); color: var(--app-fg); font: inherit; font-size: 13px; }
+.app .input input:focus { outline: none; border-color: #4ade80; }
+.app .plan { margin-top: 9px; padding: 9px 10px; border: 1px solid rgba(74,222,128,0.28); background: rgba(6,78,59,0.25); }
+.app .plan p { font-size: 12px; }
+.app .plan ul { list-style: none; margin: 7px 0 0; padding: 0; display: grid; gap: 5px; }
+.app .plan li { display: flex; gap: 8px; font-size: 12.5px; align-items: baseline; }
+.app .plan li b { font-family: var(--font-mono); color: var(--c); min-width: 26px; }
+.app .ans { margin-top: 8px; padding: 8px 10px; border: 1px solid rgba(41,175,206,0.3); background: rgba(0,100,132,0.2); font-size: 12.5px; color: #cdeef6; }
+.app .ans b { font-family: var(--font-mono); color: #7fd6ea; margin-right: 5px; }
+.app .approval { border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); padding: 9px 10px; margin-bottom: 10px; }
+.app .approval .row1 { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-weight: 600; font-size: 13px; }
+.app .approval .row1 .cd { margin-left: auto; font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; background: rgba(245,180,0,0.2); color: #ffe08a; }
+.app .approval p { font-size: 12px; color: var(--app-muted); margin: 3px 0 8px; }
+.app .lease { border: 1px solid var(--app-line); border-left: 4px solid var(--c); background: rgba(237,235,209,0.03); padding: 7px 9px; margin-top: 6px; font-size: 12px; }
+.app .lease .r { display: flex; align-items: center; gap: 7px; }
+.app .lease .f { font-family: var(--font-mono); font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app .lease .ttl { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: #86efac; }
+.app .bar { height: 3px; background: rgba(237,235,209,0.08); margin-top: 6px; }
+.app .bar i { display: block; height: 100%; background: var(--c); transition: width 900ms linear; }
+.app .lease .q { margin-top: 5px; color: var(--app-muted); display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.app .chip { font-family: var(--font-mono); font-size: 10.5px; padding: 1px 6px; background: rgba(245,180,0,0.16); color: #ffe08a; }
+.app .agentblock { margin-top: 10px; }
+.app .agentblock:first-of-type { margin-top: 0; }
+.app .agentblock .hd { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.app .agentblock .hd b { color: var(--c); font-family: var(--font-mono); }
+.app .agentblock .hd .acts { margin-left: auto; display: flex; gap: 5px; }
+.app .commits { margin: 6px 0 0 4px; padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--c) 55%, transparent); display: grid; gap: 7px; }
+.app .commit { font-size: 12px; position: relative; }
+.app .commit::before { content: ''; position: absolute; left: -17px; top: 5px; width: 8px; height: 8px; background: var(--c); }
+.app .commit .m { color: #fff; }
+.app .commit .meta { font-family: var(--font-mono); font-size: 10.5px; color: var(--app-muted); }
+.app .commit.new { animation: dashIn 600ms var(--ease-out); }
+@keyframes dashIn { from { opacity: 0; transform: translateY(-4px); } }
+.app .checks { display: grid; gap: 5px; }
+.app .check { border: 1px solid var(--app-line); background: rgba(237,235,209,0.03); padding: 6px 8px; font-size: 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 2px 8px; align-items: center; }
+.app .check.deny, .app .check.off { border-color: rgba(255,90,95,0.55); background: rgba(127,29,29,0.35); }
+.app .check.new { animation: dashIn 600ms var(--ease-out); }
+.app .dec { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; padding: 1px 6px; text-transform: lowercase; }
+.app .dec.allow { background: rgba(74,222,128,0.16); color: #86efac; }
+.app .dec.ask { background: rgba(245,180,0,0.18); color: #ffe08a; }
+.app .dec.deny { background: rgba(255,90,95,0.25); color: #ffc2c4; }
+.app .check .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app .check .lat { font-family: var(--font-mono); font-size: 10.5px; color: var(--app-muted); }
+.app .check .rule { grid-column: 2 / 4; font-family: var(--font-mono); font-size: 10.5px; color: var(--app-muted); }
+.app .check.off .rule { color: #ffc2c4; font-weight: 600; }
+.app .toast { position: absolute; left: 12px; bottom: 44px; max-width: calc(100% - 24px); padding: 7px 11px; background: #0D231B; border: 1px solid #CFC493; color: #EDEBD1; font-size: 12.5px; opacity: 0; transform: translateY(6px); transition: opacity 260ms var(--ease-out), transform 260ms var(--ease-out); pointer-events: none; }
+.app .toast.on { opacity: 1; transform: none; }
+.app .collapsed { font-size: 12px; color: var(--app-muted); }
+#dashboard .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 10px 20px; }
+#dashboard .legend div { font-size: 14px; }
+#dashboard .legend b { font-family: var(--font-display); color: var(--accent); }
+@media (max-width: 860px) { .app .body { grid-template-columns: 1fr; } .app .stage { border-right: 0; border-bottom: 1px solid var(--app-line); } .app .side { height: auto; max-height: 640px; } }
+</style>
+
+<section class="sec" id="dashboard">
+  <div class="sec-head">
+    <span class="num">02</span>
+    <h2>App: the campus and the evidence</h2>
+    <p>The live screen judges see. The pixel campus stays the hero at 65%, and the evidence panel sits next to it. Click a building to zoom in. Switch a branch tab to see that agent's layer at dusk. Approve, Deny, Undo and Merge all respond.</p>
+  </div>
+  <div class="frame">
+    <div class="frame-bar"><i></i><i></i><i></i><span class="url">localhost:5173/?fake</span></div>
+    <div class="frame-body app" id="dash-app">
+      <div class="health" role="status" aria-label="System health">
+        <span class="pill"><span class="dot"></span><b>Server</b><code>:8600</code></span>
+        <span class="pill"><span class="dot"></span><b>WebSocket</b><code>connected</code></span>
+        <span class="pill" id="dash-jetson"><span class="dot"></span><b>Jetson</b><code>3 ms</code></span>
+        <span class="pill" id="dash-model"><span class="dot"></span><b>Model</b><code>rules</code></span>
+        <span class="pill"><span class="dot"></span><b>Orchestrator</b><code>:8650</code></span>
+        <span class="spacer"></span>
+        <button class="btn sm" type="button" id="dash-unplug" aria-pressed="false">Unplug Jetson</button>
+        <button class="btn sm" type="button">Replay</button>
+      </div>
+      <div class="tabs" role="group" aria-label="Branch view">
+        <button class="tab" type="button" data-tab="main" aria-pressed="true" style="--c:#EDEBD1"><i></i>main</button>
+        <button class="tab" type="button" data-tab="api" aria-pressed="false" style="--c:var(--api)"><i></i>api <small>+2</small></button>
+        <button class="tab" type="button" data-tab="web" aria-pressed="false" style="--c:var(--web)"><i></i>web <small>+1</small></button>
+        <button class="tab" type="button" data-tab="db" aria-pressed="false" style="--c:var(--db)"><i></i>db <small>+1</small></button>
+        <span class="right"><button class="btn gold sm" type="button" data-go="opener">10s opener</button><button class="btn go sm" type="button">Play demo</button></span>
+      </div>
+      <div class="body">
+        <div class="stage">
+          <div id="dash-campus-wrap"><canvas id="dash-campus" aria-label="Pixel campus. Buildings are the top-level folders of the demo repo."></canvas></div>
+          <div id="dash-interior-wrap" hidden></div>
+          <div class="stage-cap"><span id="dash-cap">main · 10 buildings from campus/campus.json · click a building</span><span class="mono">scripts/make_campus.py</span></div>
+          <div class="toast" id="dash-toast" role="status" aria-live="polite"></div>
+        </div>
+        <div class="side">
+          <div class="panel">
+            <h3>Orchestrator <span class="src">POST :8650/orchestrate</span></h3>
+            <form class="input" id="dash-ask"><input aria-label="Orchestrate task" value="Add a users feature: endpoint, page and table"><button class="btn go" type="submit">Send</button></form>
+            <div class="plan" id="dash-plan">
+              <p><b style="color:#86efac">Plan:</b> Add a users feature: endpoint, page and table <span class="mono muted">claude</span></p>
+              <ul>
+                <li style="--c:var(--api)"><span class="sw"></span><b>api</b><span>Add /users endpoint</span></li>
+                <li style="--c:var(--web)"><span class="sw"></span><b>web</b><span>Users page</span></li>
+                <li style="--c:var(--db)"><span class="sw"></span><b>db</b><span>Users table</span></li>
+              </ul>
+            </div>
+            <form class="input" style="margin-top:10px" id="dash-why"><input aria-label="Ask why" value="Why is db waiting?"><button class="btn" type="submit">Ask why</button></form>
+            <div class="ans"><b>JETSON:</b><span>db is in line at ENB for api/users.ts. api holds the lease for 78 s more. db also needs your approval to edit db/schema.sql.</span></div>
+          </div>
+          <div class="panel">
+            <h3>Leases &amp; approvals <span class="src">/state leases, approvals</span></h3>
+            <div class="approval" id="dash-approval" style="--c:var(--db)">
+              <div class="row1"><span style="color:var(--db)">db</span> wants Edit <span class="mono">db/schema.sql</span><span class="cd" id="dash-ap-cd">48 s</span></div>
+              <p>Sun Dome is guarded. No answer in 60 s means deny.</p>
+              <div style="display:flex;gap:6px"><button class="btn go sm" type="button" data-ap="allow">Approve</button><button class="btn no sm" type="button" data-ap="deny">Deny</button></div>
+            </div>
+            <div id="dash-leases"></div>
+          </div>
+          <div class="panel">
+            <h3>Commit timeline <span class="src">git log agent/*</span></h3>
+            <div id="dash-commits"></div>
+          </div>
+          <div class="panel">
+            <h3>Jetson referee log <span class="src">check events</span></h3>
+            <div class="checks" id="dash-checks"></div>
+          </div>
+          <div class="panel collapsed">Merged intent · Selected agent · Feed: on main, collapsed here.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="legend">
+    <div><b>Health strip.</b> Server, WebSocket, Jetson latency, model and Orchestrator, from <code>/health</code> and the latest <code>check</code>.</div>
+    <div><b>Door wait queue.</b> web waits at the Library for <code>shared/auth.ts</code>, db at ENB for <code>api/users.ts</code>: hourglass, WAIT #1, a dotted line to the door.</div>
+    <div><b>Scaffolds and flags.</b> One per claim, in the agent's color. api claims ENB and the Library, web claims Marshall.</div>
+    <div><b>Unplug Jetson.</b> Try it: the pill goes red and every check becomes deny, rule <code>offline</code>. Fail closed.</div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const COLOR = { api: 'var(--api)', web: 'var(--web)', db: 'var(--db)' };
+  const toast = msg => { const t = $('#dash-toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2600); };
+
+  // Campus + tabs + click-to-zoom
+  const campus = BP.mountCampus($('#dash-campus'), { variant: 'app', onPick: id => zoom(id) });
+  document.querySelectorAll('#dash-app .tab').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#dash-app .tab').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    campus.set({ tab: b.dataset.tab });
+    $('#dash-cap').textContent = b.dataset.tab === 'main' ? 'main · 10 buildings from campus/campus.json · click a building' : `agent/${b.dataset.tab} · its layer at full color, the rest at dusk`;
+  }));
+  function zoom(id) {
+    if (!BP.mountInterior) return;
+    const wrap = $('#dash-interior-wrap'); wrap.innerHTML = ''; wrap.hidden = false; $('#dash-campus-wrap').hidden = true;
+    BP.mountInterior(wrap, id, { compact: true, onBack: () => { wrap.hidden = true; wrap.innerHTML = ''; $('#dash-campus-wrap').hidden = false; $('#dash-cap').textContent = 'main · click a building'; } });
+    $('#dash-cap').textContent = `${BP.CAMPUS_B[id].name} · ${BP.CAMPUS_B[id].folder ?? 'unmapped'} · Esc or Back to leave`;
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#dash-interior-wrap').hidden) $('#dash-interior-wrap .int-back')?.click(); });
+  document.querySelector('#dash-app [data-go="opener"]').addEventListener('click', () => document.getElementById('opener').scrollIntoView({ behavior: BP.reduce ? 'auto' : 'smooth' }));
+
+  // Orchestrator + ask-why
+  $('#dash-ask').addEventListener('submit', e => { e.preventDefault(); const p = $('#dash-plan'); p.style.opacity = 0.4; setTimeout(() => { p.style.opacity = 1; toast('Plan sent to the server as a Plan hook event. 3 agents started.'); }, 700); });
+  $('#dash-why').addEventListener('submit', e => { e.preventDefault(); toast('Answered on the Jetson: llama3.2:3b over the recent events. 0 Claude usage.'); });
+
+  // Leases with live TTL
+  const leases = BP.CAMPUS_DATA.leases.map(l => ({ ...l }));
+  function renderLeases() {
+    $('#dash-leases').innerHTML = leases.map(l => `<div class="lease" style="--c:${COLOR[l.agent]}">
+      <div class="r"><span class="sw"></span><span class="f">${l.file}</span><span class="ttl">${Math.max(0, Math.round(l.ttl))} s</span></div>
+      <div class="bar"><i style="width:${Math.max(0, l.ttl) / 90 * 100}%"></i></div>
+      <div class="q">Holder <b style="color:${COLOR[l.agent]}">${l.agent}</b>${l.waiters.length ? l.waiters.map((w, i) => `<span class="chip">#${i + 1} ${w} waiting</span>`).join('') : '<span>no queue</span>'}</div></div>`).join('');
+  }
+  let apLeft = 48, apDone = false;
+  setInterval(() => {
+    leases.forEach(l => { l.ttl -= 1; if (l.ttl < 6) l.ttl = 90; }); // the holder renews before expiry
+    renderLeases();
+    if (!apDone) { apLeft = apLeft <= 1 ? 60 : apLeft - 1; $('#dash-ap-cd').textContent = apLeft + ' s'; }
+  }, 1000);
+  renderLeases();
+  document.querySelectorAll('#dash-approval [data-ap]').forEach(b => b.addEventListener('click', () => {
+    const allow = b.dataset.ap === 'allow'; apDone = true;
+    $('#dash-ap-cd').textContent = allow ? 'approved' : 'denied';
+    toast(allow ? 'You approved db: Edit db/schema.sql. The server grants the lease.' : 'You denied db. The hook tells the agent why, and it adapts.');
+    addCheck({ agent: 'db', file: 'db/schema.sql', decision: allow ? 'allow' : 'deny', rule: allow ? 'human approve' : 'human deny', ms: 1, model: 'rules' });
+    setTimeout(() => { apDone = false; apLeft = 60; }, 4000);
+  }));
+
+  // Commit timeline with trailers, Undo and Merge per agent
+  const commits = {
+    api: [{ sha: 'a1b2c3d', m: 'Add users route', f: 'api/users.py', ago: '0:45' }, { sha: '9f8e7d6', m: 'Document users endpoint', f: 'README.md', ago: '1:35' }],
+    web: [{ sha: '4c5d6e7', m: 'Add users page', f: 'web/Users.tsx', ago: '1:00' }],
+    db: [{ sha: '1a2b3c4', m: 'Seed users', f: 'db/seed.sql', ago: '1:50' }],
+  };
+  const task = { api: 'Add /users endpoint', web: 'Users page', db: 'Users table' };
+  function renderCommits(fresh) {
+    $('#dash-commits').innerHTML = Object.keys(commits).map(a => `<div class="agentblock" style="--c:${COLOR[a]}">
+      <div class="hd"><span class="sw"></span><b>${a}</b><span class="muted mono" style="font-size:11px">agent/${a} +${commits[a].length}</span>
+      <span class="acts"><button class="btn go sm" type="button" data-merge="${a}">Merge</button><button class="btn sm" type="button" data-undo="${a}">Undo</button></span></div>
+      <div class="commits">${commits[a].length ? commits[a].map((c, i) => `<div class="commit${fresh === a && i === 0 ? ' new' : ''}"><div class="m">${c.m}</div>
+      <div class="meta">${c.sha} · ${c.f} · ${c.ago} ago</div><div class="meta">Bullpen-Agent: ${a} · Bullpen-Task: ${task[a]}</div></div>`).join('') : '<div class="meta">No commits on this branch.</div>'}</div></div>`).join('');
+  }
+  $('#dash-commits').addEventListener('click', e => {
+    const u = e.target.closest('[data-undo]'), m = e.target.closest('[data-merge]');
+    if (u) { const a = u.dataset.undo, c = commits[a].shift(); renderCommits(); toast(c ? `Undo ${a}: git revert ${c.sha}. Only ${a}'s work rolls back.` : `${a} has nothing to undo.`); }
+    if (m) { const a = m.dataset.merge; toast(`Merge ${a}: intent card from /summarize, then agent/${a} lands on main.`); }
+  });
+  renderCommits();
+  // A new auto-commit lands every few seconds, like PostToolUse -> commit events.
+  const incoming = [['api', 'Verify token in shared/auth.ts', 'shared/auth.ts'], ['web', 'Wire login form', 'web/login.tsx'], ['api', 'Add users route test', 'tests/test_users.py']];
+  let k = 0;
+  setInterval(() => { if (document.hidden) return; const [a, m, f] = incoming[k++ % incoming.length]; commits[a].unshift({ sha: Math.random().toString(16).slice(2, 9), m, f, ago: '0:01' }); commits[a] = commits[a].slice(0, 3); renderCommits(a); }, 7000);
+
+  // Referee log: check events. Unplug -> every check denies with rule offline.
+  const checks = [
+    { agent: 'db', file: 'db/schema.sql', decision: 'ask', rule: 'db/**', ms: 3, model: 'rules' },
+    { agent: 'web', file: 'web/login.tsx', decision: 'allow', rule: 'default', ms: 2, model: 'rules' },
+    { agent: 'api', file: 'api/users.ts', decision: 'allow', rule: 'default', ms: 2, model: 'rules' },
+    { agent: 'db', file: 'db/seed.sql', decision: 'deny', rule: 'db/** · no answer in 60 s', ms: 3, model: 'rules' },
+  ];
+  let offline = false;
+  function renderChecks(fresh) {
+    $('#dash-checks').innerHTML = checks.slice(0, 6).map((c, i) => { const off = c.rule === 'offline';
+      return `<div class="check ${off ? 'off' : c.decision}${fresh && i === 0 ? ' new' : ''}"><span class="dec ${c.decision}">${c.decision}</span>
+      <span class="who"><b style="color:${COLOR[c.agent]}">${c.agent}</b> Edit <span class="mono">${c.file}</span></span><span class="lat">${off ? 'timeout' : c.ms + ' ms · ' + c.model}</span>
+      <span class="rule">${off ? 'OFFLINE · fail closed' : 'rule: ' + c.rule}</span></div>`; }).join('');
+  }
+  function addCheck(c) { checks.unshift(c); checks.length = Math.min(checks.length, 8); renderChecks(true); }
+  renderChecks();
+  const stream = [['api', 'shared/auth.ts', 'allow', 'default'], ['web', 'web/Users.tsx', 'allow', 'default'], ['db', 'db/migrations/002.sql', 'ask', 'db/**'], ['api', 'api/client.py', 'allow', 'default']];
+  let s = 0;
+  setInterval(() => { if (document.hidden) return; const [a, f, d, r] = stream[s++ % stream.length];
+    addCheck(offline ? { agent: a, file: f, decision: 'deny', rule: 'offline', ms: 0, model: '' } : { agent: a, file: f, decision: d, rule: r, ms: 2 + (s % 3), model: 'rules' }); }, 4500);
+  $('#dash-unplug').addEventListener('click', e => {
+    offline = !offline; e.currentTarget.setAttribute('aria-pressed', String(offline)); e.currentTarget.textContent = offline ? 'Plug Jetson back in' : 'Unplug Jetson';
+    for (const id of ['#dash-jetson', '#dash-model']) { const p = $(id); p.querySelector('.dot').className = 'dot' + (offline ? ' bad' : ''); }
+    $('#dash-jetson code').textContent = offline ? 'OFFLINE' : '3 ms'; $('#dash-model code').textContent = offline ? 'none' : 'rules';
+    addCheck(offline ? { agent: 'api', file: 'shared/auth.ts', decision: 'deny', rule: 'offline', ms: 0 } : { agent: 'api', file: 'shared/auth.ts', decision: 'allow', rule: 'default', ms: 3, model: 'rules' });
+    toast(offline ? 'Jetson unplugged. Every edit is denied until it is back: fail closed.' : 'Jetson back. Checks allow again.');
+  });
+})();
+</script>
+
+<!-- ===== part: interior ===== -->
+<style>
+.int { display: grid; background: var(--app-bg); color: var(--app-fg); }
+.int-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 12px; border-bottom: 1px solid var(--app-line); font-size: 13px; }
+.int-head .int-back { padding: 4px 10px; border: 1px solid var(--app-line); background: rgba(237,235,209,0.06); color: var(--app-fg); font: inherit; font-weight: 600; cursor: pointer; transition: background 160ms var(--ease-out); }
+.int-head .int-back:hover { background: rgba(237,235,209,0.12); }
+.int-head h4 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 16px; color: #E9E2B8; }
+.int-head .f { font-family: var(--font-mono); font-size: 12px; color: #CFC493; }
+.int-head .guard { font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; background: rgba(255,90,95,0.2); color: #ffc2c4; }
+.int canvas { width: 100%; }
+.int-drawer { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); border-top: 1px solid var(--app-line); }
+.int-drawer > div { padding: 10px 12px; min-width: 0; }
+.int-drawer > div + div { border-left: 1px solid var(--app-line); }
+.int-drawer h5 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 600; font-size: 13px; color: #E9E2B8; display: flex; gap: 8px; }
+.int-drawer h5 span { margin-left: auto; font-family: var(--font-mono); font-weight: 400; font-size: 10.5px; color: var(--app-muted); }
+.int-log { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; font-family: var(--font-mono); font-size: 11.5px; }
+.int-log li { display: flex; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.int-log li.new { animation: dashIn 600ms var(--ease-out); }
+.int-log .t { color: var(--app-muted); }
+.int-diff { margin: 0; font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5; background: #06100b; border: 1px solid var(--app-line); padding: 6px 0; overflow-x: auto; }
+.int-diff div { padding: 0 10px; white-space: pre; }
+.int-diff .add { background: rgba(74,222,128,0.12); color: #a7f3c4; }
+.int-diff .del { background: rgba(255,90,95,0.14); color: #ffc2c4; }
+.int-diff .hunk { color: #7fd6ea; }
+.int-diff .ctx { color: rgba(237,235,209,0.7); }
+.int.compact .int-drawer { font-size: 12px; }
+@media (max-width: 760px) { .int-drawer { grid-template-columns: 1fr; } .int-drawer > div + div { border-left: 0; border-top: 1px solid var(--app-line); } }
+#interior .pick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#interior .pick span { font-size: 14px; color: var(--muted); margin-right: 4px; }
+#interior .pick button { font: inherit; font-size: 13px; padding: 4px 10px; border: 2px solid var(--frame); background: var(--surface-2); color: var(--fg); cursor: pointer; }
+#interior .pick button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+</style>
+
+<section class="sec" id="interior">
+  <div class="sec-head">
+    <span class="num">03</span>
+    <h2>Building interior: zoom in, see the real diff</h2>
+    <p>One shared interior for every building. Rooms are its files from <code>campus.json</code>. Each agent sits at the file it is editing, under a sign with its branch. Below: the live action log from hook events and the real diff from <code>GET /diff</code>. Same view opens when you click a building in 02.</p>
+    <div class="pick" role="group" aria-label="Building"><span>Building:</span>
+      <button type="button" data-b="library" aria-pressed="true">Library · shared/</button><button type="button" data-b="enb" aria-pressed="false">ENB · api/</button><button type="button" data-b="msc" aria-pressed="false">Marshall · web/</button><button type="button" data-b="sundome" aria-pressed="false">Sun Dome · db/</button>
+    </div>
+  </div>
+  <div class="frame">
+    <div class="frame-bar"><i></i><i></i><i></i><span class="url" id="int-url">localhost:5173/?fake · zoomed: library</span></div>
+    <div class="frame-body" id="int-host"></div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const { USF, AGENT, BULL_ROWS, bullPal, drawRows, drawText, textWidth, flipH, plate, animate } = BP;
+  const D = BP.CAMPUS_DATA, B = BP.CAMPUS_B, folderOf = BP.campusFolderOf;
+  const W = 480, H = 230;
+  const pal = Object.fromEntries(['api', 'web', 'db'].map(a => [a, bullPal(AGENT[a].B)]));
+  const DIFFS = {
+    'shared/auth.ts': ['@@ -1,6 +1,14 @@', ' import { Session } from "./session";', '+import { verify } from "./jwt";', ' ', '+export function verifyToken(jwt: string): Session | null {', '+  const claims = verify(jwt, process.env.AUTH_SECRET);', '+  if (!claims || claims.exp < Date.now() / 1000) return null;', '+  return { userId: claims.sub, roles: claims.roles };', '+}', ' ', '-export const TODO_AUTH = true;'],
+    'api/users.ts': ['@@ -0,0 +1,9 @@', '+import { Router } from "./router";', '+import { verifyToken } from "../shared/auth";', '+', '+export const users = Router();', '+users.get("/users", (req, res) => {', '+  if (!verifyToken(req.headers.authorization)) return res.status(401).end();', '+  res.json(db.users.all());', '+});'],
+    'web/login.tsx': ['@@ -3,7 +3,10 @@', ' export function Login() {', '-  return <form />;', '+  const [email, setEmail] = useState("");', '+  return (', '+    <form onSubmit={() => signIn(email)}>', '+      <input value={email} onChange={e => setEmail(e.target.value)} />', '+    </form>', '+  );'],
+    'db/schema.sql': ['(no diff yet: db is waiting for your approval)', '', 'Edit db/schema.sql -> Jetson /check -> ask (rule db/**)', 'Approve or Deny in the Leases & approvals panel. 60 s, then deny.'],
+  };
+  // Who is in this building and at which file: leases first, then a waiting agent stands at the door. Same rule as InteriorScene on main.
+  function occupants(id) {
+    const at = [];
+    D.leases.filter(l => folderOf(l.file) === id).forEach(l => { if (!at.some(o => o.agent === l.agent)) at.push({ agent: l.agent, file: l.file, mode: 'edit' }); l.waiters.forEach(w => at.push({ agent: w, file: l.file, mode: 'door' })); });
+    D.approvals.filter(a => folderOf(a.target) === id).forEach(a => at.push({ agent: a.agent, file: a.target, mode: 'ask' }));
+    return at;
+  }
+  function logFor(id) {
+    const occ = occupants(id), rows = [];
+    occ.forEach(o => {
+      if (o.mode === 'edit') rows.push([o.agent, 'PreToolUse Edit ' + o.file, 'allow'], [o.agent, 'PostToolUse Edit ' + o.file, 'commit'], [o.agent, 'lease renewed ' + o.file, '90 s']);
+      if (o.mode === 'door') rows.push([o.agent, 'PreToolUse Edit ' + o.file, 'wait #1']);
+      if (o.mode === 'ask') rows.push([o.agent, 'PreToolUse Edit ' + o.file, 'ask']);
+    });
+    return rows.length ? rows : [['', 'No agents here right now.', '']];
+  }
+
+  BP.mountInterior = (host, id, opts = {}) => {
+    const b = B[id]; const rooms = (window.CAMPUS.buildings.find(x => x.id === id).rooms || []).slice(0, 8);
+    const root = BP.el('div', { class: 'int' + (opts.compact ? ' compact' : '') });
+    root.innerHTML = `<div class="int-head">${opts.onBack ? '<button class="int-back" type="button">← Back to campus</button>' : ''}<h4>${b.name}</h4><span class="f">${b.folder ?? 'unmapped'}</span>${b.guarded ? '<span class="guard">guarded · edits need approval</span>' : ''}<span class="f" style="margin-left:auto;color:var(--app-muted)">${rooms.length} rooms</span></div>
+      <canvas aria-label="Interior of ${b.name}: rooms are files"></canvas>
+      <div class="int-drawer"><div><h5>Live action log <span>hook events</span></h5><ul class="int-log"></ul></div><div><h5>Diff <span class="dfile"></span></h5><pre class="int-diff"></pre></div></div>`;
+    host.appendChild(root);
+    if (opts.onBack) root.querySelector('.int-back').addEventListener('click', opts.onBack);
+    const cv = root.querySelector('canvas'); cv.style.width = '100%'; cv.style.aspectRatio = W + ' / ' + H;
+    const { ctx: o } = plate(cv, W, H, 2);
+    // Room grid: up to 4 per row
+    const cols = Math.min(4, Math.max(2, Math.ceil(rooms.length / 2))), rowsN = Math.ceil(rooms.length / cols) || 1;
+    const gx = 14, gy = 28, rw = (W - gx * 2 - (cols - 1) * 8) / cols, rh = Math.min(84, (H - gy - 34 - (rowsN - 1) * 10) / rowsN);
+    const rect = rooms.map((r, i) => ({ r, x: gx + (i % cols) * (rw + 8), y: gy + Math.floor(i / cols) * (rh + 10), w: rw, h: rh }));
+    const occ = occupants(id);
+    const roomOf = f => rect.find(q => q.r.path === f) || rect[0];
+    let sel = (occ.find(x => x.mode === 'edit') || occ[0] || {}).file || (rooms[0] && rooms[0].path);
+    cv.addEventListener('click', e => { const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H; const q = rect.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (q) { sel = q.r.path; diff(); } });
+    function frame(t) {
+      // floor
+      o.fillStyle = '#3a2f22'; o.fillRect(0, 0, W, H);
+      for (let y = 0; y < H; y += 8) for (let x = (y / 8) % 2 ? 4 : 0; x < W; x += 8) { o.fillStyle = (x + y) % 16 ? '#4a3c2a' : '#43372a'; o.fillRect(x, y, 8, 8); }
+      // back wall
+      o.fillStyle = USF.evergreen; o.fillRect(0, 0, W, 20); o.fillStyle = USF.gold; o.fillRect(0, 20, W, 2);
+      drawText(o, b.name + '  ' + (b.folder ?? ''), 10, 7, { color: USF.sand });
+      for (let x = W - 120; x < W - 10; x += 22) { o.fillStyle = USF.storm; o.fillRect(x, 5, 14, 10); o.fillStyle = USF.sky; o.fillRect(x, 5, 14, 2); }
+      // rooms
+      rect.forEach(q => {
+        const isSel = q.r.path === sel;
+        o.fillStyle = USF.ink; o.fillRect(q.x - 1, q.y - 1, q.w + 2, q.h + 2);
+        o.fillStyle = b.guarded ? '#3b2424' : '#21382c'; o.fillRect(q.x, q.y, q.w, q.h);
+        o.fillStyle = b.guarded ? '#4a2c2c' : '#284536'; for (let y = q.y + 12; y < q.y + q.h; y += 6) o.fillRect(q.x, y, q.w, 1);
+        // desk + monitor
+        const dx = q.x + q.w / 2 - 14, dy = q.y + q.h - 22; o.fillStyle = '#8a6a43'; o.fillRect(dx, dy, 28, 8); o.fillStyle = '#5c4630'; o.fillRect(dx, dy + 8, 28, 2);
+        o.fillStyle = USF.ink; o.fillRect(dx + 8, dy - 9, 12, 9); o.fillStyle = Math.sin(t * 3 + q.x) > -0.6 ? '#2a6f57' : '#1f5a46'; o.fillRect(dx + 9, dy - 8, 10, 6);
+        // name sign
+        const name = q.r.name.length > 14 ? q.r.name.slice(0, 13) + '.' : q.r.name;
+        o.fillStyle = isSel ? USF.lemongrass : USF.gold; o.fillRect(q.x, q.y, q.w, 10); drawText(o, name, q.x + 3, q.y + 2, { color: USF.ink });
+        if (isSel) { o.strokeStyle = USF.lemongrass; o.lineWidth = 1; o.strokeRect(q.x - 2.5, q.y - 2.5, q.w + 5, q.h + 5); }
+      });
+      // door at the bottom
+      o.fillStyle = USF.ink; o.fillRect(W / 2 - 14, H - 12, 28, 12); o.fillStyle = USF.evergreen; o.fillRect(W / 2 - 12, H - 10, 24, 10);
+      // agents
+      occ.forEach((a, i) => {
+        if (a.mode === 'edit' || a.mode === 'ask') {
+          const q = roomOf(a.file), x = q.x + q.w / 2 - 16, y = q.y + q.h - 46;
+          const bob = a.mode === 'edit' && Math.sin(t * 8 + i) > 0.5 ? -1 : 0;
+          drawRows(o, BULL_ROWS, pal[a.agent], x - 4, y + bob, 2);
+          // branch sign above
+          const sign = a.mode === 'ask' ? 'agent/' + a.agent + ' ?' : 'agent/' + a.agent, sw = textWidth(sign) + 6;
+          o.fillStyle = USF.ink; o.fillRect(q.x + q.w / 2 - sw / 2 - 1, q.y + 12, sw + 2, 11); o.fillStyle = AGENT[a.agent].B; o.fillRect(q.x + q.w / 2 - sw / 2, q.y + 13, sw, 9);
+          drawText(o, sign, q.x + q.w / 2 - sw / 2 + 3, q.y + 14, { color: a.agent === 'db' ? USF.ink : '#fff' });
+          if (a.mode === 'edit' && (t * 3 + i) % 1 < 0.3) { o.fillStyle = USF.lemongrass; o.fillRect(x + 38, y + 4, 2, 2); o.fillRect(x + 42, y, 2, 2); }
+        } else { // waiting at the door
+          const x = W / 2 + 22 + i * 4, y = H - 34, tap = Math.floor(t * 4) % 2;
+          drawRows(o, flipH(BULL_ROWS), pal[a.agent], x, y - 2, 2);
+          o.fillStyle = USF.ink; o.fillRect(x - 2, y - 14, textWidth('WAIT #1') + 4, 10); drawText(o, 'WAIT #1', x, y - 13, { color: USF.gold });
+          if (tap) { o.fillStyle = pal[a.agent].k; o.fillRect(x + 8, y + 27, 4, 2); }
+          drawText(o, a.agent + ' at the door: ' + a.file, 10, H - 9, { color: USF.sand, alpha: 0.85 });
+        }
+      });
+    }
+    animate(cv, frame, { still: 1 });
+    // log + diff
+    const log = root.querySelector('.int-log'), rows = logFor(id);
+    const color = a => a ? AGENT[a].B : 'var(--app-muted)';
+    let n = 0;
+    function pushLog(fresh) { const r = rows[n++ % rows.length], li = BP.el('li', { class: fresh ? 'new' : '' });
+      li.innerHTML = `<span class="t">${new Date().toTimeString().slice(0, 8)}</span>${r[0] ? `<b style="color:${color(r[0])}">${r[0]}</b>` : ''}<span>${r[1]}</span>${r[2] ? `<span style="color:#CFC493">${r[2]}</span>` : ''}`;
+      log.prepend(li); while (log.children.length > (opts.compact ? 4 : 6)) log.lastChild.remove(); }
+    for (let i = 0; i < Math.min(rows.length, 4); i++) pushLog(false);
+    const iv = setInterval(() => { if (!root.isConnected) return clearInterval(iv); if (!document.hidden) pushLog(true); }, 3000);
+    function diff() {
+      const lines = DIFFS[sel] || ['(no agent changes in ' + sel + ')', '', 'git diff main...agent/<name> -- ' + sel];
+      const holder = occ.find(x => x.file === sel);
+      root.querySelector('.dfile').textContent = (holder ? 'agent/' + holder.agent + ' · ' : '') + sel;
+      root.querySelector('.int-diff').innerHTML = lines.map(l => `<div class="${l.startsWith('@@') ? 'hunk' : l.startsWith('+') ? 'add' : l.startsWith('-') ? 'del' : 'ctx'}">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;') || ' '}</div>`).join('');
+    }
+    diff();
+    return root;
+  };
+
+  // Standalone view
+  const host = document.getElementById('int-host');
+  const show = id => { host.innerHTML = ''; BP.mountInterior(host, id); document.getElementById('int-url').textContent = 'localhost:5173/?fake · zoomed: ' + id; };
+  document.querySelectorAll('#interior .pick button').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('#interior .pick button').forEach(x => x.setAttribute('aria-pressed', String(x === btn))); show(btn.dataset.b);
+  }));
+  show('library');
+})();
+</script>
+
+<!-- ===== part: settings ===== -->
+<style>
+#settings .st { background: var(--app-bg); color: var(--app-fg); font-size: 14px; }
+#settings .st * { min-width: 0; }
+#settings .mono { font-family: var(--font-mono); }
+#settings .muted { color: var(--app-muted); }
+
+/* health strip, same pills as web/app/HealthStrip.tsx */
+#settings .health { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 12px; background: #07120d; border-bottom: 1px solid var(--app-line); }
+#settings .health .lbl { font: 700 11px var(--font-mono); color: var(--app-muted); margin-right: 4px; }
+#settings .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border: 1px solid var(--app-line); background: rgba(255,255,255,0.04); font: 12px var(--font-mono); white-space: nowrap; }
+#settings .pill::before { content: ''; width: 7px; height: 7px; background: #3fb950; }
+#settings .pill em { font-style: normal; color: var(--app-muted); }
+#settings .proposed { margin-left: auto; font: 600 12px var(--font-mono); color: #0D231B; background: var(--gold); padding: 2px 9px; }
+
+#settings .st-body { display: grid; grid-template-columns: 180px minmax(0, 1fr); }
+#settings .side { padding: 20px 12px; border-right: 1px solid var(--app-line); display: grid; align-content: start; gap: 2px; }
+#settings .side a { text-decoration: none; padding: 7px 10px; color: var(--app-muted); transition: background 180ms var(--ease-out), color 180ms var(--ease-out); }
+#settings .side a:hover { background: var(--app-panel-2); color: var(--app-fg); }
+#settings .side a[aria-current] { background: var(--app-panel-2); color: var(--app-fg); box-shadow: inset 0 0 0 1px var(--app-line); }
+#settings .main { padding: clamp(16px, 3vw, 32px); display: grid; gap: 28px; max-width: 1040px; }
+#settings .main h3 { font-size: 26px; color: var(--app-fg); }
+#settings .main h4 { margin: 0; font: 600 16px var(--font-body); }
+#settings .lead { color: var(--app-muted); max-width: 64ch; margin-top: 6px; }
+
+/* referee location radios */
+#settings fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 12px; }
+#settings legend { padding: 0; margin-bottom: 12px; }
+#settings .opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+#settings .opt { position: relative; display: grid; gap: 8px; align-content: start; padding: 14px; background: var(--app-panel); border: 2px solid var(--app-line); cursor: pointer;
+  transition: border-color 200ms var(--ease-out), background 200ms var(--ease-out), transform 240ms var(--ease-out); }
+#settings .opt:hover { border-color: rgba(237,235,209,0.35); transform: translateY(-2px); }
+#settings .opt:active { transform: translateY(0); transition-duration: 80ms; }
+#settings .opt:has(input:checked) { border-color: var(--gold); background: var(--app-panel-2); }
+#settings .opt:has(input:focus-visible) { outline: 3px solid #DBE442; outline-offset: 2px; }
+#settings .opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+#settings .opt-top { display: flex; align-items: center; gap: 10px; }
+#settings .dot { width: 16px; height: 16px; border: 2px solid var(--app-muted); display: grid; place-items: center; flex: none; }
+#settings .opt:has(input:checked) .dot { border-color: var(--gold); }
+#settings .opt:has(input:checked) .dot::after { content: ''; width: 6px; height: 6px; background: var(--gold); }
+#settings .opt b { font-size: 15px; }
+#settings .rec { margin-left: auto; font: 600 11px var(--font-mono); color: var(--gold); border: 1px solid var(--gold); padding: 1px 6px; white-space: nowrap; }
+#settings .opt .url { font: 12.5px var(--font-mono); color: var(--gold); overflow-wrap: anywhere; }
+#settings .opt p { color: var(--app-muted); font-size: 13px; }
+#settings .meter { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 4px 8px; font: 11.5px var(--font-mono); color: var(--app-muted); }
+#settings .meter span:nth-child(even) { color: var(--app-fg); }
+
+#settings .conn { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+#settings label.f { display: grid; gap: 6px; font-size: 13px; color: var(--app-muted); }
+#settings input[type=text] { font: 14px var(--font-mono); color: var(--app-fg); background: var(--app-bg); border: 1px solid var(--app-line); padding: 9px 10px; width: 100%; transition: border-color 160ms var(--ease-out); }
+#settings input[type=text]:hover { border-color: rgba(237,235,209,0.3); }
+#settings input[type=text]:focus-visible { outline: 3px solid #DBE442; outline-offset: 0; border-color: transparent; }
+#settings .b { font: 600 13px var(--font-body); color: #0D231B; background: var(--gold); border: 0; padding: 10px 14px; cursor: pointer; white-space: nowrap;
+  box-shadow: 0 3px 0 #8c8458; transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out), filter 160ms var(--ease-out); }
+#settings .b:hover { filter: brightness(1.06); transform: translateY(-1px); box-shadow: 0 4px 0 #8c8458; }
+#settings .b:active { transform: translateY(3px); box-shadow: 0 0 0 #8c8458; transition-duration: 60ms; }
+#settings .b[disabled] { opacity: 0.6; cursor: progress; }
+#settings .b-ghost { background: transparent; color: var(--app-fg); box-shadow: inset 0 0 0 1px var(--app-line); }
+#settings .b-ghost:hover { box-shadow: inset 0 0 0 1px rgba(237,235,209,0.4); transform: none; }
+#settings .b-ghost:active { transform: translateY(1px); box-shadow: inset 0 0 0 1px var(--app-line); }
+#settings .result { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 10px 12px; background: var(--app-panel); border: 1px solid var(--app-line); font: 12.5px var(--font-mono); min-height: 42px; }
+#settings .result .st-ok { color: #3fb950; } #settings .result .st-warn { color: #e3b341; } #settings .result .st-bad { color: #f85149; }
+#settings .result span { overflow-wrap: anywhere; }
+
+/* lower panels */
+#settings .grid2 { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+#settings .panel { background: var(--app-panel); border: 1px solid var(--app-line); }
+#settings .panel > h4 { padding: 12px 14px; border-bottom: 1px solid var(--app-line); }
+#settings .st table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#settings th, #settings td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--app-line); vertical-align: top; }
+#settings th { font: 600 11.5px var(--font-mono); color: var(--app-muted); }
+#settings tr:last-child td { border-bottom: 0; }
+#settings td:first-child, #settings td:nth-child(2) { font-family: var(--font-mono); white-space: nowrap; }
+#settings td:nth-child(2) { color: var(--gold); }
+#settings .kv { display: grid; }
+#settings .kv > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 14px; padding: 12px 14px; border-bottom: 1px solid var(--app-line); align-items: center; }
+#settings .kv > div:last-child { border-bottom: 0; }
+#settings .kv p { grid-column: 1 / -1; color: var(--app-muted); font-size: 12.5px; }
+#settings .kv .v { font: 13px var(--font-mono); color: var(--gold); white-space: nowrap; }
+#settings .switch { display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; color: var(--app-fg); font: 12px var(--font-mono); cursor: not-allowed; }
+#settings .switch .track { width: 34px; height: 18px; background: #3fb950; display: inline-block; position: relative; }
+#settings .switch .track::after { content: ''; position: absolute; top: 3px; right: 3px; width: 12px; height: 12px; background: #07120d; }
+#settings .repo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; padding: 14px; }
+#settings .repo .result { grid-column: 1 / -1; }
+
+@media (max-width: 900px) {
+  #settings .st-body { grid-template-columns: minmax(0, 1fr); }
+  #settings .side { grid-auto-flow: column; justify-content: start; border-right: 0; border-bottom: 1px solid var(--app-line); padding: 8px 12px; overflow-x: auto; }
+  #settings .opts, #settings .grid2 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  #settings .proposed { margin-left: 0; }
+  #settings .conn, #settings .repo { grid-template-columns: minmax(0, 1fr); }
+  #settings .b { justify-self: start; }
+  #settings .st table { min-width: 600px; }
+}
+</style>
+
+<section class="sec" id="settings">
+  <div class="sec-head">
+    <span class="num">04</span>
+    <h2>Settings: where the referee runs</h2>
+    <p>Proposed, not on main. One screen to pick the referee's machine, test it, and read the policy it enforces. The radios and the test button work in this mockup; the results are canned.</p>
+  </div>
+
+  <div class="frame">
+    <div class="frame-bar"><i></i><i></i><i></i><span class="url">localhost:5173/settings</span></div>
+    <div class="frame-body st">
+      <header class="health" aria-label="System health">
+        <span class="lbl">HEALTH</span>
+        <span class="pill">Server <em>ok</em></span>
+        <span class="pill">WebSocket <em>connected</em></span>
+        <span class="pill">Jetson <em data-set-lat>3 ms</em></span>
+        <span class="pill">Model <em>rules</em></span>
+        <span class="pill">Orchestrator <em>ok</em></span>
+        <span class="proposed">proposed, not on main</span>
+      </header>
+
+      <div class="st-body">
+        <nav class="side" aria-label="Settings sections">
+          <a href="#set-where" aria-current="page">Referee</a>
+          <a href="#set-models">Models</a>
+          <a href="#set-policy">Policy</a>
+          <a href="#set-repo">Campus</a>
+        </nav>
+
+        <div class="main">
+          <div>
+            <h3>Settings</h3>
+            <p class="lead">The referee decides allow, ask or deny for every edit. Put it where the agents cannot touch it.</p>
+          </div>
+
+          <fieldset id="set-where">
+            <legend><h4>Where the referee runs</h4></legend>
+            <div class="opts">
+              <label class="opt">
+                <input type="radio" name="set-ref" value="laptop">
+                <span class="opt-top"><span class="dot"></span><b>This laptop</b></span>
+                <span class="url">http://localhost:8700</span>
+                <p>Same machine as the agents. Simplest, but an agent could reach it.</p>
+                <span class="meter"><span>isolation</span><span>low</span><span>setup</span><span>none</span><span>cost</span><span>free</span></span>
+              </label>
+              <label class="opt">
+                <input type="radio" name="set-ref" value="lan">
+                <span class="opt-top"><span class="dot"></span><b>Spare PC on your network</b></span>
+                <span class="url">http://&lt;lan-ip&gt;:8700</span>
+                <p>A second box on your LAN. Separate, but on the same network as the agents.</p>
+                <span class="meter"><span>isolation</span><span>medium</span><span>setup</span><span>install + Ollama</span><span>cost</span><span>a PC you own</span></span>
+              </label>
+              <label class="opt">
+                <input type="radio" name="set-ref" value="jetson" checked>
+                <span class="opt-top"><span class="dot"></span><b>Jetson over USB</b><span class="rec">recommended</span></span>
+                <span class="url">http://192.168.55.1:8700</span>
+                <p>Separate hardware the agents cannot reach. Fallback http://dev.local:8700.</p>
+                <span class="meter"><span>isolation</span><span>high</span><span>setup</span><span>one USB cable</span><span>cost</span><span>a Jetson board</span></span>
+              </label>
+            </div>
+            <div class="conn">
+              <label class="f">Referee URL<input type="text" id="set-url" spellcheck="false" autocomplete="off"></label>
+              <button type="button" class="b" id="set-test">Test connection</button>
+            </div>
+            <div class="result" id="set-result" role="status" aria-live="polite"><span class="muted">Not tested yet.</span></div>
+          </fieldset>
+
+          <div class="grid2">
+            <section class="panel" id="set-models" aria-labelledby="set-models-h">
+              <h4 id="set-models-h">Models per endpoint</h4>
+              <div class="scroll-x">
+                <table>
+                  <thead><tr><th scope="col">Endpoint</th><th scope="col">Runs</th><th scope="col">Job</th></tr></thead>
+                  <tbody>
+                    <tr><td>/check</td><td>rules only</td><td>allow, ask or deny. No model.</td></tr>
+                    <tr><td>/commit_msg</td><td>qwen2.5-coder:3b</td><td>message for each auto-commit</td></tr>
+                    <tr><td>/summarize</td><td>llama3.2:3b</td><td>intent card on merge</td></tr>
+                    <tr><td>/ask</td><td>nomic-embed-text + llama3.2:3b</td><td>ask-why from local history</td></tr>
+                    <tr><td>/scan</td><td>regex secret guard</td><td>keys and .env values, before commit</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="panel" id="set-policy" aria-labelledby="set-policy-h">
+              <h4 id="set-policy-h">Policy</h4>
+              <div class="kv">
+                <div>
+                  <span>Fail closed</span>
+                  <button type="button" class="switch" role="switch" aria-checked="true" aria-disabled="true" aria-describedby="set-fc-why"><span class="track"></span>ON, locked</button>
+                  <p id="set-fc-why">Locked on. If the server or the referee cannot answer, every edit is denied. An agent never edits unchecked.</p>
+                </div>
+                <div><span>Guarded folders</span><span class="v">db/** = ask</span><p>The Sun Dome. A human approves each edit.</p></div>
+                <div><span>Lease TTL</span><span class="v">90 s</span><p>Renewed by the holder. Released on commit, Stop, undo or expiry.</p></div>
+                <div><span>Approval timeout</span><span class="v">60 s</span><p>No answer in 60 s means deny.</p></div>
+              </div>
+            </section>
+          </div>
+
+          <section class="panel" id="set-repo" aria-labelledby="set-repo-h">
+            <h4 id="set-repo-h">Target repo</h4>
+            <div class="repo">
+              <label class="f">Repo path<input type="text" id="set-path" value="~/code/demo" spellcheck="false" autocomplete="off"></label>
+              <button type="button" class="b b-ghost" id="set-rebuild">Rebuild campus</button>
+              <div class="result" id="set-rebuild-out" role="status" aria-live="polite"><span class="muted">scripts/make_campus.py writes campus/campus.json. One building per top-level folder.</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const root = document.getElementById('settings');
+  const $ = s => root.querySelector(s);
+  const url = $('#set-url'), out = $('#set-result'), btn = $('#set-test');
+  const MODELS = 'qwen2.5-coder:3b, llama3.2:3b, nomic-embed-text';
+  const TARGETS = {
+    laptop: { url: 'http://localhost:8700', ms: 1, note: ['st-warn', 'same machine as the agents'] },
+    lan: { url: 'http://<lan-ip>:8700', ms: 9, note: ['st-ok', 'separate machine'] },
+    jetson: { url: 'http://192.168.55.1:8700', ms: 3, note: ['st-ok', 'separate hardware'] },
+  };
+  const row = (cls, ...parts) => out.replaceChildren(...parts.map((t, i) => { const s = BP.el('span', { class: i ? 'muted' : cls }); s.textContent = t; return s; }));
+  const pick = () => { url.value = TARGETS[root.querySelector('input[name=set-ref]:checked').value].url; row('muted', 'Not tested yet.'); };
+  root.querySelectorAll('input[name=set-ref]').forEach(r => r.addEventListener('change', pick));
+  pick();
+
+  btn.addEventListener('click', () => {
+    const t = TARGETS[root.querySelector('input[name=set-ref]:checked').value], u = url.value.trim();
+    btn.disabled = true; row('muted', 'Testing ' + u + ' ...');
+    setTimeout(() => {
+      btn.disabled = false;
+      if (u.includes('<lan-ip>') || !/^https?:\/\/[^\s/]+:\d+/.test(u)) return row('st-bad', 'FAIL', 'Enter the PC address, for example http://192.168.1.40:8700. Until it answers, every edit is denied.');
+      row(t.note[0], 'OK ' + t.ms + ' ms', 'GET /health 200', 'models loaded: ' + MODELS, t.note[1]);
+      $('[data-set-lat]').textContent = t.ms + ' ms';
+    }, 700);
+  });
+
+  const rb = $('#set-rebuild'), rbOut = $('#set-rebuild-out');
+  rb.addEventListener('click', () => {
+    const b = (window.CAMPUS && window.CAMPUS.buildings) || [], folders = b.filter(x => x.folder).length;
+    rbOut.replaceChildren(BP.el('span', { class: 'st-ok' }, 'OK'), BP.el('span', {}, ''));
+    rbOut.lastChild.textContent = 'make_campus.py ' + $('#set-path').value + ' wrote campus/campus.json: ' + b.length + ' buildings, ' + folders + ' from folders, db/ guarded';
+  });
+})();
+</script>
+
+<!-- ===== part: opener ===== -->
+<style>
+#opener .op { position: relative; background: #08120d; color: var(--app-fg); padding: clamp(14px, 3vw, 28px); display: grid; gap: 16px; }
+#opener .op-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12px; color: var(--app-muted); }
+#opener .op-top button { font: inherit; font-size: 12px; padding: 4px 10px; border: 1px solid var(--app-line); background: rgba(237,235,209,0.06); color: var(--app-fg); cursor: pointer; }
+#opener .op-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: clamp(14px, 3vw, 28px); align-items: center; }
+#opener .op h3 { font-family: var(--font-display); font-size: clamp(22px, 3vw, 34px); color: #F7F6EA; line-height: 1.15; min-height: 2.3em; }
+#opener .op .sub { color: var(--app-muted); font-size: 15px; margin-top: 8px; min-height: 3em; }
+#opener .op .swap { transition: opacity 380ms var(--ease-out), transform 380ms var(--ease-out); }
+#opener .op .swap.out { opacity: 0; transform: translateY(6px); }
+#opener .op canvas { width: 100%; border: 1px solid var(--app-line); }
+#opener .op-log { font-family: var(--font-mono); font-size: 12px; background: rgba(0,0,0,0.35); border: 1px solid var(--app-line); padding: 9px 11px; min-height: 76px; display: grid; gap: 2px; align-content: start; }
+#opener .op-log .api { color: #ff8a8e; } #opener .op-log .web { color: #93b4ff; } #opener .op-log .bad { color: #ff6b6b; } #opener .op-log .ok { color: #86efac; }
+#opener .op-with { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 10px; margin-top: 12px; }
+#opener .op-with div { border: 1px solid rgba(74,222,128,0.3); background: rgba(6,78,59,0.25); padding: 9px 11px; font-size: 13px; }
+#opener .op-with b { display: block; font-family: var(--font-display); color: #86efac; font-weight: 600; }
+#opener .op-bar { height: 4px; background: rgba(237,235,209,0.1); }
+#opener .op-bar i { display: block; height: 100%; width: 0; background: #ff6b6b; }
+#opener .op-bar i.ok { background: #4ade80; }
+@media (max-width: 760px) { #opener .op-grid { grid-template-columns: 1fr; } }
+</style>
+
+<section class="sec" id="opener">
+  <div class="sec-head">
+    <span class="num">05</span>
+    <h2>The 10 second problem opener</h2>
+    <p>The same four beats and copy as <code>ProblemOpener.tsx</code> on main, in the pixel skin. Two agents write <code>shared/auth.ts</code> at once, one edit vanishes, there is no history. Then the same run with Bullpen. Loops every 10 s.</p>
+  </div>
+  <div class="frame">
+    <div class="frame-bar"><i></i><i></i><i></i><span class="url">localhost:5173/?fake · 10s opener</span></div>
+    <div class="op" id="op">
+      <div class="op-top"><span id="op-label">WITHOUT BULLPEN · 0s</span><button type="button" id="op-skip">Skip</button></div>
+      <div class="op-grid">
+        <div class="swap" id="op-copy"><h3 id="op-h"></h3><p class="sub" id="op-sub"></p><div id="op-extra"></div></div>
+        <div style="display:grid;gap:10px"><canvas id="op-cv" aria-label="shared/auth.ts as a building, two agents at its door"></canvas><div class="op-log" id="op-log"></div></div>
+      </div>
+      <div class="op-bar"><i id="op-bar"></i></div>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const { USF, AGENT, BULL_ROWS, bullPal, drawRows, drawText, flipH, plate, animate, seg, ease } = BP;
+  const BEATS = [
+    ['Git was built for humans.', 'Two coding agents edit the same shared file at the exact same time with no lease or referee.'],
+    ['Two agents overwrite shared/auth.ts.', "api writes verifyToken(), then web saves right over it. Neither agent knows."],
+    ['The work is gone, and there is no history.', "No blame, no lease queue, no way to undo just one agent's work."],
+    ['Now the same run with Bullpen.', 'Every edit goes through a lease and the Jetson referee first.'],
+  ];
+  const LOGS = [
+    [],
+    [['api', '[api] writing verifyToken() to shared/auth.ts...'], ['web', '[web] writing parseSession() to shared/auth.ts...']],
+    [['bad', '- export function verifyToken(jwt: string) { ... }  // overwritten by web'], ['web', '+ export function parseSession(cookie: string) { ... }'], ['bad', 'git log shared/auth.ts -> (no agent commit history)   WORK LOST']],
+    [['ok', 'api holds shared/auth.ts (lease 90 s) · web waits at the door #1'], ['ok', 'commit a1b2c3d  Bullpen-Agent: api'], ['ok', 'web enters after api commits. Nothing lost.']],
+  ];
+  document.getElementById('op-cv').style.width = '100%';
+  const W = 240, H = 120, { ctx: o } = plate(document.getElementById('op-cv'), W, H, 2);
+  document.getElementById('op-cv').style.aspectRatio = W + ' / ' + H;
+  const pa = bullPal(AGENT.api.B), pw = bullPal(AGENT.web.B);
+  let beat = -1;
+  const $ = id => document.getElementById(id);
+  function setBeat(b) {
+    if (b === beat) return; beat = b;
+    const c = $('op-copy'); c.classList.add('out');
+    const apply = () => {
+      $('op-h').textContent = BEATS[b][0]; $('op-sub').textContent = BEATS[b][1];
+      $('op-extra').innerHTML = b === 3 ? '<div class="op-with"><div><b>Leases</b>Wait at the door instead of overwriting</div><div><b>Jetson referee</b>Hardware guardrails, fail closed</div><div><b>Per-agent undo</b>Roll back one agent cleanly in git</div></div>' : '';
+      $('op-log').innerHTML = LOGS[b].map(([k, t]) => `<span class="${k}">${t.replace(/</g, '&lt;')}</span>`).join('') || '<span style="opacity:.5">$ two agents, one repo, no referee</span>';
+      c.classList.remove('out');
+    };
+    if (beat === b && !$('op-h').textContent) apply(); else setTimeout(apply, BP.reduce ? 0 : 200);
+    $('op-skip').textContent = b === 3 ? 'Enter Bullpen →' : 'Skip';
+    $('op-bar').classList.toggle('ok', b === 3);
+  }
+  function frame(t) {
+    const b = Math.min(3, Math.floor(t / 2.5)), lt = t - b * 2.5; setBeat(b);
+    $('op-label').textContent = (b < 3 ? 'WITHOUT BULLPEN' : 'WITH BULLPEN') + ' · ' + Math.floor(t) + 's';
+    $('op-bar').style.width = (t / 10 * 100) + '%';
+    // scene
+    o.fillStyle = USF.turfMid; o.fillRect(0, 0, W, H);
+    for (let x = 0; x < W; x += 3) for (let y = (x % 2); y < H; y += 5) { o.fillStyle = USF.turfLight; o.fillRect(x, y, 1, 1); }
+    o.fillStyle = USF.roadMid; o.fillRect(0, 92, W, 14); o.fillStyle = USF.roadLight; o.fillRect(0, 94, W, 10);
+    const bad = b === 1 || b === 2, ok = b === 3;
+    const bx = 70, by = 18, bw = 100, bh = 56;
+    o.fillStyle = USF.ink; o.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    o.fillStyle = bad ? '#7a2a2a' : USF.bldgMid; o.fillRect(bx, by, bw, bh); o.fillStyle = bad ? '#a23b3b' : USF.bldgLight; o.fillRect(bx, by, bw, 9);
+    for (let x = bx + 6; x < bx + bw - 8; x += 9) { o.fillStyle = bad ? '#3b1414' : USF.storm; o.fillRect(x, by + 30, 5, 5); }
+    o.fillStyle = USF.ink; o.fillRect(bx + 4, by + 13, 88, 11); drawText(o, 'SHARED/AUTH.TS', bx + 6, by + 15, { color: bad ? '#ff8a8e' : USF.gold });
+    o.fillStyle = USF.ink; o.fillRect(bx + bw / 2 - 6, by + bh - 10, 12, 10); o.fillStyle = USF.evergreen; o.fillRect(bx + bw / 2 - 5, by + bh - 9, 10, 9);
+    if (b === 2) { // smoke: work lost
+      for (let i = 0; i < 6; i++) { const p = (lt * 0.6 + i / 6) % 1; o.fillStyle = `rgba(200,200,200,${0.6 * (1 - p)})`; o.fillRect(bx + 20 + i * 12, by - 4 - p * 16, 6, 4); }
+      drawText(o, 'WORK LOST', bx + bw / 2, by + 40, { color: '#fff', shadow: USF.ink, align: 'center' });
+    }
+    if (ok) { o.strokeStyle = '#4ade80'; o.strokeRect(bx - 3.5, by - 3.5, bw + 7, bh + 7); }
+    // agents
+    if (b <= 1) { // both walk to the door and both go in
+      const k = b === 0 ? seg(lt, 0, 2.5, ease.cubicInOut) : 1;
+      drawRows(o, BULL_ROWS, pa, 10 + k * (bx + bw / 2 - 34), 82, 1);
+      drawRows(o, flipH(BULL_ROWS), pw, W - 30 - k * (W - 30 - (bx + bw / 2 + 12)), 82, 1);
+      if (b === 1) { const f = Math.floor(lt * 6) % 2; drawText(o, f ? 'API!' : 'WEB!', bx + bw / 2, 4, { color: f ? '#ff8a8e' : '#93b4ff', shadow: USF.ink, align: 'center' }); }
+    } else if (b === 2) {
+      drawRows(o, flipH(BULL_ROWS), pw, bx + bw / 2 + 12, 82, 1);
+    } else {
+      const k = seg(lt, 0, 1.2, ease.expoOut);
+      drawRows(o, BULL_ROWS, pa, bx + bw / 2 - 10, 82 - k * 4, 1); // inside the door, holding the lease
+      drawRows(o, flipH(BULL_ROWS), pw, bx + bw + 14, 82, 1);
+      o.fillStyle = USF.ink; o.fillRect(bx + bw + 11, 69, 44, 10); drawText(o, 'WAIT #1', bx + bw + 13, 70, { color: USF.gold });
+      o.fillStyle = USF.ink; o.fillRect(bx + 4, by + bh + 3, 0, 0);
+      o.fillStyle = '#e5484d'; o.fillRect(bx + 4, by + bh - 14, 1, 14); o.fillRect(bx + 5, by + bh - 14, 6, 4);
+    }
+  }
+  animate(document.getElementById('op-cv'), frame, { period: 10, still: 8.5 });
+  $('op-skip').addEventListener('click', () => document.getElementById('dashboard').scrollIntoView({ behavior: BP.reduce ? 'auto' : 'smooth' }));
+})();
+</script>
+
+<!-- ===== part: logos ===== -->
+<style>
+#logos .lg-fam { display: grid; gap: 14px; min-width: 0; }
+#logos .lg-fam h3 { font-size: 20px; color: var(--accent); }
+#logos .lg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+#logos .lg-card { display: grid; gap: 10px; padding: 14px; background: var(--surface); border: 2px solid var(--rule); min-width: 0; }
+#logos .lg-card.pick { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+#logos .lg-card header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#logos .lg-card h4 { margin: 0; font: 600 16px/1.2 var(--font-display); }
+#logos .lg-id { font: 600 12px/1 var(--font-mono); color: var(--muted); }
+#logos .lg-badge { margin-left: auto; font: 600 13px/1 var(--font-body); padding: 4px 8px; background: var(--accent); color: var(--accent-fg); }
+#logos .lg-big, #logos .lg-real { display: flex; gap: 8px; flex-wrap: wrap; }
+#logos .tile { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 8px; border: 2px solid var(--rule); }
+#logos .tile.sand { background: #EDEBD1; }
+#logos .tile.forest { background: #072E20; }
+#logos .lg-real .tile { padding: 8px 12px; }
+#logos .lg-real .tile span { font: 11px/1 var(--font-mono); color: #466069; }
+#logos .lg-real .tile.forest span { color: #9DBFB7; }
+#logos .lg-why { font-size: 14px; }
+#logos .lg-why b { color: var(--accent); font-weight: 600; }
+#logos .tabs { display: flex; gap: 2px; padding: 6px 6px 0; width: max-content; }
+#logos .tabs.light { background: #E2DFC0; }
+#logos .tabs.dark { background: #0D231B; }
+#logos .tab { display: flex; align-items: center; gap: 8px; padding: 7px 12px; min-width: 150px; font: 13px/1 var(--font-body); }
+#logos .tabs.light .tab { background: #F7F6EA; color: #0D231B; }
+#logos .tabs.dark .tab { background: #072E20; color: #EDEBD1; }
+#logos .tab small { margin-left: auto; font: 11px/1 var(--font-mono); opacity: 0.6; }
+#logos .strip { border: 2px solid var(--rule); min-width: 0; }
+#logos .lg-base { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+#logos .lg-base .tile { padding: 6px 10px; }
+#logos .lockups { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+#logos .lockup { display: flex; align-items: center; gap: 16px; padding: 22px 20px; border: 2px solid var(--rule); min-width: 0; }
+#logos .lockup.sand { background: #EDEBD1; color: #466069; }
+#logos .lockup.forest { background: #072E20; color: #9DBFB7; }
+#logos .lockup div { display: grid; gap: 8px; min-width: 0; }
+#logos .lockup p { font: 500 14px/1.3 var(--font-body); }
+</style>
+
+<section class="sec" id="logos">
+  <div class="sec-head">
+    <span class="num">06</span>
+    <h2>Two bulls, five iterations each</h2>
+    <p>The pen and the map pin are gone. Each bull below has a native 16 px grid, drawn by hand. The 32 px grid is a 2x upscale with hand-placed eye glints. Every mark is shown at real size on sand and on deep forest, where the outline flips to sand.</p>
+  </div>
+
+  <div class="lg-base">
+    <span class="note">v2 baseline</span>
+    <div class="tile sand" id="lg-base-sand"></div>
+    <div class="tile forest" id="lg-base-forest"></div>
+  </div>
+
+  <div class="lg-fam">
+    <h3>Bull head</h3>
+    <div class="lg-grid" id="lg-H"></div>
+    <div class="strip scroll-x"><div class="tabs light" id="lg-tabs-H-l"></div><div class="tabs dark" id="lg-tabs-H-d"></div></div>
+  </div>
+
+  <div class="lg-fam">
+    <h3>Spark bull</h3>
+    <div class="lg-grid" id="lg-S"></div>
+    <div class="strip scroll-x"><div class="tabs light" id="lg-tabs-S-l"></div><div class="tabs dark" id="lg-tabs-S-d"></div></div>
+  </div>
+
+  <div class="lg-fam">
+    <h3>Lockup</h3>
+    <p class="note">H2 is the main mark: favicon, app header, README. S4 is the mascot for the intro and empty states.</p>
+    <div class="lockups" id="lg-lockups"></div>
+  </div>
+</section>
+
+<script>
+(() => {
+  const { mirror, outline, scale2x, pixCanvas, textRows, el } = BP;
+  // Tile palettes. The tile sets the palette, not the page theme, so both always show.
+  const LIGHT = { o: '#0D231B', G: '#006747', E: '#005432', g: '#009374', Y: '#CFC493', s: '#EDEBD1', w: '#F7F6EA', k: '#0D231B', h: '#EDEBD1' };
+  const DARK = { ...LIGHT, o: '#EDEBD1', h: '#072E20' }; // h = hole, always the tile colour
+
+  // Fill grids only. The outline is added by BP.outline. eyes: 16 px coords that get a glint at 32 px.
+  const MARKS = [
+    { id: 'H1', name: 'Longhorn', eyes: [[5, 7], [10, 7]],
+      line: 'Horns run flat to the edges and tip up. The T silhouette survives 16 px.',
+      rows: mirror(['........', '........', '.Y......', '.Y......', '.YYY....', '..YYYYGG', '....GGGG', '....GkGG', '....GGGG', '....EGGG', '....ssss', '....ssss', '....skss', '.....sss', '........', '........']) },
+    { id: 'H2', name: 'Nose ring', eyes: [[4, 7], [11, 7]], pick: 'The ring says bull, not cow. Crescent horns keep a clean gap from the head, so the shape holds at 16 px on both tiles.',
+      line: 'Crescent horns curl inward. A gold nose ring hangs from the muzzle.',
+      rows: mirror(['........', '...Y....', '..Y.....', '.Y......', '.Y...GGG', '.YYGGGGG', '.EEGGGGG', '...GkGGG', '...GGGGG', '....GGGG', '....ssss', '....skss', '....sYss', '.....Yhh', '......YY', '........']) },
+    { id: 'H3', name: 'Three-quarter', eyes: [[4, 7], [10, 7]],
+      line: 'The head turns left. The near horn is larger, the muzzle shifts toward the turn.',
+      rows: ['................', '.............Y..', '..Y..........Y..', '..Y.........YY..', '...Y.GGGGGGYY...', '....GGGGGGGGEE..', '...GGGGGGGGGGE..', '...GkGGGGGkGG...', '...GGGGGGGGGE...', '..GGGGGGGGGE....', '..sssssGGGE.....', '.sksskssGE......', '.ssssssE........', '..ssss..........', '................', '................'] },
+    { id: 'H4', name: 'Profile', eyes: [[8, 6]],
+      line: 'Side view facing right. One horn rises forward. The jaw line is negative space.',
+      rows: ['................', '.........Y......', '........YY......', '.......YY.......', '...GGYYYGGG.....', '.EEGGGGGGGGG....', '..EGGGGGkGGGG...', '..GGGGGGGGGGGG..', '..GGGGGGGGGGGss.', '.GGGGGGGGGGGsks.', '.GGGGGGGEGGssss.', '.GGGGGGE..sss...', '.GGGGGE.........', '.GGGGG..........', '.GGGG...........', '................'] },
+    { id: 'H5', name: 'Chevron', eyes: [[4, 8], [11, 8]],
+      line: 'Geometric. One gold crescent over a green V. Reads as a down arrow too.',
+      rows: mirror(['........', '.Y......', '.Y......', '.YY.....', '..YY....', '...YYYYY', '..GGGGGG', '..GGGGGG', '...GkGGG', '...GGGGG', '....GGGG', '....EGGG', '.....GGG', '.....Gss', '......ss', '........']) },
+    { id: 'S1', name: 'Plump', eyes: [[4, 6], [11, 6]],
+      line: 'v2 cleaned up. Rounder body, tall eyes, sand snout, no pink.',
+      rows: mirror(['........', '.Y......', '.YY.....', '..YYGGGG', '..GGGGGG', '.gGGGGGG', '.GGGkGGG', '.GGGkGGG', '.GGGGGGG', '.GGGGsss', '.GGGssks', '..GGssss', '..GGGsss', '...GGGGG', '.....GGG', '........']) },
+    { id: 'S2', name: 'Turned', eyes: [[2, 6], [7, 6]],
+      line: 'Three-quarter view. Face slides left, the back of the body carries the shade.',
+      rows: ['................', '.............Y..', '..Y..........YY.', '..YY.GGGGGG.YY..', '...YGGGGGGGGY...', '..GGGGGGGGGGGE..', '.GkGGGGkGGGGGGE.', '.GkGGGGkGGGGGGE.', '.GGGGGGGGGGGGGE.', '.sssssGGGGGGGGE.', '.skskssGGGGGGGE.', '..sssssGGGGGGE..', '...GGGGGGGGGEE..', '....GGGGGGGEE...', '......GGGGG.....', '................'] },
+    { id: 'S3', name: 'Side walk', eyes: [[10, 5]],
+      line: 'Full body in profile with stubby legs. Closest to the campus sprite.',
+      rows: ['................', '.............Y..', '............YY..', '....GGGGGGGGY...', '..GGGGGGGGGGGE..', '.GGGGGGGGGkGGG..', '.GGGGGGGGGGGsss.', '.GGGGGGGGGGGssk.', '.GGGGGGGGGGGss..', '.EGGGGGGGGGGG...', '..EGGGGGGGGGE...', '...EEEEEEEEE....', '...GG....GG.....', '...GG....GG.....', '...EE....EE.....', '................'] },
+    { id: 'S4', name: 'Spark crest', eyes: [[3, 7], [11, 7]], pick: 'The spark on the forehead gives the name a shape. Big 2x2 eyes stay open at 16 px, and the wide bean body is the most mascot of the five.',
+      line: 'A gold spark sits between wide horns. Bean body, big eyes.',
+      rows: mirror(['........', '........', '.Y.....Y', '.Y....YY', '.YY....Y', '..YYGGGG', '..GGGGGG', '.GGkkGGG', '.GGkkGGG', '.GGGGGGG', '.GGGGsss', '.GGGssks', '..GGssss', '...GGGGG', '........', '........']) },
+    { id: 'S5', name: 'Coin', eyes: [],
+      line: 'Inverted. A sand bull cut out of a green disc with a gold rim.',
+      rows: mirror(['........', '.....YYY', '...YYGGG', '..YGsGGG', '..YGsGGG', '.YGGssGG', '.YGGGsss', '.YGGGsGs', '.YGGGsss', '.YGGGGss', '.YGGGsss', '..YGGsGs', '..YGGsss', '...YYGGs', '.....YYY', '........']) },
+  ];
+  const r16 = m => outline(m.rows, 'o');
+  const r32 = m => { // scale2x, 1 px outline, then the hand-placed eye glints
+    const g = outline(scale2x(m.rows), 'o').map(r => [...r]);
+    m.eyes.forEach(([x, y]) => { g[y * 2][x * 2] = 'w'; });
+    return g.map(r => r.join(''));
+  };
+  const tile = (cls, ...kids) => { const t = el('div', { class: 'tile ' + cls }); t.append(...kids); return t; };
+  const real = (cls, m, pal) => {
+    const t = el('div', { class: 'tile ' + cls });
+    t.append(pixCanvas(r32(m), pal, 1, m.id + ' at 32 px'), pixCanvas(r16(m), pal, 1, m.id + ' at 16 px'), el('span', {}, '32 16'));
+    return t;
+  };
+
+  for (const fam of ['H', 'S']) {
+    const grid = document.getElementById('lg-' + fam);
+    for (const m of MARKS.filter(m => m.id[0] === fam)) {
+      const c = el('article', { class: 'lg-card' + (m.pick ? ' pick' : '') });
+      const head = el('header'); head.append(el('span', { class: 'lg-id' }, m.id), el('h4', {}, m.name));
+      if (m.pick) head.append(el('span', { class: 'lg-badge' }, 'Pick'));
+      const big = el('div', { class: 'lg-big' });
+      big.append(tile('sand', pixCanvas(r32(m), LIGHT, 4, m.id + ' large on sand')), tile('forest', pixCanvas(r32(m), DARK, 4, m.id + ' large on forest')));
+      const sm = el('div', { class: 'lg-real' }); sm.append(real('sand', m, LIGHT), real('forest', m, DARK));
+      c.append(head, big, sm, el('p', { class: 'lg-why' }, m.line + (m.pick ? ' <b>Why this one:</b> ' + m.pick : '')));
+      grid.append(c);
+      for (const [side, pal] of [['l', LIGHT], ['d', DARK]]) {
+        const tab = el('div', { class: 'tab' }); tab.append(pixCanvas(r16(m), pal, 1, m.id + ' favicon'), el('span', {}, 'Bullpen'), el('small', {}, m.id));
+        document.getElementById(`lg-tabs-${fam}-${side}`).append(tab);
+      }
+    }
+  }
+
+  // v2 baseline, unchanged grids and palette (pink included) for comparison.
+  const V2L = { o: '#0D231B', G: '#006747', g: '#009374', Y: '#CFC493', w: '#FFFFFF', k: '#0D231B', n: '#D7A984', p: '#E8A0A0' };
+  const V2D = { ...V2L, o: '#EDEBD1', G: '#009374', g: '#9CCB3B' };
+  const V2 = [
+    { id: 'L1', rows: mirror(['........', '.Y......', '.Y......', '.YY.....', '..YY.GGG', '.ggGGGGG', '.ggGGGGG', '...GwkGG', '...GGGGG', '...GGGGG', '....Gnnn', '....nnnn', '....nnkn', '.....nnn', '........', '........']) },
+    { id: 'L5', rows: mirror(['........', '.Y......', '.YY.....', '..YY.ggG', '...YgGGG', '...GGGGG', '.GGGGGGG', '..GGwkGG', '..GGkkGG', '.GGpGGGG', '...GGGGk', '..GGGGGG', '...GGGGG', '.....GGG', '........', '........']) },
+  ];
+  for (const [id, pal] of [['lg-base-sand', V2L], ['lg-base-forest', V2D]]) {
+    const box = document.getElementById(id);
+    V2.forEach(m => box.append(pixCanvas(outline(scale2x(m.rows), 'o'), pal, 1, 'v2 ' + m.id + ' 32 px'), pixCanvas(outline(m.rows, 'o'), pal, 1, 'v2 ' + m.id + ' 16 px')));
+  }
+
+  // Lockups: mark + pixel wordmark + tagline.
+  const word = textRows('BULLPEN');
+  const lockups = document.getElementById('lg-lockups');
+  for (const id of ['H2', 'S4']) {
+    const m = MARKS.find(x => x.id === id);
+    for (const [cls, pal, ink] of [['sand', LIGHT, '#006747'], ['forest', DARK, '#EDEBD1']]) {
+      const box = el('div', { class: 'lockup ' + cls }), txt = el('div');
+      txt.append(pixCanvas(word, { '#': ink }, 4, 'Bullpen'), el('p', {}, 'Source control for AI agents'));
+      box.append(pixCanvas(r32(m), pal, 2, id + ' mark'), txt);
+      lockups.append(box);
+    }
+  }
+})();
+</script>
+
+<!-- ===== part: intros ===== -->
+<style>
+#intros .in-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 560px), 1fr)); gap: 18px; }
+#intros .in-card { display: grid; gap: 12px; padding: 14px; background: var(--surface); border: 2px solid var(--rule); min-width: 0; }
+#intros .in-card.pick { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+#intros .in-card header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+#intros .in-card h3 { font-size: 18px; }
+#intros .in-badge { font: 600 13px/1 var(--font-body); padding: 4px 8px; background: var(--accent); color: var(--accent-fg); }
+#intros .in-replay { margin-left: auto; font: 600 13px/1 var(--font-body); padding: 7px 12px; border: 2px solid var(--fg); background: var(--surface-2); color: var(--fg); cursor: pointer; transition: background 160ms var(--ease-out); }
+#intros .in-replay:hover { background: var(--rule); }
+#intros .in-live { width: 100%; height: auto; border: 2px solid var(--frame); }
+#intros .in-keys { display: flex; gap: 8px; padding-bottom: 4px; }
+#intros .in-keys figure { margin: 0; display: grid; gap: 4px; flex: 0 0 auto; }
+#intros .in-keys canvas { width: 150px; height: auto; display: block; border: 1px solid var(--rule); }
+#intros .in-keys figcaption { font: 12px/1 var(--font-mono); color: var(--muted); }
+#intros .in-beats { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px; }
+#intros .in-beats b { font: 600 12px/1.6 var(--font-mono); color: var(--muted); display: inline-block; min-width: 104px; margin-right: 6px; }
+#intros .in-rec { font-size: 15px; padding: 12px 14px; border-left: 4px solid var(--accent); background: var(--surface); }
+</style>
+
+<section class="sec" id="intros">
+  <div class="sec-head">
+    <span class="num">07</span>
+    <h2>Intro: 5 second title card</h2>
+    <p>Four ways to open the demo video. Each one ends on the same still lockup from 4.0 to 5.0 s, so the editor can cut anywhere in that second. Every frame is a pure function of time, ready to port to Remotion at 1920x1080 and 30 fps.</p>
+  </div>
+  <p class="in-rec"><b>Pick A.</b> The bull builds itself the way the agents build code, and the full lockup lands by 3.6 s, so it holds a clean second before the cut.</p>
+  <div class="in-grid" id="in-grid"></div>
+</section>
+
+<script>
+(() => {
+/*
+  Port to Remotion (1920x1080, 30 fps)
+  - Each option is draw(ctx, t): t in seconds, t = frame / 30. 150 frames = 5 s.
+  - Logical canvas is 480x270. In the Remotion <canvas width={1920} height={1080}>, call
+    ctx.setTransform(4, 0, 0, 4, 0, 0) and ctx.imageSmoothingEnabled = false once per frame, then draw(ctx, frame / 30).
+  - draw paints its own full background and keeps no state between frames, so any frame renders alone.
+  - Helpers used from window.BP: USF, BULL_ROWS, bullPal, outline, rowsToCanvas, GLYPHS (5x7 caps), hash (seeded random), seg, ease, lerp, clamp.
+    Copy shared.js as is; nothing here touches the DOM except the sprite caches below (offscreen canvases).
+  - The lockup is still from t = 4.0 to 5.0. Every effect reaches zero by 3.7 s.
+*/
+  const { USF, BULL_ROWS, bullPal, outline, rowsToCanvas, GLYPHS, hash, seg, ease, lerp } = BP;
+  const W = 480, H = 270, BG = '#072E20', SAND = USF.sand, GOLD = USF.gold;
+
+  // Lowercase 5x7 glyphs so the tagline reads exactly "Source control for AI agents".
+  const LOW = {
+    a: ['.....', '.....', '.###.', '....#', '.####', '#...#', '.####'], c: ['.....', '.....', '.###.', '#....', '#....', '#...#', '.###.'],
+    e: ['.....', '.....', '.###.', '#...#', '#####', '#....', '.###.'], f: ['..##.', '.#..#', '.#...', '###..', '.#...', '.#...', '.#...'],
+    g: ['.....', '.####', '#...#', '#...#', '.####', '....#', '.###.'], l: ['.##..', '..#..', '..#..', '..#..', '..#..', '..#..', '.###.'],
+    n: ['.....', '.....', '#.##.', '##..#', '#...#', '#...#', '#...#'], o: ['.....', '.....', '.###.', '#...#', '#...#', '#...#', '.###.'],
+    r: ['.....', '.....', '#.##.', '##..#', '#....', '#....', '#....'], s: ['.....', '.....', '.####', '#....', '.###.', '....#', '####.'],
+    t: ['.#...', '.#...', '####.', '.#...', '.#...', '.#..#', '..##.'], u: ['.....', '.....', '#...#', '#...#', '#...#', '#..##', '.##.#'],
+  };
+  const glyph = (ctx, ch, x, y, cell, color) => {
+    const g = LOW[ch] || GLYPHS[ch.toUpperCase()] || GLYPHS['?']; ctx.fillStyle = color;
+    for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) if (g[r][c] === '#') ctx.fillRect(Math.round(x + c * cell), Math.round(y + r * cell), cell, cell);
+  };
+  const wordW = (s, cell) => (s.length * 6 - 1) * cell;
+
+  // Lockup layout (shared by all four so the held frame is identical in structure).
+  const TITLE = 'BULLPEN', TC = 4, TX = W / 2 - wordW(TITLE, TC) / 2, TY = 148;
+  const TAG = 'Source control for AI agents', GC = 2, GX = W / 2 - wordW(TAG, GC) / 2, GY = 194;
+  const WORDS = []; { let i = 0; for (const w of TAG.split(' ')) { WORDS.push({ w, x: GX + i * 6 * GC }); i += w.length + 1; } }
+
+  // Title letters lift 10 px and fade in, one by one. p(i) returns 0..1 per letter.
+  function title(ctx, p) {
+    for (let i = 0; i < TITLE.length; i++) { const k = p(i); if (k <= 0) continue;
+      ctx.globalAlpha = k; const x = TX + i * 6 * TC, y = TY + (1 - k) * 10;
+      glyph(ctx, TITLE[i], x + TC, y + TC, TC, '#003822'); glyph(ctx, TITLE[i], x, y, TC, SAND); }
+    ctx.globalAlpha = 1;
+  }
+  function tagline(ctx, p) {
+    WORDS.forEach((o, j) => { const k = p(j); if (k <= 0) return; ctx.globalAlpha = k;
+      [...o.w].forEach((ch, i) => glyph(ctx, ch, o.x + i * 6 * GC, GY + (1 - k) * 6, GC, GOLD)); });
+    ctx.globalAlpha = 1;
+  }
+  const stagger = (t, t0, step, dur) => i => seg(t, t0 + i * step, t0 + i * step + dur, ease.expoOut);
+  const bg = (ctx, c = BG) => { ctx.fillStyle = c; ctx.fillRect(0, 0, W, H); };
+
+  // Dev's bull, green body, gold horns, sand outline so the shade and far legs read on forest.
+  const PAL = { ...bullPal(USF.green), h: GOLD, o: SAND };
+  const BULL = outline(BULL_ROWS, 'o');                       // 22 x 17
+  const RUN = outline(BULL_ROWS.map((r, y) => y < 12 ? r : ['..cc...dd..cc...dd..', '..cc...dd..cc...dd..', '..kk...kk..kk...kk..'][y - 12]), 'o');
+  const BC = 4, BW = BULL[0].length * BC, BX = W / 2 - BW / 2, BY = 64;
+  const bullImg = rowsToCanvas(BULL, PAL), runImg = rowsToCanvas(RUN, PAL);
+  const sprite = (ctx, img, x, y, cell = BC) => { ctx.imageSmoothingEnabled = false; ctx.drawImage(img, Math.round(x), Math.round(y), img.width * cell, img.height * cell); };
+  const CELLS = []; BULL.forEach((r, y) => [...r].forEach((c, x) => { if (c !== '.') CELLS.push({ x, y, col: PAL[c] }); }));
+
+  // A. Pixel build-in: cells drop in from above, hooves first, seeded jitter.
+  function build(ctx, t) {
+    t = Math.min(t, 5); ctx.save(); bg(ctx);
+    CELLS.forEach((c, i) => {
+      const s = 0.15 + (1 - c.y / 17) * 0.6 + hash(i, 7) * 0.5, p = seg(t, s, s + 0.5, ease.expoOut);
+      if (p <= 0) return; ctx.globalAlpha = Math.min(1, p * 1.4); ctx.fillStyle = c.col;
+      ctx.fillRect(BX + c.x * BC, Math.round(BY + c.y * BC - (1 - p) * 36), BC, BC);
+    });
+    ctx.globalAlpha = 1;
+    title(ctx, stagger(t, 1.5, 0.07, 0.55)); tagline(ctx, stagger(t, 2.4, 0.16, 0.5));
+    ctx.restore();
+  }
+
+  // B. Charge across: expo-out run from off screen, 2-frame legs keyed to distance, seeded dust.
+  const runX = t => lerp(-300, BX, seg(t, 0, 2.2, ease.expoOut));
+  function charge(ctx, t) {
+    t = Math.min(t, 5); ctx.save(); bg(ctx);
+    const ground = BY + BULL.length * BC - 2;
+    for (let i = 0; i < 26; i++) { // puff i is born at ti where the bull's back hooves were
+      const ti = 0.3 + i * 0.05, a = t - ti, life = 0.9 + hash(i, 3) * 0.6; if (a < 0 || a > life) continue;
+      const r = Math.round(2 + a * 7 * (0.6 + hash(i, 5))), x = runX(ti) + 8 + hash(i, 9) * 14 - a * 14, y = ground - hash(i, 11) * 6 - a * 6;
+      ctx.globalAlpha = 0.4 * (1 - a / life) * (1 - i / 30); ctx.fillStyle = SAND;
+      ctx.fillRect(Math.round(x - r), Math.round(y - r / 2), r * 2, r); ctx.fillRect(Math.round(x - r / 2), Math.round(y - r), r, r * 2);
+    }
+    ctx.globalAlpha = 1;
+    const x = runX(t), moving = runX(t + 0.03) - x > 0.4, step = moving && Math.floor((x + 300) / 14) % 2 === 1;
+    sprite(ctx, step ? runImg : bullImg, x, BY - (step ? 2 : 0));
+    title(ctx, stagger(t, 1.9, 0.07, 0.55)); tagline(ctx, stagger(t, 2.6, 0.15, 0.5));
+    ctx.restore();
+  }
+
+  // C. Soft stamp: the H2 mark (Part 1 pick, duplicated here) settles from 1.4x, a gold ink ring spreads and fades.
+  const MARK = outline(BP.scale2x(BP.mirror(['........', '...Y....', '..Y.....', '.Y......', '.Y...GGG', '.YYGGGGG', '.EEGGGGG', '...GkGGG', '...GGGGG', '....GGGG', '....ssss', '....skss', '....sYss', '.....Yhh', '......YY', '........'])), 'o')
+    .map((r, y) => (y === 14 ? r.slice(0, 8) + 'w' + r.slice(9, 22) + 'w' + r.slice(23) : r));
+  const markImg = rowsToCanvas(MARK, { o: SAND, G: USF.green, E: USF.evergreen, Y: GOLD, s: SAND, w: '#F7F6EA', k: USF.ink, h: BG });
+  const MC = 2, MCX = W / 2, MCY = 64 + 32;
+  function ring(ctx, r, alpha) {
+    if (alpha <= 0) return; ctx.globalAlpha = alpha; ctx.fillStyle = GOLD;
+    const n = Math.ceil(r * 2.2);
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; ctx.fillRect(Math.round(MCX + Math.cos(a) * r) - 1, Math.round(MCY + Math.sin(a) * r) - 1, 2, 2); }
+    ctx.globalAlpha = 1;
+  }
+  function stamp(ctx, t) {
+    t = Math.min(t, 5); ctx.save(); bg(ctx);
+    ring(ctx, 38 + seg(t, 0.75, 2.0, ease.expoOut) * 92, 0.7 * (1 - seg(t, 0.75, 2.0)) * (t >= 0.75));
+    ring(ctx, 38 + seg(t, 0.95, 2.2, ease.expoOut) * 70, 0.35 * (1 - seg(t, 0.95, 2.2)) * (t >= 0.95));
+    const p = seg(t, 0.2, 1.1, ease.expoOut), s = 1.4 - 0.4 * p, size = MARK.length * MC * s;
+    ctx.globalAlpha = seg(t, 0.2, 0.55); ctx.imageSmoothingEnabled = false;
+    if (t >= 0.2) ctx.drawImage(markImg, Math.round(MCX - size / 2), Math.round(MCY - size / 2 - (1 - p) * 24), Math.round(size), Math.round(size));
+    ctx.globalAlpha = 1;
+    title(ctx, stagger(t, 1.5, 0.07, 0.55)); tagline(ctx, stagger(t, 2.3, 0.16, 0.5));
+    ctx.restore();
+  }
+
+  // D. Door-open reveal: evergreen pen doors with gold trim and an X brace slide apart from the center.
+  function doorPanel(ctx, x0) {
+    const w = W / 2; ctx.fillStyle = USF.evergreen; ctx.fillRect(x0, 0, w, H);
+    ctx.fillStyle = '#004A2C'; for (let x = x0 + 20; x < x0 + w; x += 20) ctx.fillRect(x, 0, 2, H);
+    ctx.fillStyle = GOLD; const m = 14;
+    ctx.fillRect(x0 + m, m, w - 2 * m, 4); ctx.fillRect(x0 + m, H - m - 4, w - 2 * m, 4);
+    ctx.fillRect(x0 + m, m, 4, H - 2 * m); ctx.fillRect(x0 + w - m - 4, m, 4, H - 2 * m);
+    const iw = w - 2 * m - 8, ih = H - 2 * m - 8;
+    for (let i = 0; i <= ih; i += 2) { const y = m + 4 + i, dx = Math.round(i / ih * (iw - 4));
+      ctx.fillRect(x0 + m + 4 + dx, y, 4, 2); ctx.fillRect(x0 + m + 4 + iw - 4 - dx, y, 4, 2); }
+  }
+  function door(ctx, t) {
+    t = Math.min(t, 5); ctx.save(); bg(ctx);
+    sprite(ctx, bullImg, BX, BY);
+    title(ctx, stagger(t, 1.6, 0.07, 0.55)); tagline(ctx, stagger(t, 2.4, 0.16, 0.5));
+    const o = seg(t, 0.7, 2.1, ease.expoOut) * (W / 2 + 4);
+    if (o < W / 2) {
+      doorPanel(ctx, -o); doorPanel(ctx, W / 2 + o);
+      ctx.fillStyle = GOLD; ctx.fillRect(Math.round(W / 2 - o - 10), H / 2 - 12, 4, 24); ctx.fillRect(Math.round(W / 2 + o + 6), H / 2 - 12, 4, 24); // handles
+    }
+    ctx.restore();
+  }
+
+  window.BP_INTROS = { build, charge, stamp, door };
+
+  const OPTS = [
+    { key: 'build', name: 'A. Pixel build-in', pick: true, beats: [
+      ['0.0 to 1.8 s', 'The bull builds cell by cell, hooves first, each cell dropping in with expo-out.'],
+      ['1.5 to 2.5 s', 'BULLPEN lifts in letter by letter.'],
+      ['2.4 to 3.6 s', 'The tagline fades in word by word.'],
+      ['3.6 to 5.0 s', 'Lockup holds still. Cut anywhere after 4.0.']] },
+    { key: 'charge', name: 'B. Charge across', beats: [
+      ['0.2 to 2.2 s', 'The bull runs in from the left with a 2-frame leg cycle and a small bob, then eases to a stop.'],
+      ['0.3 to 3.0 s', 'Seeded dust puffs trail its hooves, drift back and settle.'],
+      ['1.9 to 3.7 s', 'Title letters lift in, then the tagline word by word.'],
+      ['3.7 to 5.0 s', 'Lockup holds still.']] },
+    { key: 'stamp', name: 'C. Soft stamp', beats: [
+      ['0.2 to 1.1 s', 'The H2 mark settles from 1.4x to 1x with expo-out.'],
+      ['0.8 to 2.2 s', 'Two gold ink rings spread out and fade. No shake, no flash.'],
+      ['1.5 to 3.4 s', 'Title letters lift in, then the tagline word by word.'],
+      ['3.4 to 5.0 s', 'Lockup holds still.']] },
+    { key: 'door', name: 'D. Door-open reveal', beats: [
+      ['0.0 to 0.7 s', 'Closed pen doors in evergreen with gold trim and an X brace.'],
+      ['0.7 to 2.1 s', 'The doors slide apart from the center and reveal the bull.'],
+      ['1.6 to 3.5 s', 'Title letters lift in, then the tagline word by word.'],
+      ['3.5 to 5.0 s', 'Lockup holds still.']] },
+  ];
+  const { el, plate, animate } = BP, grid = document.getElementById('in-grid');
+  for (const o of OPTS) {
+    const fn = window.BP_INTROS[o.key];
+    const card = el('article', { class: 'in-card' + (o.pick ? ' pick' : '') }), head = el('header');
+    head.append(el('h3', {}, o.name));
+    if (o.pick) head.append(el('span', { class: 'in-badge' }, 'Pick'));
+    const btn = el('button', { class: 'in-replay', type: 'button' }, 'Replay'); head.append(btn);
+    const live = el('canvas', { class: 'in-live', role: 'img', 'aria-label': o.name + ' intro, looping' }); live.style.width = '100%';
+    const { ctx } = plate(live, W, H, 2);
+    const keys = el('div', { class: 'in-keys scroll-x' });
+    for (const kt of [0.4, 1.2, 2.2, 3.2, 4.5]) {
+      const cv = el('canvas', { role: 'img', 'aria-label': `${o.name} at ${kt} s` }); cv.style.width = '150px';
+      const k = plate(cv, W, H, 1); cv.classList.remove('px'); fn(k.ctx, kt);
+      const f = el('figure'); f.append(cv, el('figcaption', {}, kt.toFixed(1) + ' s')); keys.append(f);
+    }
+    const beats = el('ul', { class: 'in-beats' }); o.beats.forEach(([a, b]) => beats.append(el('li', {}, `<b>${a}</b>${b}`)));
+    card.append(head, live, keys, beats); grid.append(card);
+    const L = animate(live, t => fn(ctx, t), { period: 5.6, still: 4.5 });
+    btn.addEventListener('click', () => { L.t0 = performance.now(); fn(ctx, BP.reduce ? 4.5 : 0); });
+  }
+})();
+</script>
+
+<!-- ===== part: notes ===== -->
+<style>
+#notes table { border-collapse: collapse; font-size: 14px; width: 100%; min-width: 640px; }
+#notes th, #notes td { border: 2px solid var(--frame); padding: 7px 10px; text-align: left; vertical-align: top; }
+#notes th { background: var(--surface-2); font-family: var(--font-display); font-weight: 600; }
+#notes td code { font-size: 12.5px; }
+#notes ul { margin: 0; padding-left: 20px; display: grid; gap: 5px; max-width: 92ch; }
+#notes h3 { font-size: 18px; color: var(--accent); margin-top: 6px; }
+</style>
+<section class="sec" id="notes">
+  <div class="sec-head">
+    <span class="num">08</span>
+    <h2>Notes: what is real, what is proposed</h2>
+    <p>Use this to keep the pitch honest and to port the skin.</p>
+  </div>
+  <div class="scroll-x"><table>
+    <thead><tr><th>Screen</th><th>On main now</th><th>This sheet adds</th><th>Data behind it</th></tr></thead>
+    <tbody>
+      <tr><td>02 App</td><td>Health strip, branch tabs, campus with scaffolds, flags and the door queue, orchestrator box, leases and approvals, commit timeline, referee log. Pixel USF buildings and dark emerald ground (#55).</td><td>The same buildings at half size with a pixel-font nameplate; an Unplug button in the strip</td><td><code>/health</code>, <code>/state</code>, <code>check</code>, <code>commit</code>, <code>claim_*</code> events</td></tr>
+      <tr><td>03 Interior</td><td><code>InteriorScene</code> with rooms from <code>campus.json</code>, agent at its file, mini log, real diff</td><td>Pixel rooms, desks, branch signs</td><td><code>campus.json</code> rooms, leases, <code>hook</code> events, <code>GET /diff</code></td></tr>
+      <tr><td>05 Opener</td><td><code>ProblemOpener.tsx</code>, scripted, no server</td><td>A pixel scene next to the copy</td><td>Scripted on purpose, so it cannot fail live</td></tr>
+      <tr><td>01 Website</td><td>Nothing</td><td>Whole page</td><td>Copy from README and CLAUDE.md</td></tr>
+      <tr><td>04 Settings</td><td>Nothing. The Jetson URL is an env var.</td><td>Whole view</td><td><code>JETSON_URL</code>; models from the Jetson table</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Port to web/ (Caua)</h3>
+  <ul>
+    <li>Campus: already matches main (<code>buildingSprite.ts</code>, #55). The only new piece is the pixel-font nameplate in place of Phaser monospace text.</li>
+    <li>Bulls: <code>makeBull</code> from <code>web/app/bullSprite.ts</code>, unchanged. The sheet uses the same rows.</li>
+    <li>Text on canvas: the 5x7 pixel font here is about 60 lines. Phaser's monospace text is fine if time is short.</li>
+    <li>Side panel: change only tokens (forest panels, gold titles, square chips). The structure on main already matches.</li>
+  </ul>
+  <h3>Hand-off to the demo video</h3>
+  <ul>
+    <li>The four intros in 07 are pure <code>draw(ctx, t)</code> functions on a 480x270 canvas, exposed as <code>window.BP_INTROS</code>. In Remotion: <code>t = frame / 30</code>, scale 4x to 1920x1080, <code>imageSmoothingEnabled = false</code>.</li>
+    <li>Each one holds a clean lockup from 4.0 s to 5.0 s, so the cut can land anywhere in that second.</li>
+    <li>The favicon goes into <code>web/app/icon.png</code> (32 px) once Dev picks a mark from 06.</li>
+  </ul>
+</section>
+</main>
+
+</body>
+</html>
