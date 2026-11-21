@@ -1,6 +1,6 @@
 # Shots to record
 
-- 10 clips and 13 voiceover takes. The short version of this page is `RECORDING.md`. File names must match the slot ids below.
+- 10 app clips and 13 voice lines. Nothing is filmed with a camera. The list is in `SHOTLIST-TODO.md`.
 - `node scripts/record.mjs live` captures all of these in one automated take. This page is the manual fallback.
 - Record each beat as its own clip, 3 to 5 s longer than its slot. The build trims.
 - Screen: a 16:9 box over the app (1504 x 846 on the MacBook), with the app's sound and no microphone. Voice: one take per beat.
@@ -31,20 +31,7 @@ The voice is ElevenLabs: `node scripts/voice.mjs make` writes one take per slot 
 
 ## Clips
 
-| File in `raw/` | Slot | Screen | What must be visible |
-|---|---|---|---|
-| `03-ask` | 10 s | Web app, real mode | Type the ask in the chat box, press Enter. Three bulls walk onto the campus. Speed up with `rate` if the split takes long. |
-| `04-lock` | 10 s | Web app | api holds `shared/auth.ts`, web waits at the door. Lease panel: holder, countdown, queue. |
-| `05-deny` | 11 s | Web app | db reaches for the schema at the Sun Dome. Referee log: the highlighted deny row with the `db/**` rule. db moves to other work. |
-| `06-undo` | 9 s | Web app | Click Undo on web. Scaffolding collapses. web's commits leave the commit timeline. |
-| `07-merge` | 10 s | Web app | Click api's building, show the interior and the diff, click Merge, the intent card, the flash. |
-| `08-unplug` | 10 s | Web app | The referee OFFLINE and blocking edits. Dev pulls the Jetson's cable during the take, or the take shows the OFFLINE rows in the referee log. |
-| `09-evidence` | 9 s | Web app, zoom 150% on the evidence panel | Leases with the TTL countdown running. |
-| `10-campus` | 8 s | Terminal then web app | Run `scripts/make_campus.py` on a second repo, show the new campus, then the commit timeline with `Bullpen-Agent` trailers. |
-| `11-interior` | 6 s | Web app | Building interior: agent at its file, branch sign, mini log, diff. |
-| `12-referee` | 10 s | Web app, zoom 150% on the referee log | Rows with rule, latency and model. |
-
-`01-problem`, `02-title` and `13-close` are generated. Record voiceover takes for all 13 slots.
+The slots, their lengths and what each must show are in `SHOTLIST-TODO.md`. Save a manual clip as `raw/<slot id>.mp4` and remove `src` and `from` from that slot in `timeline.json`.
 
 ## Fallbacks
 

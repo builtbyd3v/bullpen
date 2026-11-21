@@ -9,6 +9,8 @@ export type Slot = {
   // false mutes the clip's own sound (the app's sound effects).
   audio?: boolean;
   still?: boolean;
+  // Problem clip only: plays the animation faster, to fit a shorter slot.
+  speed?: number;
   label?: string;
   shot?: string;
   tagline?: string;

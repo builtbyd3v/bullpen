@@ -123,8 +123,8 @@ function scene(t: number, frame: number): Pen {
   return pen;
 }
 
-export function ProblemCard() {
+export function ProblemCard({ speed = 1 }: { speed?: number }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  return <Stage pen={scene(frame / fps, frame)} />;
+  return <Stage pen={scene((frame / fps) * speed, frame)} />;
 }

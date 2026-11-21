@@ -1,183 +1,131 @@
 1
-00:00:00,000 --> 00:00:02,871
+00:00:00,000 --> 00:00:02,266
 Two agents, two worktrees, one file.
 
 2
-00:00:02,871 --> 00:00:05,822
+00:00:02,266 --> 00:00:04,595
 Both pull requests pass against main.
 
 3
-00:00:05,822 --> 00:00:08,374
+00:00:06,500 --> 00:00:07,928
 Merge one, and the other breaks.
 
 4
-00:00:10,000 --> 00:00:11,106
+00:00:10,000 --> 00:00:11,037
 This is Bullpen.
 
 5
-00:00:11,106 --> 00:00:13,111
+00:00:11,037 --> 00:00:12,917
 Source control for AI agents.
 
 6
-00:00:15,000 --> 00:00:15,514
+00:00:15,000 --> 00:00:15,476
 One ask.
 
 7
-00:00:15,514 --> 00:00:18,338
-The orchestrator splits it into three tasks,
+00:00:15,476 --> 00:00:17,676
+The orchestrator splits it into three
 
 8
-00:00:18,338 --> 00:00:20,777
-and three Claude Code agents walk onto
+00:00:17,676 --> 00:00:19,757
+tasks for three Claude Code agents.
 
 9
-00:00:20,777 --> 00:00:22,767
-campus, each on its own branch.
-
-10
-00:00:25,000 --> 00:00:26,641
+00:00:22,000 --> 00:00:23,633
 Two agents want auth.ts.
 
-11
-00:00:26,641 --> 00:00:28,556
+10
+00:00:23,633 --> 00:00:25,538
 The first takes a live lock.
 
+11
+00:00:25,538 --> 00:00:27,512
+The second waits at the door.
+
 12
-00:00:28,556 --> 00:00:30,470
-The second waits at the door
-
-13
-00:00:30,470 --> 00:00:32,043
-until the file is free.
-
-14
-00:00:35,000 --> 00:00:37,702
+00:00:30,000 --> 00:00:32,297
 The database agent reaches for the schema.
 
+13
+00:00:32,297 --> 00:00:33,555
+The referee says no, so
+
+14
+00:00:33,555 --> 00:00:35,032
+the agent changes its plan.
+
 15
-00:00:37,702 --> 00:00:39,247
-The referee, a Jetson on
+00:00:39,000 --> 00:00:40,844
+Don't like one agent's work?
 
 16
-00:00:39,247 --> 00:00:40,405
-the desk, says no.
-
-17
-00:00:40,405 --> 00:00:42,078
-The agent reads the reason
-
-18
-00:00:42,078 --> 00:00:43,429
-and changes its plan.
-
-19
-00:00:46,000 --> 00:00:47,938
-Don't like what one agent did?
-
-20
-00:00:47,938 --> 00:00:49,359
+00:00:40,844 --> 00:00:42,292
 Undo that agent alone.
 
-21
-00:00:49,359 --> 00:00:51,039
-Its commits roll back, and
+17
+00:00:42,292 --> 00:00:43,873
+The others keep working.
 
-22
-00:00:51,039 --> 00:00:52,589
-the others keep working.
-
-23
-00:00:55,000 --> 00:00:56,337
+18
+00:00:47,000 --> 00:00:48,072
 Happy with another?
 
+19
+00:00:48,072 --> 00:00:49,427
+Read the real diff, then
+
+20
+00:00:49,427 --> 00:00:51,064
+merge through an intent card.
+
+21
+00:00:55,000 --> 00:00:57,210
+Under the pixels, everything is real.
+
+22
+00:00:57,210 --> 00:00:59,420
+Agents lock a file before every edit,
+
+23
+00:00:59,420 --> 00:01:01,809
+and each lock expires in ninety seconds.
+
 24
-00:00:56,337 --> 00:00:59,012
-Open its building, read the real diff,
+00:01:03,000 --> 00:01:04,281
+The referee runs on a
 
 25
-00:00:59,012 --> 00:01:01,617
-and merge through an intent card that
+00:01:04,281 --> 00:01:06,172
+Jetson the agents cannot reach.
 
 26
-00:01:01,617 --> 00:01:03,447
-says what changed and why.
+00:01:06,172 --> 00:01:08,552
+On-device models write the history, and
 
 27
-00:01:05,000 --> 00:01:08,247
-Unplug the Jetson, and the referee goes offline.
+00:01:08,552 --> 00:01:10,504
+a secret guard scans every diff.
 
 28
-00:01:08,247 --> 00:01:09,667
-Every edit is denied.
+00:01:12,000 --> 00:01:13,987
+Unplug it, and every edit is denied.
 
 29
-00:01:09,667 --> 00:01:11,087
+00:01:13,987 --> 00:01:15,146
 Bullpen fails closed.
 
 30
-00:01:15,000 --> 00:01:17,304
-Under the pixels, everything is real.
+00:01:17,000 --> 00:01:18,831
+Every edit is a commit, tagged with
 
 31
-00:01:17,304 --> 00:01:19,546
-Agents lock a file before each edit,
+00:01:18,831 --> 00:01:21,080
+its agent, on your own Claude subscription.
 
 32
-00:01:19,546 --> 00:01:22,162
-and the lock expires after ninety seconds.
-
-33
-00:01:24,000 --> 00:01:25,668
-Point Bullpen at any repo
-
-34
-00:01:25,668 --> 00:01:27,403
-and it builds your campus.
-
-35
-00:01:27,403 --> 00:01:29,205
-Each edit becomes a commit,
-
-36
-00:01:29,205 --> 00:01:30,673
-tagged with its agent.
-
-37
-00:01:33,000 --> 00:01:34,617
-It runs on your own Claude
-
-38
-00:01:34,617 --> 00:01:36,482
-subscription, with no API key.
-
-39
-00:01:38,000 --> 00:01:39,681
-The referee runs on separate
-
-40
-00:01:39,681 --> 00:01:41,663
-hardware the agents cannot reach.
-
-41
-00:01:41,663 --> 00:01:44,365
-Small on-device models write the history, and
-
-42
-00:01:44,365 --> 00:01:46,227
-a secret guard scans each diff.
-
-43
-00:01:49,000 --> 00:01:51,682
-Bullpen stops two agents from writing the same
-
-44
-00:01:51,682 --> 00:01:54,189
-file at once, and records who changed what.
-
-45
-00:01:54,189 --> 00:01:55,589
+00:01:23,000 --> 00:01:24,283
 Git tracks what changed.
 
-46
-00:01:55,589 --> 00:01:58,154
+33
+00:01:24,283 --> 00:01:26,635
 Bullpen controls who's allowed to change it.

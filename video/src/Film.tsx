@@ -67,7 +67,7 @@ export function Film({ slots, cues, mix, music }: FilmProps) {
             {slot.kind === "title" ? (
               <TitleCard tagline={slot.tagline ?? ""} still={slot.still} />
             ) : slot.kind === "problem" ? (
-              <ProblemCard />
+              <ProblemCard speed={slot.speed} />
             ) : slot.clip ? (
               <OffthreadVideo
                 src={staticFile(slot.clip)}

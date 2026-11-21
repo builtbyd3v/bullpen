@@ -6,7 +6,8 @@
     "settings": {
       "stability": 0.3,
       "similarity_boost": 0.75,
-      "style": 0.45
+      "style": 0.45,
+      "speed": 1.1
     }
   },
   "mix": {
@@ -20,40 +21,49 @@
     {
       "id": "01-problem",
       "kind": "problem",
-      "dur": 10,
+      "dur": 6.5,
+      "speed": 1.5,
       "shot": "Generated: two agents in separate worktrees edit shared/auth.ts, both PRs pass, the second merge conflicts.",
-      "vo": "Two agents, two worktrees, one file. Both pull requests pass against main. Merge one, and the other breaks."
+      "vo": "Two agents, two worktrees, one file. Both pull requests pass against main."
     },
     {
-      "id": "02-title",
+      "id": "02-conflict",
+      "kind": "clip",
+      "dur": 3.5,
+      "label": "Clean against main. In conflict with each other.",
+      "shot": "PR conflict view: #14 and #15 both clean against main, the overlapping shared/auth.ts lines highlighted",
+      "vo": "Merge one, and the other breaks."
+    },
+    {
+      "id": "03-title",
       "kind": "title",
       "dur": 5,
       "tagline": "Source control for AI agents",
       "vo": "This is Bullpen. Source control for AI agents."
     },
     {
-      "id": "03-ask",
+      "id": "04-ask",
       "kind": "clip",
-      "dur": 10,
-      "start": 0,
-      "rate": 1.6,
+      "dur": 7,
       "label": "One ask, three agents",
-      "shot": "type one ask in the Orchestrator box, three bulls walk onto campus",
-      "vo": "One ask. The orchestrator splits it into three tasks, and three Claude Code agents walk onto campus, each on its own branch.",
+      "shot": "one ask typed in the Orchestrator box, three bulls walk onto campus",
+      "vo": "One ask. The orchestrator splits it into three tasks for three Claude Code agents.",
       "src": "take-live",
-      "from": "ask"
+      "from": "ask",
+      "start": 0,
+      "rate": 2
     },
     {
-      "id": "04-lock",
+      "id": "05-lock",
       "kind": "clip",
-      "dur": 10,
-      "start": -1,
-      "rate": 1,
+      "dur": 8,
       "label": "File lock: shared/auth.ts",
-      "shot": "api holds shared/auth.ts, web waits at the door, lock countdown runs",
-      "vo": "Two agents want auth.ts. The first takes a live lock. The second waits at the door until the file is free.",
+      "shot": "one agent holds shared/auth.ts, the other waits at the door",
+      "vo": "Two agents want auth.ts. The first takes a live lock. The second waits at the door.",
       "src": "take-live",
       "from": "lock",
+      "start": -1,
+      "rate": 1,
       "zoom": {
         "scale": 1.5,
         "x": 0,
@@ -61,16 +71,16 @@
       }
     },
     {
-      "id": "05-deny",
+      "id": "06-deny",
       "kind": "clip",
-      "dur": 11,
-      "start": -0.5,
-      "rate": 1,
+      "dur": 9,
       "label": "Referee: db/** is guarded",
-      "shot": "db reaches for the schema, referee log shows the block on db/**",
-      "vo": "The database agent reaches for the schema. The referee, a Jetson on the desk, says no. The agent reads the reason and changes its plan.",
+      "shot": "db reaches for the schema, the approval card shows, the edit is denied",
+      "vo": "The database agent reaches for the schema. The referee says no, so the agent changes its plan.",
       "src": "take-live",
       "from": "approval",
+      "start": -0.5,
+      "rate": 1,
       "zoom": {
         "scale": 1.5,
         "x": 100,
@@ -78,55 +88,40 @@
       }
     },
     {
-      "id": "06-undo",
+      "id": "07-undo",
       "kind": "clip",
-      "dur": 9,
-      "start": -2,
-      "rate": 0.8,
+      "dur": 8,
       "label": "Undo one agent",
-      "shot": "click Undo on web, its commits leave the timeline",
-      "vo": "Don't like what one agent did? Undo that agent alone. Its commits roll back, and the others keep working.",
+      "shot": "Undo on web, its commits leave the timeline",
+      "vo": "Don't like one agent's work? Undo that agent alone. The others keep working.",
       "src": "take-live",
-      "from": "undo"
+      "from": "undo",
+      "start": -2,
+      "rate": 0.8
     },
     {
-      "id": "07-merge",
+      "id": "08-merge",
       "kind": "clip",
-      "dur": 10,
-      "start": -1,
-      "rate": 1,
+      "dur": 8,
       "label": "Merge through an intent card",
-      "shot": "open api's building, show the diff, click Merge to main, intent card",
-      "vo": "Happy with another? Open its building, read the real diff, and merge through an intent card that says what changed and why.",
+      "shot": "inside api's building, the real diff, then Merge to main and the intent card",
+      "vo": "Happy with another? Read the real diff, then merge through an intent card.",
       "src": "take-live",
-      "from": "merge"
+      "from": "interior",
+      "start": 1,
+      "rate": 1.5
     },
     {
-      "id": "08-unplug",
+      "id": "09-locks",
       "kind": "clip",
-      "dur": 10,
-      "start": 0,
-      "rate": 1,
-      "label": "Referee offline: every edit denied",
-      "shot": "referee OFFLINE, every edit blocked (cable pulled during the take, or the OFFLINE rows in the referee log)",
-      "vo": "Unplug the Jetson, and the referee goes offline. Every edit is denied. Bullpen fails closed.",
-      "src": "take-live",
-      "from": [
-        "unplug",
-        "referee"
-      ]
-    },
-    {
-      "id": "09-evidence",
-      "kind": "clip",
-      "dur": 9,
-      "start": 0,
-      "rate": 0.75,
+      "dur": 8,
       "label": "File locks before every edit, 90 s TTL",
-      "shot": "Locks panel close-up, countdown running",
-      "vo": "Under the pixels, everything is real. Agents lock a file before each edit, and the lock expires after ninety seconds.",
+      "shot": "Locks panel close-up",
+      "vo": "Under the pixels, everything is real. Agents lock a file before every edit, and each lock expires in ninety seconds.",
       "src": "take-live",
       "from": "locks",
+      "start": 0,
+      "rate": 0.8,
       "zoom": {
         "scale": 1.5,
         "x": 100,
@@ -134,40 +129,16 @@
       }
     },
     {
-      "id": "10-campus",
+      "id": "10-referee",
       "kind": "clip",
       "dur": 9,
-      "start": 8,
-      "rate": 1,
-      "label": "Auto-commit per edit: Bullpen-Agent, Bullpen-Task",
-      "shot": "campus built from a second repo, then the commit timeline",
-      "vo": "Point Bullpen at any repo and it builds your campus. Each edit becomes a commit, tagged with its agent.",
-      "src": "take-live",
-      "from": "run"
-    },
-    {
-      "id": "11-interior",
-      "kind": "clip",
-      "dur": 5,
-      "start": 0.5,
-      "rate": 1,
-      "label": "Your own Claude subscription, no API key",
-      "shot": "inside a building: agent at its file, branch sign, real diff",
-      "vo": "It runs on your own Claude subscription, with no API key.",
-      "src": "take-live",
-      "from": "interior"
-    },
-    {
-      "id": "12-referee",
-      "kind": "clip",
-      "dur": 11,
-      "start": 0,
-      "rate": 0.85,
       "label": "On the Jetson: qwen2.5-coder:3b, llama3.2:3b, nomic-embed-text",
       "shot": "Referee log close-up: rule, latency, model per row",
-      "vo": "The referee runs on separate hardware the agents cannot reach. Small on-device models write the history, and a secret guard scans each diff.",
+      "vo": "The referee runs on a Jetson the agents cannot reach. On-device models write the history, and a secret guard scans every diff.",
       "src": "take-live",
       "from": "referee",
+      "start": 0,
+      "rate": 0.9,
       "zoom": {
         "scale": 1.5,
         "x": 100,
@@ -175,12 +146,39 @@
       }
     },
     {
+      "id": "11-offline",
+      "kind": "clip",
+      "dur": 5,
+      "label": "Referee offline: every edit denied",
+      "shot": "referee OFFLINE, every edit blocked (cable pulled during the take, or the OFFLINE rows in the referee log)",
+      "vo": "Unplug it, and every edit is denied. Bullpen fails closed.",
+      "src": "take-live",
+      "from": [
+        "unplug",
+        "referee"
+      ],
+      "start": 2,
+      "rate": 1
+    },
+    {
+      "id": "12-commits",
+      "kind": "clip",
+      "dur": 6,
+      "label": "Auto-commit per edit: Bullpen-Agent, Bullpen-Task",
+      "shot": "the campus with agents at work and the commit timeline filling",
+      "vo": "Every edit is a commit, tagged with its agent, on your own Claude subscription.",
+      "src": "take-live",
+      "from": "lock",
+      "start": 2,
+      "rate": 1
+    },
+    {
       "id": "13-close",
       "kind": "title",
-      "dur": 11,
+      "dur": 7,
+      "still": true,
       "tagline": "Git tracks what changed. Bullpen controls who's allowed to change it.",
-      "vo": "Bullpen stops two agents from writing the same file at once, and records who changed what. Git tracks what changed. Bullpen controls who's allowed to change it.",
-      "still": true
+      "vo": "Git tracks what changed. Bullpen controls who's allowed to change it."
     }
   ]
 }
