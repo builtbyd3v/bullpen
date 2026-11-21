@@ -20,6 +20,8 @@ const find = (dir, id) => {
 };
 // Cuts dead air from both ends of a take, so captions and the length check follow the speech.
 const TRIM = "silenceremove=start_periods=1:start_threshold=-45dB";
+// Brings every take to the same loudness (-16 LUFS, the usual level for web video), so no line is quiet.
+const LOUD = "loudnorm=I=-16:TP=-1.5:LRA=11";
 
 const VO_MARGIN = 0.3;
 const timeline = JSON.parse(readFileSync(p("timeline.json"), "utf8"));
@@ -89,7 +91,7 @@ for (const slot of timeline.slots) {
   const voOut = `public/vo/${slot.id}.wav`;
   const take = find("raw/vo", slot.id);
   if (take) {
-    ffmpeg(["-i", p("raw/vo", take), "-af", `${TRIM},areverse,${TRIM},areverse`, "-ar", "48000", "-ac", "2", p(voOut)]);
+    ffmpeg(["-i", p("raw/vo", take), "-af", `${TRIM},areverse,${TRIM},areverse,${LOUD}`, "-ar", "48000", "-ac", "2", p(voOut)]);
   } else if (slot.vo) {
     const spoken = slot.vo.replaceAll("auth.ts", "auth dot T S");
     run("say", ["-r", "150", "-o", p("out/say.aiff"), spoken]);
