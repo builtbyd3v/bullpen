@@ -1,10 +1,9 @@
 import { FAKE_CHECKS, FAKE_HOOKS, FAKE_STATE, fakeAsk, fakeDiff, fakeOrchestrate, fakeServer } from "./fake.ts";
 import type { Store } from "./store.ts";
-import type { Action, BullpenState, Envelope, HealthState, Plan } from "./types.ts";
+import type { Action, BullpenState, Envelope, Plan } from "./types.ts";
 
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:8600";
 const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "http://localhost:8650";
-const DEFAULT_JETSON_URL = process.env.NEXT_PUBLIC_JETSON_URL ?? "http://192.168.55.1:8700";
 const TYPES = new Set(["hook", "state", "commit", "undo", "merge", "check", "plan"]);
 
 export const isFake = () => new URLSearchParams(window.location.search).has("fake");
@@ -40,60 +39,22 @@ export function connect(store: Store): () => void {
     store.dispatch({ type: "state", data: FAKE_STATE });
     [...FAKE_CHECKS].reverse().forEach((c) => store.dispatch({ type: "check", data: c }));
     [...FAKE_HOOKS].reverse().forEach((h) => store.dispatch({ type: "hook", data: h }));
-    store.setHealth({
-      server: "ok",
-      ws: "ok",
-      jetson: "ok",
-      model: "ok",
-      modelName: "llama3.2:3b",
-      claude: "ok",
-    });
+    store.setHealth({ server: "ok", ws: "ok", orchestrator: "ok" });
     return () => {};
   }
 
   let closed = false;
   let ws: WebSocket | undefined;
-  let jetsonUrl = DEFAULT_JETSON_URL;
-
+  // Jetson status comes from `check` events (the browser cannot reach the Jetson: no CORS there).
   const pollHealth = async () => {
-    const serverBody = await fetchJson(`${SERVER_URL.replace(/\/$/, "")}/health`);
-    if (closed) return;
-    const serverOk = Boolean(serverBody && serverBody.ok !== false);
-    if (serverBody && typeof serverBody.jetson === "string" && serverBody.jetson) {
-      jetsonUrl = serverBody.jetson;
-    }
-
-    const [jetsonBody, orchBody] = await Promise.all([
-      fetchJson(`${jetsonUrl.replace(/\/$/, "")}/health`),
+    const [serverBody, orchBody] = await Promise.all([
+      fetchJson(`${SERVER_URL.replace(/\/$/, "")}/health`),
       fetchJson(`${ORCHESTRATOR_URL.replace(/\/$/, "")}/health`),
     ]);
     if (closed) return;
-
-    const jetsonOk = Boolean(jetsonBody && jetsonBody.ok !== false);
-    let model: HealthState["model"] = "down";
-    let modelName: string | undefined;
-    if (jetsonOk) {
-      if (jetsonBody?.model_loaded === false) {
-        model = "down";
-      } else {
-        model = "ok";
-        if (typeof jetsonBody?.model === "string" && jetsonBody.model) {
-          modelName = jetsonBody.model;
-        } else if (Array.isArray(jetsonBody?.models) && typeof jetsonBody.models[0] === "string") {
-          modelName = jetsonBody.models[0];
-        } else if (Array.isArray(jetsonBody?.warmed) && typeof jetsonBody.warmed[0] === "string") {
-          modelName = jetsonBody.warmed[0];
-        }
-      }
-    }
-
-    const claudeOk = Boolean(orchBody && orchBody.ok !== false);
     store.setHealth({
-      server: serverOk ? "ok" : "down",
-      jetson: jetsonOk ? "ok" : "down",
-      model,
-      modelName,
-      claude: claudeOk ? "ok" : "down",
+      server: serverBody && serverBody.ok !== false ? "ok" : "down",
+      orchestrator: orchBody && orchBody.ok !== false ? "ok" : "down",
     });
   };
 

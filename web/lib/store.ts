@@ -7,9 +7,7 @@ export type Store = ReturnType<typeof createStore>;
 const INITIAL_HEALTH: HealthState = {
   server: "checking",
   ws: "checking",
-  jetson: "checking",
-  model: "checking",
-  claude: "checking",
+  orchestrator: "checking",
 };
 
 export function createStore() {

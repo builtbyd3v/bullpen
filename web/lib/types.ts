@@ -94,10 +94,7 @@ export type HealthStatus = "checking" | "ok" | "down";
 export type HealthState = {
   server: HealthStatus;
   ws: HealthStatus;
-  jetson: HealthStatus;
-  model: HealthStatus;
-  modelName?: string;
-  claude: HealthStatus;
+  orchestrator: HealthStatus;
 };
 
 export type MergeCard = {

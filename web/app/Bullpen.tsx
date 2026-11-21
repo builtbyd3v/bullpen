@@ -669,7 +669,8 @@ function TopHealthStrip() {
   const store = useStore();
   const health = useBullpen((s) => s.health);
   const replaying = useBullpen((s) => s.replaying);
-  return <HealthStrip store={store} health={health} replaying={replaying} />;
+  const latestCheck = useBullpen((s) => s.checks[0]);
+  return <HealthStrip store={store} health={health} latestCheck={latestCheck} replaying={replaying} />;
 }
 
 export default function Bullpen() {

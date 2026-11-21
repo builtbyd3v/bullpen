@@ -2,7 +2,7 @@
 
 import { triggerReplay } from "@/lib/server.ts";
 import type { Store } from "@/lib/store.ts";
-import type { HealthState, HealthStatus } from "@/lib/types.ts";
+import type { CheckEvent, HealthState, HealthStatus } from "@/lib/types.ts";
 
 const DOT_CLASS: Record<HealthStatus, string> = {
   ok: "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.75)]",
@@ -20,10 +20,11 @@ type PillProps = {
   label: string;
   status: HealthStatus;
   detail?: string;
+  pending?: string;
 };
 
-function HealthPill({ label, status, detail }: PillProps) {
-  const statusLabel = status === "ok" ? (detail ?? "ok") : status === "down" ? "offline" : "checking";
+function HealthPill({ label, status, detail, pending = "checking" }: PillProps) {
+  const statusLabel = status === "ok" ? (detail ?? "ok") : status === "down" ? "offline" : pending;
   return (
     <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 font-mono text-xs">
       <span className={`size-2 rounded-full ${DOT_CLASS[status]}`} aria-hidden="true" />
@@ -36,11 +37,14 @@ function HealthPill({ label, status, detail }: PillProps) {
 type HealthStripProps = {
   store: Store;
   health: HealthState;
+  latestCheck: CheckEvent | undefined;
   replaying: boolean;
 };
 
-// Issue #19 — Top health strip (server, WebSocket, Jetson, model loaded, Claude reachable) + REPLAY label.
-export function HealthStrip({ store, health, replaying }: HealthStripProps) {
+// Issue #19: top health strip + REPLAY label. Jetson and model come from the latest `check` event:
+// rule "offline" means the server could not reach the Jetson (fail closed).
+export function HealthStrip({ store, health, latestCheck, replaying }: HealthStripProps) {
+  const jetson: HealthStatus = !latestCheck ? "checking" : latestCheck.rule === "offline" ? "down" : "ok";
   return (
     <header
       aria-label="System health"
@@ -49,13 +53,9 @@ export function HealthStrip({ store, health, replaying }: HealthStripProps) {
       <span className="mr-1 font-mono text-[11px] font-bold tracking-widest text-white/50 uppercase">Health</span>
       <HealthPill label="Server" status={health.server} />
       <HealthPill label="WebSocket" status={health.ws} detail="connected" />
-      <HealthPill label="Jetson" status={health.jetson} />
-      <HealthPill
-        label="Model"
-        status={health.model}
-        detail={health.modelName ? health.modelName : "loaded"}
-      />
-      <HealthPill label="Claude" status={health.claude} detail="reachable" />
+      <HealthPill label="Jetson" status={jetson} detail={`${latestCheck?.latency_ms ?? 0} ms`} pending="no checks yet" />
+      <HealthPill label="Model" status={jetson} detail={latestCheck?.model || "rules"} pending="no checks yet" />
+      <HealthPill label="Orchestrator" status={health.orchestrator} />
 
       <div className="ml-auto flex items-center gap-2">
         {replaying && (
