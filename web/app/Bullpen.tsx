@@ -228,15 +228,19 @@ function CampusPane() {
 }
 
 // Plain verbs for the UI. The server's `working` reads as editing.
-const STATUS_LABEL: Record<Status, string> = { working: "editing", waiting: "waiting", blocked: "blocked", done: "done" };
-const STATUS_ICON: Record<Status, string> = { working: "✎", waiting: "⏳", blocked: "⛔", done: "✓" };
-const LEGEND: [Status, string][] = [["working", "editing"], ["waiting", "waiting"], ["blocked", "blocked"], ["done", "saved"]];
+// What an agent is doing, as shown: the server's `working` reads as editing only while it holds a lock, else idle.
+type Kind = Status | "idle";
+const STATUS_LABEL: Record<Kind, string> = { working: "editing", waiting: "waiting", blocked: "blocked", done: "done", idle: "idle" };
+const STATUS_ICON: Record<Kind, string> = { working: "✎", waiting: "⏳", blocked: "⛔", done: "✓", idle: "○" };
+const LEGEND: [Kind, string][] = [["idle", "idle"], ["working", "editing"], ["waiting", "waiting"], ["blocked", "blocked"], ["done", "saved"]];
+const kindOf = (status: Status, holdsLock: boolean): Kind => (status === "working" && !holdsLock ? "idle" : status);
 
-const STATUS_CLASS: Record<Status, string> = {
+const STATUS_CLASS: Record<Kind, string> = {
   working: "bg-emerald-500/20 text-emerald-300",
   waiting: "bg-amber-500/20 text-amber-300",
   blocked: "bg-red-500/20 text-red-300",
   done: "bg-white/10 text-white/60",
+  idle: "bg-white/10 text-white/60",
 };
 
 const DECISION_CLASS: Record<CheckDecision, string> = {
@@ -605,6 +609,7 @@ function LeasesAndApprovals() {
 function CommitTimeline() {
   const store = useStore();
   const worktrees = useBullpen((s) => s.data.worktrees);
+  const leases = useBullpen((s) => s.data.leases ?? []);
   const name = (id: string) => campus.buildings.find((b) => b.id === id)?.name ?? id;
 
   return (
@@ -614,7 +619,9 @@ function CommitTimeline() {
           <div className="flex flex-wrap items-center gap-2">
             <Dot color={w.color} />
             <span className="text-base font-bold text-(--agent)">{w.agent}</span>
-            <span className={`rounded px-2 py-0.5 text-sm font-semibold ${STATUS_CLASS[w.status]}`}>{STATUS_LABEL[w.status]}</span>
+            <span className={`rounded px-2 py-0.5 text-sm font-semibold ${STATUS_CLASS[kindOf(w.status, leases.some((l) => l.agent === w.agent))]}`}>
+              {STATUS_LABEL[kindOf(w.status, leases.some((l) => l.agent === w.agent))]}
+            </span>
             <span className="ml-auto font-mono text-xs text-white/60">+{w.ahead}</span>
           </div>
           {w.task && (
@@ -766,14 +773,17 @@ function Activity() {
   const leases = useBullpen((s) => s.data.leases ?? []);
   const now = useNowTick(leases.length > 0);
   if (worktrees.length === 0) return null;
-  const line = (agent: string, status: Status, commits: { files: string[] }[]): [Status, string] => {
+  const line = (agent: string, status: Status, commits: { files: string[] }[]): [Kind, string] => {
     const held = leases.find((l) => l.agent === agent);
     if (status === "blocked") return ["blocked", "blocked"];
     if (status === "waiting" || leases.some((l) => l.waiters.includes(agent))) return ["waiting", "waiting"];
     const ttl = held ? formatTtl(held.expires_at, now) : null;
     if (held) return ["working", `editing ${held.file}${ttl ? ` · ${ttl}` : ""}`];
     const last = commits[0]?.files[0];
-    return last ? ["done", `saved ${last.split("/").pop()}`] : [status, STATUS_LABEL[status]];
+    if (last) return ["done", `saved ${last.split("/").pop()}`];
+    // No lock and nothing saved yet: the agent is parked, not editing.
+    const kind = kindOf(status, false);
+    return [kind, STATUS_LABEL[kind]];
   };
   return (
     <Section title="Activity" src="/state" hint="What each agent is doing right now, from live events.">
