@@ -10,6 +10,22 @@ You chat (or speak) to one orchestrator. It splits the ask into tasks and starts
 
 Pitch: "Your sub writes the code. The Jetson keeps it honest, free, and private." Demo script: `docs/DEMO.md`.
 
+## FINAL SCOPE
+The scope is locked as of 1:00 PM, Nov 21. No new features after this. Anything not in this file or in an open issue is out.
+
+## What judges must see
+The problem is real: AI agents on one repo overwrite each other and leave no history. The pixel campus is the hero, and next to it sits a live evidence panel. Every animation maps to real data.
+
+| Panel | Shows | Real data behind it |
+|---|---|---|
+| Commit timeline | Per-agent commits with the `Bullpen-Agent` and `Bullpen-Task` trailers, plus Undo and Merge per agent | `git log` of each worktree branch (`/state` `commits`, `commit` events) |
+| Leases and approvals | Who holds which file, the TTL countdown, the wait queue, pending approvals with Approve and Deny | `/state` `leases` and `approvals`, `claim_*` and approval events |
+| Jetson referee log | Each `/check` decision with the matched rule, latency and model. Deny is highlighted. Unplugged shows OFFLINE, fail closed | `check` events from the server |
+| Building click | Zooms into the building interior: rooms are its subfolders or hot files, each agent sits at the file it is editing under a sign with its branch, with a live mini log of its actions and the real diff | `campus.json` `rooms`, `/state` `leases`, `hook` events, `GET /diff` |
+| The campus itself | Buildings are the top-level folders of the target repo. Point Bullpen at any repo and it builds your campus | `scripts/make_campus.py` writes `campus/campus.json` |
+
+Problem opener (10 s, in the UI and the pitch): two agents overwrite `auth.ts` with no history. Then the same run with Bullpen, which catches it.
+
 ## The Jetson's role
 1. **Referee.** Every edit is allow, ask or deny from the Jetson, never from the agent. The rules sit on separate hardware the agents cannot reach. Jetson down = every edit denied (the unplug demo).
 2. **Free and private history.** `/commit_msg`, `/summarize` and `/ask` run on local models, so they cost no Claude usage and no code leaves the room.
@@ -57,7 +73,8 @@ Mode: hackathon
 | ALL AI work: `orchestrator/`, agent launching, every model call on the Jetson, and any LLM the server needs (commit messages, intent summaries, ask-why). Also `jetson/` (all of it), `hooks/`, `scripts/`, `demo-seed/` (demo kit and baseline) | Dev | builtbyd3v |
 | `server/` (the whole backend). It contains no model calls: it only calls Dev's Jetson endpoints (`/check`, `/commit_msg`, `/summarize`, `/scan`) | Monisha | Monisha-Repos |
 | `web/` (frontend and design) | Caua | caua-fm234 |
-| `shared/`, `campus/`, `docs/`, `CLAUDE.md`, `AGENTS.md` | shared: change through the contract rule | |
+| Campus generator (`scripts/make_campus.py`, `campus/campus.json`) and sprites | Dev | builtbyd3v |
+| `shared/`, `docs/`, `CLAUDE.md`, `AGENTS.md` | shared: change through the contract rule | |
 
 ## Ports and URLs
 
@@ -94,7 +111,7 @@ agent stops -> hook (Stop) POST server /hook -> server releases that agent's lea
 `shared/events.md` is the source of truth for every request, response and WebSocket event. `campus/campus.json` maps folders to buildings.
 
 ## API per service
-**server (8600)**: `GET /health`, `POST /checkout`, `POST /hook`, `GET /state`, `WS /ws`, `POST /undo/{agent}`, `POST /merge/{agent}`, `POST /approve/{id}`, `GET /history?file=`, `GET /replay`.
+**server (8600)**: `GET /health`, `POST /checkout`, `POST /hook`, `GET /state`, `WS /ws`, `POST /undo/{agent}`, `POST /merge/{agent}`, `POST /approve/{id}`, `GET /history?file=`, `GET /diff?agent=&file=`, `GET /replay`.
 **orchestrator (8650)**: `GET /health`, `POST /orchestrate`, `POST /ask`.
 **Jetson (8700)**: `GET /health`, `POST /check`, `POST /commit_msg`, `POST /ask`, `POST /summarize`, `POST /scan`, `POST /reset`.
 **hook**: `python3 hooks/bullpen_hook.py <Event>` reads Claude Code hook JSON on stdin. Env: `SERVER_URL`, `BULLPEN_AGENT`.
@@ -106,10 +123,10 @@ Open work is tracked as GitHub issues, titled with a checkpoint time and labeled
 |---|---|---|
 | `hooks/` | Posts every event to `/hook`; PreToolUse fails closed | Call `/checkout`; handle allow, wait, ask, deny; timeout over 60 s |
 | `jetson/` | Deployed on the device; `/health`, `/check` (always allow), `/commit_msg`, `/ask` | `/check` rules (`db/**` = ask), `/reset`, pre-warm, `/summarize`, `/scan` secret guard, per-endpoint models, voice (stretch) |
-| `scripts/` | `make_demo.sh`: demo repo, 3 worktrees, hook settings | `demo-seed/`, `demo_start.sh` (starts the 3 agents from the orchestrator's tasks), `demo_reset.sh`, baseline without Bullpen with measured lost edits |
+| `scripts/` | `make_demo.sh`: demo repo, 3 worktrees, hook settings | `make_campus.py` (campus generator),  `demo-seed/`, `demo_start.sh` (starts the 3 agents from the orchestrator's tasks), `demo_reset.sh`, baseline without Bullpen with measured lost edits |
 | `orchestrator/` | Nothing yet | `/orchestrate` (ask -> 3 tasks -> start agents), `/ask` (ask-why through the Jetson) |
-| `server/` | Stub: `/health`, `/hook` (always allow), `/state` (event list), `/ws` (bare bodies), CORS | Everything in the flow: `/checkout` with leases, real git `/state`, WS envelope, undo, merge, approvals, auto-commit, history, replay |
-| `web/` | Next.js app; campus scene with agents, flags, scaffolding, conflict flag, branch tabs, animations; side panel; fake mode and scripted demo; real-mode client with reconnect | Verify against the real server; working approval card; orchestrator chat box; intent card on merge; health strip; replay label; sprites and polish |
+| `server/` | Stub: `/health`, `/hook` (always allow), `/state` (event list), `/ws` (bare bodies), CORS | Everything in the flow: `/checkout` with leases, real git `/state`, WS envelope, undo, merge, approvals, auto-commit, history, replay, evidence data (`leases` with waiters, `check` events, `/diff`) |
+| `web/` | Next.js app; campus scene with agents, flags, scaffolding, conflict flag, branch tabs, animations; side panel; fake mode and scripted demo; real-mode client with reconnect | Verify against the real server; evidence panel (commit timeline, leases and approvals, referee log); building interior zoom with the real diff; 10 s problem opener; orchestrator chat box; intent card on merge; health strip; replay label. Sprites are Dev's. |
 | `design/` | Caua's prototype lives in PR #1 for reference only. It is not merged. | |
 
 ## Machine notes (Dev's Mac and Jetson)

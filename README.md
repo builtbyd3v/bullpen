@@ -21,6 +21,21 @@ The agents run on your own Claude subscription through the `claude` CLI, with no
 
 > Your sub writes the code. The Jetson keeps it honest, free, and private.
 
+## What you see, and what is real underneath
+
+The pixel campus is the hero. Next to it is a live evidence panel, and every animation on the map maps to real data:
+
+| Panel | What it shows | Where it comes from |
+|---|---|---|
+| Commit timeline | Each agent's commits, with Undo and Merge per agent | Real git commits with `Bullpen-Agent` and `Bullpen-Task` trailers |
+| Leases and approvals | Who holds which file, the countdown, who waits, what needs your approval | The server's lease table |
+| Jetson referee log | Every decision with the matched rule, latency and model. Unplug the Jetson and it shows OFFLINE, and every edit is denied | The Jetson's `/check` replies |
+| Building click | Zooms inside: rooms are subfolders or hot files, each agent sits at the file it is editing under a sign with its branch, with a live log of its actions and the real diff | Leases, hook events, `git diff main...<branch>` |
+
+**Point it at any repo and it builds your campus.** A small deterministic generator scans the repo, ranks the top-level folders by file count, and puts the top 8 into fixed USF building slots. Everything else goes into one Annex building. The same repo always gives the same layout.
+
+The demo opens with the problem: two agents overwrite `auth.ts` and the work is gone, with no history. Then the same run with Bullpen.
+
 ## Architecture
 
 ```mermaid

@@ -65,6 +65,7 @@ Every message is an envelope: `{"type": <type>, "data": <object>}`.
 | `approval_needed` | `{id, agent, tool, target, reason, expires_at}` | policy said `ask` |
 | `approved` | `{id, agent}` | a human approved |
 | `denied` | `{id, agent, text}` | `text` is `"human"` or `"timeout"` |
+| `check` | `{agent, tool, file, decision, rule, latency_ms, model, at}` | after every Jetson `/check`. `decision` is `allow`, `ask` or `deny`. Jetson unreachable: `decision: "deny"`, `rule: "offline"`, `model: ""`. `latency_ms` is measured by the server. Feeds the referee log |
 | `commit` | `{agent, sha, message, files, task}` | the server auto-commits an edit |
 | `undo` | `{agent}` | after `POST /undo/{agent}` |
 | `plan` | `{ask, tasks: [{agent, task}]}` | the server got a `Plan` event on `/hook` from the orchestrator |
@@ -94,30 +95,46 @@ Clients must ignore types they do not know. Server TODO: `server/main.py` still 
 - `claims`: building ids from `campus/campus.json`. `building`: where the agent is now.
 - `status`: `working` | `waiting` | `blocked` | `done`. `commits`: `main..<branch>`, newest first; `message` is the reason.
 - Colors: api `#e5484d`, web `#3e63dd`, db `#f5b400`.
-- Optional, additive: top-level `leases: [{file, agent, expires_at}]`. `claims` stays the list of building ids that hold at least one lease of that agent.
+- Evidence panel fields, all additive: top-level `leases: [{file, agent, expires_at, waiters: [agent]}]` (`waiters` is the wait queue, oldest first); `at` (ISO time) and `task` on each commit; `expires_at` on each approval. `claims` stays the list of building ids that hold at least one lease of that agent.
 
 ## 6. Actions (web -> server)
 The server must send CORS headers (allow all origins): the web app runs on another port.
 - `POST /undo/{agent}`: `git reset --hard main` in that worktree, release its claims, broadcast `undo` then `state`. In that `state`, the agent's `building` is `"bullrunner"` (the Bull walks to the hub).
 - `POST /merge/{agent}`: merge the branch into main, broadcast `merge` then `state`. In that `state`, the agent's `building` is `"bullrunner"` and `status` is `"done"`.
 - `POST /approve/{id}` body `{"decision": "allow" | "deny"}`: resolve a pending approval, answer the held `/checkout`, broadcast `approved` or `denied`, then `state`. No answer in 60 s = `denied` with text `"timeout"`.
+- `GET /diff?agent=<agent>&file=<path>` -> `{"diff": str}`: `git diff main...<branch> -- <path>`. `file` may be a folder (for example `api/`). Feeds the building click.
 - `GET /history?file=<path>`: commits that touched the file, newest first: `[{sha, agent, task, message, at}]`.
 - `GET /replay`: re-broadcast `events.log` in order. Every replayed envelope carries `"replay": true` so the web can label it.
 
-## Folder -> building
-`campus/campus.json` maps repo folders to campus buildings. `folder: null`
-(Juniper-Poplar) catches unmapped paths. `folder: ""` (Bull Runner) is the repo
-root: files with no folder map there. Unknown folders map to Juniper. `guarded: true` (Sun Dome, `db/`) marks folders the referee protects.
+## Campus layout: `campus/campus.json` (generated file, no endpoint)
+`python3 scripts/make_campus.py <repo path>` writes it. The web imports the file; the server reads the same file. Deterministic: the same repo gives the same layout.
 
-## 6b. Orchestrator: `http://localhost:8650` (Dev)
-Runs Claude Code through the `claude` CLI on the user's subscription. No API key.
-- `POST /orchestrate` body `{"ask": str}` -> `{"tasks": [{"agent": "api" | "web" | "db", "task": str}]}`. Splits the ask into one task per agent, starts the agents (`scripts/demo_start.sh`), then posts `{"event": "Plan", "agent": "orchestrator", "ask": str, "tasks": [...]}` to the server's `POST /hook`. The server stores each task as that worktree's `task` in `/state` and broadcasts `plan`.
-- `POST /ask` body `{"question": str, "agent": str?}` -> `{"answer": str}`. Ask-why: reads the server's `/state` and `/history`, then calls Jetson `/ask`. Jetson down -> `503 {"error": str}`.
-- Sends CORS headers, like the server.
+Rules:
+1. Count tracked files per top-level folder (`git ls-files`). Sort by count, highest first; ties by name.
+2. Guarded folders (default `db/`) take the `sundome` slot and get `guarded: true`.
+3. The other top folders fill the fixed slots in this order, up to 8 buildings in total: `msc`, `library`, `enb`, `enc`, `muma`, `cooper`, `rec`.
+4. Every other folder maps to the Annex (`juniper`, `folder: null`). Files in the repo root map to the hub (`bullrunner`, `folder: ""`).
+5. Slot positions (`x`, `y`, `w`, `h`) and names are fixed per slot. Only `folder` and `rooms` change.
+
+Shape:
+```json
+{
+  "repo": "demo", "width": 960, "height": 640,
+  "buildings": [{
+    "id": "enb", "name": "ENB", "folder": "api/", "guarded": false,
+    "x": 660, "y": 60, "w": 180, "h": 110,
+    "files": 42,
+    "rooms": [{"name": "routes", "path": "api/routes/", "files": 12}]
+  }]
+}
+```
+- `rooms`: up to 6 per building, for the interior view: its subfolders by file count, then its largest files if there are fewer than 6 subfolders. `path` ends in `/` for a folder.
+- File -> building: longest non-empty `folder` prefix; root files -> `bullrunner`; no match -> `juniper`.
+- Interior view data, all existing: an agent's current file is its lease in `/state` `leases`; the sign is its `branch`; the mini log is that agent's `hook` events; the diff is `GET /diff`.
 
 ## 7. Jetson: `{JETSON_URL}` (port 8700), policy and local model only
 `JETSON_URL=http://192.168.55.1:8700` (USB). Fallback `http://dev.local:8700`. No lease state lives here.
-- `POST /check` body `{"agent": str, "tool_name": str, "file": str?, "command": str?}` -> `{"decision": "allow" | "ask" | "deny", "reason": str, "rule": str}`. Rules run first, with no model call: `db/**` = `ask`. `rule` names the rule that matched, or `"default"`.
+- `POST /check` body `{"agent": str, "tool_name": str, "file": str?, "command": str?}` -> `{"decision": "allow" | "ask" | "deny", "reason": str, "rule": str, "model": str}`. `model` is `"rules"` when no model ran. Rules run first, with no model call: `db/**` = `ask`. `rule` names the rule that matched, or `"default"`.
 - `POST /commit_msg` body `{"diff": str, "agent": str?}` -> `{"message": str}`. One imperative line, max 72 chars.
 - `POST /summarize` body `{"agent": str, "branch": str, "diff": str, "commits": [str]}` -> `{"intent": str}`. One or two sentences on what the branch set out to do.
 - `POST /ask` body `{"question": str, "context": str?}` -> `{"answer": str}`. Max 2 sentences. `context` is free text (state, recent events).
