@@ -90,7 +90,7 @@ function PlayDemo() {
       type="button"
       onClick={play}
       disabled={played}
-      className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold hover:bg-emerald-500 disabled:opacity-40"
+      className="rounded-lg bg-[#006747] px-3 py-2 text-sm font-semibold ring-1 ring-[#cfc493]/60 hover:bg-[#008a5e] disabled:opacity-40"
     >
       Play demo
     </button>
@@ -219,9 +219,9 @@ const STATUS_CLASS: Record<Status, string> = {
 };
 
 const DECISION_CLASS: Record<CheckDecision, string> = {
-  allow: "bg-emerald-500/20 text-emerald-300",
-  ask: "bg-amber-500/20 text-amber-300",
-  deny: "bg-red-500/25 text-red-200",
+  allow: "bg-emerald-600 text-white",
+  ask: "bg-amber-400 text-black",
+  deny: "bg-red-600 text-white",
 };
 
 const BUTTON = "rounded-md px-3 py-1.5 text-sm font-semibold";
@@ -230,8 +230,8 @@ type SectionProps = { title: string; children: ReactNode };
 
 function Section({ title, children }: SectionProps) {
   return (
-    <section className="border-b border-white/10 p-4">
-      <h2 className="mb-3 text-sm font-bold tracking-widest text-white/80 uppercase">{title}</h2>
+    <section className="border-b border-[#cfc493]/15 p-4">
+      <h2 className="mb-3 text-sm font-bold tracking-widest text-[#cfc493] uppercase">{title}</h2>
       {children}
     </section>
   );
@@ -241,6 +241,16 @@ type DotProps = { color: string };
 
 function Dot({ color }: DotProps) {
   return <span style={agentColor(color)} className="inline-block size-3 shrink-0 rounded-full bg-(--agent)" />;
+}
+
+type AgentChipProps = { agent: string; color: string };
+
+function AgentChip({ agent, color }: AgentChipProps) {
+  return (
+    <span style={agentColor(color)} className="shrink-0 rounded bg-(--agent) px-1.5 py-0.5 font-mono text-xs font-bold text-white [text-shadow:0_1px_1px_#000]">
+      {agent}
+    </span>
+  );
 }
 
 // ============================================================================
@@ -447,6 +457,7 @@ function LeasesAndApprovals() {
   const now = useNowTick(leases.length > 0 || approvals.some((a) => Boolean(a.expires_at)));
 
   const colorOf = (agent: string) => worktrees.find((w) => w.agent === agent)?.color ?? "#888888";
+  if (leases.length === 0 && approvals.length === 0) return null;
 
   return (
     <Section title="Leases & approvals">
@@ -461,10 +472,11 @@ function LeasesAndApprovals() {
               <div
                 key={a.id}
                 style={agentColor(colorOf(a.agent))}
-                className="rounded-lg border-l-4 border-(--agent) bg-(--agent)/15 p-3"
+                className="rounded-lg border-2 border-amber-400 bg-amber-400/10 p-3 shadow-[0_0_0_4px_rgba(251,191,36,0.15)]"
               >
+                <p className="mb-1 text-xs font-bold tracking-widest text-amber-300 uppercase">Needs your approval</p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold">
+                  <p className="text-base font-semibold">
                     <span className="text-(--agent)">{a.agent}</span> wants {a.tool}{" "}
                     <span className="font-mono text-white">{a.target}</span>
                   </p>
@@ -474,7 +486,7 @@ function LeasesAndApprovals() {
                     </span>
                   )}
                 </div>
-                <p className="mt-1 mb-2 text-xs text-white/75">{a.reason}</p>
+                <p className="mt-1 mb-2 text-sm text-white/80">{a.reason}</p>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -499,42 +511,37 @@ function LeasesAndApprovals() {
         </div>
       )}
 
-      {/* Active file leases with TTL countdown & wait queue */}
-      {leases.length === 0 && approvals.length === 0 ? (
-        <p className="text-xs text-white/50">No active file leases or pending approvals.</p>
-      ) : leases.length > 0 ? (
-        <div className="space-y-2">
+      {/* Active file leases: "api holds shared/auth.ts · 72s", then the wait queue in order. */}
+      {leases.length > 0 && (
+        <ul className="space-y-2">
           {leases.map((lease) => {
             const ttl = formatTtl(lease.expires_at, now);
-            const holderColor = colorOf(lease.agent);
             return (
-              <div
+              <li
                 key={`${lease.file}:${lease.agent}`}
-                style={agentColor(holderColor)}
-                className="rounded-md border border-white/10 border-l-4 border-l-(--agent) bg-white/5 px-2.5 py-2 text-xs"
+                style={agentColor(colorOf(lease.agent))}
+                className="rounded-md border-l-4 border-(--agent) bg-white/5 px-3 py-2"
               >
-                <div className="flex items-center gap-2">
-                  <Dot color={holderColor} />
-                  <span className="truncate font-mono font-semibold text-white">{lease.file}</span>
-                  <span className="ml-auto shrink-0 font-mono text-[11px] text-emerald-300">
-                    {ttl ?? "active"}
-                  </span>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-white/65">
-                  <span>
-                    Holder: <strong className="text-(--agent)">{lease.agent}</strong>
-                  </span>
-                  {lease.waiters.length > 0 && (
-                    <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-amber-200">
-                      Wait queue: {lease.waiters.join(" → ")}
-                    </span>
-                  )}
-                </div>
-              </div>
+                <p className="flex items-baseline gap-2 text-sm">
+                  <AgentChip agent={lease.agent} color={colorOf(lease.agent)} />
+                  <span className="text-white/60">holds</span>
+                  <span className="min-w-0 truncate font-mono font-semibold text-white">{lease.file}</span>
+                  <span className="ml-auto shrink-0 font-mono text-sm text-[#cfc493]">{ttl ?? "active"}</span>
+                </p>
+                {lease.waiters.length > 0 && (
+                  <p className="mt-1.5 flex flex-wrap gap-1.5">
+                    {lease.waiters.map((w, i) => (
+                      <span key={w} style={agentColor(colorOf(w))} className="rounded bg-amber-400/15 px-2 py-0.5 text-xs text-amber-200">
+                        <strong className="text-(--agent)">{w}</strong> waiting #{i + 1}
+                      </span>
+                    ))}
+                  </p>
+                )}
+              </li>
             );
           })}
-        </div>
-      ) : null}
+        </ul>
+      )}
     </Section>
   );
 }
@@ -557,7 +564,12 @@ function CommitTimeline() {
             <span className={`rounded px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[w.status]}`}>{w.status}</span>
             <span className="ml-auto font-mono text-xs text-white/60">+{w.ahead}</span>
           </div>
-          <p className="mt-1 text-sm text-white/90">{w.task}</p>
+          {w.task && (
+            <details className="mt-1 text-sm text-white/90">
+              <summary className="cursor-pointer truncate">{w.task}</summary>
+              <p className="mt-1 text-white/75">{w.task}</p>
+            </details>
+          )}
           <p className="font-mono text-xs text-white/50">{w.branch}</p>
           {w.claims.length > 0 && <p className="mt-0.5 text-xs text-white/65">Claims: {w.claims.map(name).join(", ")}</p>}
 
@@ -565,9 +577,9 @@ function CommitTimeline() {
             <button
               type="button"
               onClick={() => act(store, { kind: "merge", agent: w.agent })}
-              className={`${BUTTON} bg-white/10 hover:bg-white/20`}
+              className={`${BUTTON} bg-[#006747] text-white ring-1 ring-[#cfc493]/60 hover:bg-[#008a5e]`}
             >
-              Merge
+              Merge to main
             </button>
             <button
               type="button"
@@ -586,16 +598,20 @@ function CommitTimeline() {
                 const time = formatIsoTime(c.at);
                 const taskTrailer = c.task ?? w.task;
                 return (
-                  <div key={c.sha} className="rounded bg-black/25 p-2 text-xs">
+                  <div key={c.sha} className="rounded bg-black/25 p-2 text-sm">
                     <div className="flex items-baseline gap-2">
-                      <span className="shrink-0 font-mono text-amber-200/90">{c.sha.slice(0, 7)}</span>
-                      <span className="flex-1 font-medium text-white/90">{c.message}</span>
-                      {time && <span className="shrink-0 font-mono text-[10px] text-white/45">{time}</span>}
+                      <AgentChip agent={w.agent} color={w.color} />
+                      <span className="shrink-0 font-mono text-xs text-[#cfc493]">{c.sha.slice(0, 7)}</span>
+                      <span className="min-w-0 flex-1 truncate font-medium text-white/95" title={c.message}>{c.message}</span>
+                      {time && <span className="shrink-0 font-mono text-xs text-white/50">{time}</span>}
                     </div>
-                    <div className="mt-1 space-y-0.5 font-mono text-[10px] text-white/55">
-                      <p>Bullpen-Agent: {w.agent}</p>
-                      {taskTrailer && <p className="truncate">Bullpen-Task: {taskTrailer}</p>}
-                    </div>
+                    {taskTrailer && (
+                      <details className="mt-1 font-mono text-[11px] text-white/55">
+                        <summary className="cursor-pointer truncate">Bullpen-Task: {taskTrailer}</summary>
+                        <p className="mt-0.5">Bullpen-Agent: {w.agent}</p>
+                        <p className="break-words">Bullpen-Task: {taskTrailer}</p>
+                      </details>
+                    )}
                   </div>
                 );
               })
@@ -612,11 +628,10 @@ function CommitTimeline() {
 // ============================================================================
 function RefereeLog() {
   const checks = useBullpen((s) => s.checks);
+  if (checks.length === 0) return null;
   return (
     <Section title="Jetson referee log">
-      {checks.length === 0 ? (
-        <p className="text-xs text-white/50">No policy checks recorded yet.</p>
-      ) : (
+      {(
         <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
           {checks.map((c, idx) => {
             const isOffline = c.rule === "offline";
@@ -632,22 +647,22 @@ function RefereeLog() {
               >
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span
-                    className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase ${DECISION_CLASS[c.decision]}`}
+                    className={`w-16 rounded px-2 py-1 text-center font-mono text-sm font-black uppercase ${DECISION_CLASS[c.decision]}`}
                   >
                     {c.decision}
                   </span>
                   {isOffline ? (
-                    <span className="rounded bg-red-600 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white uppercase">
+                    <span className="rounded bg-red-600 px-2 py-1 font-mono text-sm font-bold text-white uppercase">
                       OFFLINE · fail closed
                     </span>
                   ) : (
-                    <span className="font-mono text-[11px] text-white/85">rule: {c.rule}</span>
+                    <span className="font-mono text-sm text-white/90">{c.rule}</span>
                   )}
-                  <span className="ml-auto font-mono text-[10px] text-white/55">
+                  <span className="ml-auto font-mono text-xs text-white/60">
                     {c.latency_ms}ms · {c.model || "—"}
                   </span>
                 </div>
-                <p className="mt-1 truncate font-mono text-[11px] text-white/70">
+                <p className="mt-1 truncate font-mono text-xs text-white/70">
                   {c.agent} · {c.tool} {c.file}
                 </p>
               </div>
@@ -693,6 +708,7 @@ function Selection() {
 
 function Feed() {
   const feed = useBullpen((s) => s.feed);
+  if (feed.length === 0) return null;
   return (
     <Section title="Feed">
       {[...feed].reverse().map((f) => (
@@ -708,7 +724,7 @@ function Feed() {
 
 function SidePanel() {
   return (
-    <aside className="h-full w-[35%] overflow-y-auto border-l border-white/10">
+    <aside className="h-full w-[35%] overflow-y-auto border-l-2 border-[#cfc493]/30 bg-[#0a1f16]">
       <Notice />
       <OrchestratorBox />
       <MergeIntentCards />
