@@ -10,12 +10,10 @@
   "slots": [
     {
       "id": "01-problem",
-      "kind": "clip",
+      "kind": "problem",
       "dur": 10,
-      "start": 0,
-      "rate": 1,
-      "shot": "Real life. Person at a laptop, two agent terminals overwrite auth.ts, they slump.",
-      "vo": "Three AI agents, one repo. Two of them just rewrote the same file. One version is gone, and nothing recorded it."
+      "shot": "Generated: two agents in separate worktrees edit shared/auth.ts, both PRs pass, the second merge conflicts.",
+      "vo": "Two agents, two worktrees, one file. Both pull requests pass against main. Merge one, and the other breaks."
     },
     {
       "id": "02-title",
@@ -42,7 +40,7 @@
       "rate": 1,
       "label": "File lock: shared/auth.ts",
       "shot": "api holds shared/auth.ts. web waits at the door. Lease panel shows the countdown and the queue.",
-      "vo": "Two agents want auth.ts. The first one takes the lock. The second waits at the door until the file is free."
+      "vo": "Two agents want auth.ts. The first takes a live lock. The second waits at the door until the file is free."
     },
     {
       "id": "05-deny",

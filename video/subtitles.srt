@@ -1,14 +1,14 @@
 1
-00:00:00,000 --> 00:00:01,945
-Three AI agents, one repo.
+00:00:00,000 --> 00:00:02,861
+Two agents, two worktrees, one file.
 
 2
-00:00:01,945 --> 00:00:04,863
-Two of them just rewrote the same file.
+00:00:02,861 --> 00:00:05,801
+Both pull requests pass against main.
 
 3
-00:00:04,863 --> 00:00:08,230
-One version is gone, and nothing recorded it.
+00:00:05,801 --> 00:00:08,344
+Merge one, and the other breaks.
 
 4
 00:00:10,000 --> 00:00:11,274
@@ -35,19 +35,19 @@ and three Claude Code agents walk onto
 campus, each on its own branch.
 
 10
-00:00:25,000 --> 00:00:26,583
+00:00:25,000 --> 00:00:26,593
 Two agents want auth.ts.
 
 11
-00:00:26,583 --> 00:00:28,495
-The first one takes the lock.
+00:00:26,593 --> 00:00:28,450
+The first takes a live lock.
 
 12
-00:00:28,495 --> 00:00:30,341
+00:00:28,450 --> 00:00:30,308
 The second waits at the door
 
 13
-00:00:30,341 --> 00:00:31,858
+00:00:30,308 --> 00:00:31,835
 until the file is free.
 
 14

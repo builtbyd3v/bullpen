@@ -84,7 +84,7 @@ for (const slot of timeline.slots) {
     t += len;
   }
 
-  console.log(`${slot.id.padEnd(12)} ${String(slot.dur).padStart(2)} s  clip: ${slot.clip ? "raw" : slot.kind === "title" ? "title card" : "PLACEHOLDER"}  vo: ${take ? "raw" : "PLACEHOLDER"} ${voDur.toFixed(1)} s`);
+  console.log(`${slot.id.padEnd(12)} ${String(slot.dur).padStart(2)} s  clip: ${slot.clip ? "raw" : slot.kind !== "clip" ? "generated" : "PLACEHOLDER"}  vo: ${take ? "raw" : "PLACEHOLDER"} ${voDur.toFixed(1)} s`);
   at += slot.dur;
 }
 
