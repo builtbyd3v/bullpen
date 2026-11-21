@@ -1,15 +1,18 @@
 import { reduce, type Snapshot } from "./reduce.ts";
-import type { Envelope, Fx, UiState } from "./types.ts";
+import type { Envelope, Fx, Plan, UiState } from "./types.ts";
 
 export type StoreState = Snapshot & { ui: UiState };
 export type Store = ReturnType<typeof createStore>;
 
 export function createStore() {
   let state: StoreState = {
-    data: { main: "main", worktrees: [], approvals: [] },
+    data: { main: "main", worktrees: [], approvals: [], leases: [] },
     feed: [],
     merges: [],
-    ui: { tab: "main", selected: null },
+    checks: [],
+    plan: null,
+    hooks: [],
+    ui: { tab: "main", selected: null, zoomedBuildingId: null, selectedRoomPath: null },
   };
   const listeners = new Set<() => void>();
   const fxListeners = new Set<(fx: Fx) => void>();
@@ -26,7 +29,14 @@ export function createStore() {
     },
     dispatch(envelope: Envelope) {
       const { snapshot, fx } = reduce(state, envelope);
-      if (snapshot.data !== state.data || snapshot.feed !== state.feed || snapshot.merges !== state.merges) {
+      if (
+        snapshot.data !== state.data ||
+        snapshot.feed !== state.feed ||
+        snapshot.merges !== state.merges ||
+        snapshot.checks !== state.checks ||
+        snapshot.plan !== state.plan ||
+        snapshot.hooks !== state.hooks
+      ) {
         set({ ...state, ...snapshot });
       }
       fx.forEach((f) => fxListeners.forEach((l) => l(f)));
@@ -34,6 +44,9 @@ export function createStore() {
     dismissMerge(id: string) {
       const merges = state.merges.filter((m) => m.id !== id);
       if (merges.length !== state.merges.length) set({ ...state, merges });
+    },
+    setPlan(plan: Plan | null) {
+      set({ ...state, plan });
     },
     setUi(partial: Partial<UiState>) {
       set({ ...state, ui: { ...state.ui, ...partial } });

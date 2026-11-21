@@ -3,6 +3,7 @@ import campus from "../../campus/campus.json" with { type: "json" };
 import { layersByBuilding } from "@/lib/campus.ts";
 import type { Store, StoreState } from "@/lib/store.ts";
 import type { Building, Fx, Status } from "@/lib/types.ts";
+import { makeBull } from "./bullSprite";
 
 const buildings: Building[] = campus.buildings;
 const byId = new Map(buildings.map((b) => [b.id, b]));
@@ -63,7 +64,13 @@ export class CampusScene extends Phaser.Scene {
         .setOrigin(0)
         .setStrokeStyle(2, b.guarded ? 0xff6b6b : 0x7fd1a8)
         .setInteractive({ useHandCursor: true })
-        .on("pointerdown", () => this.store.setUi({ selected: { kind: "building", id: b.id } }));
+        .on("pointerdown", () =>
+          this.store.setUi({
+            selected: { kind: "building", id: b.id },
+            zoomedBuildingId: b.id,
+            selectedRoomPath: null,
+          }),
+        );
       const folder = b.folder === null ? "unmapped" : b.folder || "/";
       this.add
         .text(b.x + 8, b.y + 8, `${b.name}\n${folder}`, {
@@ -223,42 +230,11 @@ export class CampusScene extends Phaser.Scene {
     return bull;
   }
 
-  // The Bull's body: 20x15 pixel art (2px cells) facing right, in the agent's color.
-  // No dark outline (it vanishes on the campus); a darker shade of the color marks the underside and far legs.
-  private makeBull(color: number): Phaser.GameObjects.GameObject[] {
-    const rows = [
-      "..............h....h",
-      "..............h....h",
-      "..............hh..hh",
-      ".....cccc.....hhhh..",
-      "....cccccccc..ccccc.",
-      ".d.ccccccccccdccccc.",
-      ".dcccccccccccdeepcc.",
-      ".dcccccccccccdcctttt",
-      "..cccccccccccccctttt",
-      "..ddddddddddddddddd.",
-      "...cc.dd....cc.dd...",
-      "...cc.dd....cc.dd...",
-      "...cc.dd....cc.dd...",
-      "...cc.dd....cc.dd...",
-      "...kk.kk....kk.kk...",
-    ];
-    const shade = Phaser.Display.Color.IntegerToColor(color).darken(40).color;
-    const fills: Record<string, number> = { c: color, d: shade, t: 0xd9b382, h: 0xf5f0e1, e: 0xffffff, p: 0x1b1b2f, k: 0x2a2a40 };
-    const g = this.add.graphics();
-    rows.forEach((row, y) =>
-      [...row].forEach((ch, x) => {
-        if (fills[ch] !== undefined) g.fillStyle(fills[ch]).fillRect(-16 + x * 2, -22 + y * 2, 2, 2);
-      }),
-    );
-    return [g];
-  }
-
   private bull({ agent, color }: BullSpec) {
     const bull = this.add
       .container(slotX(bullrunner, 0, 1), bullY(bullrunner), [
         this.add.ellipse(4, -2, 48, 40).setStrokeStyle(3, 0xffe066).setVisible(false).setName("ring"),
-        ...this.makeBull(color),
+        ...makeBull(this, color),
         this.add.text(0, 10, agent, { fontFamily: "monospace", fontSize: "11px", color: "#ffffff" }).setOrigin(0.5, 0),
         this.add
           .text(4, -20, "", { fontFamily: "monospace", fontSize: "18px", fontStyle: "bold", color: "#ffffff" })

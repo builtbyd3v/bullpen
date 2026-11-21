@@ -1,9 +1,10 @@
-import { FAKE_STATE, fakeServer } from "./fake.ts";
+import { FAKE_CHECKS, FAKE_HOOKS, FAKE_STATE, fakeAsk, fakeDiff, fakeOrchestrate, fakeServer } from "./fake.ts";
 import type { Store } from "./store.ts";
-import type { Action, BullpenState, Envelope } from "./types.ts";
+import type { Action, BullpenState, Envelope, Plan } from "./types.ts";
 
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:8600";
-const TYPES = new Set(["hook", "state", "commit", "undo", "merge"]);
+const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "http://localhost:8650";
+const TYPES = new Set(["hook", "state", "commit", "undo", "merge", "check", "plan"]);
 
 export const isFake = () => new URLSearchParams(window.location.search).has("fake");
 
@@ -21,6 +22,8 @@ function isEnvelope(msg: unknown): msg is Envelope {
 export function connect(store: Store): () => void {
   if (isFake()) {
     store.dispatch({ type: "state", data: FAKE_STATE });
+    [...FAKE_CHECKS].reverse().forEach((c) => store.dispatch({ type: "check", data: c }));
+    [...FAKE_HOOKS].reverse().forEach((h) => store.dispatch({ type: "hook", data: h }));
     return () => {};
   }
   let closed = false;
@@ -67,4 +70,49 @@ export function act(store: Store, action: Action): void {
       body: JSON.stringify({ decision: action.decision }),
     }),
   }).catch((e: unknown) => console.warn(`[bullpen] POST ${path} failed`, e));
+}
+
+export async function orchestrate(store: Store, ask: string): Promise<Plan> {
+  if (isFake()) {
+    const plan = fakeOrchestrate(ask);
+    store.dispatch({ type: "plan", data: plan });
+    return plan;
+  }
+  const res = await fetch(`${ORCHESTRATOR_URL.replace(/\/$/, "")}/orchestrate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ask }),
+  });
+  const body = (await res.json().catch(() => ({}))) as Partial<Plan> & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `Orchestrator returned HTTP ${res.status}`);
+  const plan: Plan = {
+    ask: body.ask ?? ask,
+    tasks: Array.isArray(body.tasks) ? body.tasks : [],
+    source: body.source,
+    started: body.started,
+  };
+  store.dispatch({ type: "plan", data: plan });
+  return plan;
+}
+
+export async function askWhy(question: string): Promise<string> {
+  if (isFake()) return fakeAsk(question);
+  const res = await fetch(`${ORCHESTRATOR_URL.replace(/\/$/, "")}/ask`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+  const body = (await res.json().catch(() => ({}))) as { answer?: string; error?: string };
+  if (!res.ok) throw new Error(body.error ?? `Ask failed (HTTP ${res.status})`);
+  if (typeof body.answer !== "string") throw new Error("Invalid answer from orchestrator");
+  return body.answer;
+}
+
+export async function fetchDiff(agent: string, file: string): Promise<string> {
+  if (isFake()) return fakeDiff(agent, file);
+  const params = new URLSearchParams({ agent, file });
+  const res = await fetch(`${SERVER_URL.replace(/\/$/, "")}/diff?${params.toString()}`);
+  if (!res.ok) throw new Error(`GET /diff failed (HTTP ${res.status})`);
+  const body = (await res.json()) as { diff?: string };
+  return typeof body.diff === "string" ? body.diff : "";
 }
