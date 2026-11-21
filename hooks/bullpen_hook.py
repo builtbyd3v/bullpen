@@ -21,6 +21,8 @@ def post(path, payload, timeout):
         headers={"Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
+        if resp.status != 200:
+            raise ValueError(resp.status)
         return json.load(resp)
 
 
@@ -30,6 +32,8 @@ def checkout(payload):
         reply = post("/checkout", payload, float(os.environ.get("BULLPEN_CHECKOUT_TIMEOUT", "70")))
         decision = reply["decision"]
         reason = reply.get("reason") or ""
+        if not isinstance(reason, str):
+            raise TypeError(reason)
     except Exception:
         return "deny", OFFLINE
     if decision == "allow":

@@ -149,6 +149,14 @@ class PreToolUseTest(unittest.TestCase):
         proc = self.checkout({"decision": "allow"}, status=500)
         self.assertEqual(self.decision(proc), ("deny", OFFLINE))
 
+    def test_http_201_fails_closed(self):
+        proc = self.checkout({"decision": "allow"}, status=201)
+        self.assertEqual(self.decision(proc), ("deny", OFFLINE))
+
+    def test_non_string_reason_fails_closed(self):
+        proc = self.checkout({"decision": "deny", "reason": {"a": 1}})
+        self.assertEqual(self.decision(proc), ("deny", OFFLINE))
+
     def test_slow_reply_past_timeout_fails_closed(self):
         start = time.monotonic()
         proc = self.checkout({"decision": "allow"}, delay=3,
