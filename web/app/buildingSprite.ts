@@ -31,7 +31,7 @@ const GUARD_AMBER = 0xf5b400;
 
 // Reserved top strip inside each building footprint for the crisp nameplate banner,
 // so signature roof skylights, domes, antennas, and facades sit 100% unobstructed below.
-const PLAQUE_H = 26;
+const PLAQUE_H = 36;
 
 const snap = (n: number) => Math.round(n / 2) * 2;
 
@@ -81,52 +81,47 @@ export function drawCampusGround(
 ): Phaser.GameObjects.Graphics {
   const g = scene.add.graphics().setDepth(-1);
 
-  // Subtle checkerboard turf accents
-  for (let y = 16; y < height - 16; y += 48) {
-    for (let x = 16; x < width - 16; x += 64) {
-      if (((x + y) / 16) % 2 === 0) {
-        rect(g, x, y, 28, 18, 0x11241b, 0.7);
-      }
-    }
+  // USF lawn (Caua's palette: turfMid with turfLight mowing stripes and darker patches).
+  rect(g, 0, 0, width, height, 0x7fa95b);
+  for (let y = 0; y < height; y += 32) rect(g, 0, y, width, 16, 0xa9c97e, 0.18);
+  for (let y = 24; y < height - 16; y += 56) {
+    for (let x = 24 + ((y / 8) % 3) * 12; x < width - 16; x += 72) rect(g, x, y, 6, 4, 0x4e7f47, 0.55);
   }
 
-  // Main campus stone walkways connecting the 3 columns and 3 rows
-  const walkFill = 0x142920;
-  const walkEdge = 0x1e3d2f;
-  const walkSeam = 0x0f2018;
-
+  // Light concrete walkways (roadLight body, roadMid curb, roadDark edge) between the building rows and columns.
   const drawPath = (x: number, y: number, w: number, h: number) => {
-    rect(g, x - 2, y - 2, w + 4, h + 4, walkEdge);
-    rect(g, x, y, w, h, walkFill);
-    if (w > h) {
-      for (let sx = x + 16; sx < x + w - 8; sx += 24) rect(g, sx, y + 2, 2, h - 4, walkSeam, 0.7);
-    } else {
-      for (let sy = y + 16; sy < y + h - 8; sy += 24) rect(g, x + 2, sy, w - 4, 2, walkSeam, 0.7);
-    }
+    rect(g, x - 2, y - 2, w + 4, h + 4, 0x8b9b95);
+    rect(g, x, y, w, h, 0xc8d1cc);
+    rect(g, x + 2, y + 2, w - 4, h - 4, 0xe6eae7);
+    if (w > h) for (let sx = x + 16; sx < x + w - 8; sx += 24) rect(g, sx, y + 2, 2, h - 4, 0xc8d1cc);
+    else for (let sy = y + 16; sy < y + h - 8; sy += 24) rect(g, x + 2, sy, w - 4, 2, 0xc8d1cc);
   };
+  drawPath(72, 212, width - 144, 20);
+  drawPath(72, 412, width - 144, 20);
+  drawPath(330, 40, 20, height - 80);
+  drawPath(610, 40, 20, height - 80);
 
-  // Horizontal corridors between building rows (leaves clear room for Bulls & queues)
-  drawPath(72, 212, width - 144, 24);
-  drawPath(72, 408, width - 144, 24);
-
-  // Vertical avenues through left, center, and right campus spines
-  drawPath(328, 48, 24, height - 96);
-  drawPath(608, 48, 24, height - 96);
-  drawPath(468, 48, 24, height - 96);
-
-  // Central Bull Runner plaza apron
+  // Bull Runner loop: asphalt ring with a dashed USF gold center line around the central stop.
   const hub = buildings.find((b) => b.id === "bullrunner");
   if (hub) {
-    const px = hub.x - 14;
-    const py = hub.y - 10;
-    const pw = hub.w + 28;
-    const ph = hub.h + 24;
-    rect(g, px - 2, py - 2, pw + 4, ph + 4, 0x264c3b);
-    rect(g, px, py, pw, ph, 0x162d23);
-    rect(g, px + 4, py + 4, 6, 6, USF_GOLD, 0.35);
-    rect(g, px + pw - 10, py + 4, 6, 6, USF_GOLD, 0.35);
-    rect(g, px + 4, py + ph - 10, 6, 6, USF_GOLD, 0.35);
-    rect(g, px + pw - 10, py + ph - 10, 6, 6, USF_GOLD, 0.35);
+    const lx = hub.x - 30;
+    const ly = hub.y - 26;
+    const lw = hub.w + 60;
+    const lh = hub.h + 52;
+    const t = 14;
+    rect(g, lx - 2, ly - 2, lw + 4, lh + 4, 0x466069);
+    rect(g, lx, ly, lw, lh, 0x5d6f6a);
+    rect(g, lx + t, ly + t, lw - 2 * t, lh - 2 * t, 0x466069);
+    rect(g, lx + t + 2, ly + t + 2, lw - 2 * t - 4, lh - 2 * t - 4, 0x7fa95b);
+    const mid = t / 2 - 1;
+    for (let x = lx + 8; x < lx + lw - 8; x += 14) {
+      rect(g, x, ly + mid, 6, 2, USF_GOLD);
+      rect(g, x, ly + lh - mid - 2, 6, 2, USF_GOLD);
+    }
+    for (let y = ly + 8; y < ly + lh - 8; y += 14) {
+      rect(g, lx + mid, y, 2, 6, USF_GOLD);
+      rect(g, lx + lw - mid - 2, y, 2, 6, USF_GOLD);
+    }
   }
 
   // Perimeter USF palm trees & oaks positioned strictly in outer margins away from buildings & queues
@@ -478,6 +473,7 @@ export function makeBuilding(
   scene: Phaser.Scene,
   b: Building,
   onSelect: () => void,
+  onHover: (over: boolean) => void = () => {},
 ): {
   body: Phaser.GameObjects.Graphics;
   door: Phaser.GameObjects.Graphics;
@@ -548,32 +544,32 @@ export function makeBuilding(
     .setOrigin(0)
     .setDepth(0.1)
     .setInteractive({ useHandCursor: true })
-    .on("pointerover", () => hover.setVisible(true))
-    .on("pointerout", () => hover.setVisible(false))
+    .on("pointerover", () => (hover.setVisible(true), onHover(true)))
+    .on("pointerout", () => (hover.setVisible(false), onHover(false)))
     .on("pointerdown", onSelect);
 
   // Crisp 26px top nameplate bar integrated cleanly into the upper roof rim
   const folder = b.folder === null ? "unmapped" : b.folder || "/";
   const plaque = scene.add.graphics().setDepth(1.9);
-  rect(plaque, b.x, b.y, b.w, PLAQUE_H, 0x08140f, 0.9);
-  rect(plaque, b.x, b.y, b.w, 2, b.guarded ? GUARD_TRIM : 0x7fd1a8, 0.95);
+  rect(plaque, b.x, b.y, b.w, PLAQUE_H, 0x005432, 0.96);
+  rect(plaque, b.x, b.y, b.w, 3, b.guarded ? GUARD_TRIM : USF_GOLD, 1);
   rect(plaque, b.x, b.y + PLAQUE_H - 2, b.w, 2, INK, 0.95);
 
   scene.add
-    .text(b.x + 8, b.y + 3, b.name, {
+    .text(b.x + 8, b.y + 5, b.name, {
       fontFamily: "monospace",
-      fontSize: "11px",
+      fontSize: "14px",
       fontStyle: "bold",
       color: "#ffffff",
     })
     .setDepth(2);
 
   scene.add
-    .text(b.x + 8, b.y + 14, b.guarded ? `${folder} [GUARDED]` : folder, {
+    .text(b.x + 8, b.y + 21, b.guarded ? `${folder} [GUARDED]` : folder, {
       fontFamily: "monospace",
-      fontSize: "10px",
+      fontSize: "11px",
       fontStyle: "bold",
-      color: b.guarded ? "#fca5a5" : "#86efac",
+      color: b.guarded ? "#fca5a5" : "#cfc493",
     })
     .setDepth(2);
 

@@ -12,7 +12,7 @@ type RootLayoutProps = { children: ReactNode };
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
-      <body className="bg-[#0d1b14] text-white">{children}</body>
+      <body className="bg-[#06140e] text-white">{children}</body>
     </html>
   );
 }

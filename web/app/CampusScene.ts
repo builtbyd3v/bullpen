@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import campus from "../../campus/campus.json" with { type: "json" };
-import { layersByBuilding, waitQueue } from "@/lib/campus.ts";
+import { buildingForFile, layersByBuilding, waitQueue } from "@/lib/campus.ts";
 import type { Store, StoreState } from "@/lib/store.ts";
 import type { Building, Fx, Status } from "@/lib/types.ts";
 import { drawCampusGround, makeBuilding } from "./buildingSprite";
@@ -21,7 +21,16 @@ const tint = (hex: string) => Phaser.Display.Color.HexStringToColor(hex).color;
 // Agent i's slot below building b. Bulls spread from the door; flags line up at the left of the door.
 const slotX = (b: Building, i: number, n: number) => b.x + b.w / 2 + 10 + (i - (n - 1) / 2) * 44;
 const flagX = (b: Building, i: number) => b.x + 10 + i * 12;
-const bullY = (b: Building) => b.y + b.h + 44;
+// Bulls stand below the door; when another building sits there (msc over rec), above the roof, else on the front steps.
+const hitsBuilding = (b: Building, x: number, y: number) =>
+  buildings.some((o) => o !== b && o.id !== "bullrunner" && x > o.x - 20 && x < o.x + o.w + 20 && y + 24 > o.y && y - 24 < o.y + o.h);
+const bullY = (b: Building) => {
+  const cx = b.x + b.w / 2;
+  if (!hitsBuilding(b, cx, b.y + b.h + 44)) return b.y + b.h + 44;
+  if (b.y > 56 && !hitsBuilding(b, cx, b.y - 30)) return b.y - 30;
+  if (b.y >= 50) return b.y - 24;
+  return b.y + b.h - 20;
+};
 // The door sits at the middle of the building's bottom edge. The line forms to its right, past the agent slots.
 const door = (b: Building) => ({ x: b.x + b.w / 2, y: b.y + b.h });
 const queueX = (b: Building, pos: number) => b.x + b.w / 2 + 96 + (pos - 1) * 40;
@@ -65,6 +74,8 @@ export class CampusScene extends Phaser.Scene {
   private dusk!: Phaser.GameObjects.Rectangle;
   private selection!: Phaser.GameObjects.Graphics;
   private tethers!: Phaser.GameObjects.Graphics;
+  private tooltip!: Phaser.GameObjects.Text;
+  private hovered: Building | null = null;
   // Agent -> how its layers leave on the next reconcile. Set by an undo or merge fx, which the server sends just before `state`.
   private exiting = new Map<string, "collapse" | "fade">();
 
@@ -79,18 +90,36 @@ export class CampusScene extends Phaser.Scene {
   create() {
     drawCampusGround(this, campus.width, campus.height, buildings);
     for (const b of buildings) {
-      makeBuilding(this, b, () =>
-        this.store.setUi({
-          selected: { kind: "building", id: b.id },
-          zoomedBuildingId: b.id,
-          selectedRoomPath: null,
-        }),
+      makeBuilding(
+        this,
+        b,
+        () =>
+          this.store.setUi({
+            selected: { kind: "building", id: b.id },
+            zoomedBuildingId: b.id,
+            selectedRoomPath: null,
+          }),
+        (over) => {
+          this.hovered = over ? b : this.hovered === b ? null : this.hovered;
+          this.showTooltip(this.store.getState());
+        },
       );
     }
     // Branch tab: dusk over the campus in the agent's color, under that agent's layers.
     this.dusk = this.add.rectangle(0, 0, campus.width, campus.height, 0x000000, 1).setOrigin(0).setDepth(0.5).setAlpha(0);
     this.selection = this.add.graphics().setDepth(3.5);
     this.tethers = this.add.graphics().setDepth(3.6);
+    this.tooltip = this.add
+      .text(0, 0, "", {
+        fontFamily: "monospace",
+        fontSize: "13px",
+        color: "#ffffff",
+        backgroundColor: "#0d231bf2",
+        padding: { x: 10, y: 8 },
+        lineSpacing: 4,
+      })
+      .setDepth(10)
+      .setVisible(false);
 
     // Render what is already in the store, then follow it. Events before create() would otherwise be lost.
     this.render(this.store.getState());
@@ -122,7 +151,7 @@ export class CampusScene extends Phaser.Scene {
     for (const w of ws) {
       for (const id of w.claims) {
         const b = byId.get(id);
-        if (b) flags.set(`${w.agent}|${id}`, { color: tint(w.color), x: flagX(b, index.get(w.agent)!), y: b.y + b.h });
+        if (b) flags.set(`${w.agent}|${id}`, { color: tint(w.color), x: flagX(b, index.get(w.agent)!), y: b.y + b.h - 44 });
       }
     }
     this.sync(this.flags, flags, (f) => this.flag(f), (o, f) => o.setPosition(f.x, f.y));
@@ -165,9 +194,32 @@ export class CampusScene extends Phaser.Scene {
     if (tab) this.dusk.setFillStyle(dusk(tab.color));
     this.fade(this.dusk, tab ? 0.5 : 0);
 
+    this.showTooltip({ data });
     this.selection.clear();
     const picked = sel?.kind === "building" ? byId.get(sel.id) : undefined;
     if (picked) this.selection.lineStyle(4, 0xffe066).strokeRect(picked.x - 4, picked.y - 4, picked.w + 8, picked.h + 8);
+  }
+
+  // Hover card: building name and folder, then each agent on it with its task and the file it holds.
+  private showTooltip({ data }: Pick<StoreState, "data">) {
+    const b = this.hovered;
+    if (!b) return void this.tooltip.setVisible(false);
+    const leases = data.leases ?? [];
+    const lines = [b.name, b.folder === null ? "unmapped" : b.folder || "/", ""];
+    for (const w of data.worktrees) {
+      const held = leases.filter((l) => l.agent === w.agent && buildingForFile(l.file, buildings) === b.id).map((l) => l.file);
+      const waiting = leases.filter((l) => l.waiters.includes(w.agent) && buildingForFile(l.file, buildings) === b.id).map((l) => l.file);
+      if (w.building !== b.id && !w.claims.includes(b.id) && !held.length && !waiting.length) continue;
+      lines.push(`● ${w.agent}  ${w.status}`, `  ${w.task.length > 44 ? `${w.task.slice(0, 43)}…` : w.task}`);
+      for (const f of held) lines.push(`  holds ${f}`);
+      for (const f of waiting) lines.push(`  waits for ${f}`);
+    }
+    if (lines.length === 3) lines.push("No agents here");
+    this.tooltip.setText(lines);
+    const x = Math.min(b.x + b.w / 2 - this.tooltip.width / 2, campus.width - this.tooltip.width - 8);
+    const below = b.y + b.h + 8;
+    const y = below + this.tooltip.height < campus.height ? below : b.y - this.tooltip.height - 8;
+    this.tooltip.setPosition(Math.max(8, x), Math.max(8, y)).setVisible(true);
   }
 
   // Waiting Bulls tap a foot, turn the hourglass, and keep a dotted line to the door they wait at.
@@ -301,13 +353,16 @@ export class CampusScene extends Phaser.Scene {
         this.add
           .text(0, 10, agent, {
             fontFamily: "monospace",
-            fontSize: "11px",
+            fontSize: "12px",
             fontStyle: "bold",
             color: "#ffffff",
-            stroke: "#07120d",
+            stroke: "#0d231b",
             strokeThickness: 3,
+            backgroundColor: this.colorOf(agent),
+            padding: { x: 4, y: 1 },
           })
-          .setOrigin(0.5, 0),
+          .setOrigin(0.5, 0)
+          .setName("tag"),
         this.add
           .text(4, -20, "", { fontFamily: "monospace", fontSize: "18px", fontStyle: "bold", color: "#ffffff" })
           .setOrigin(0.5, 1)
