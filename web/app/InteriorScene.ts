@@ -179,7 +179,7 @@ export class InteriorScene extends Phaser.Scene {
         }
 
         // Branch sign directly overhead the agent sprite
-        const signY = cy - 42;
+        const signY = cy - 66;
         const signText = w.branch || `agent/${w.agent}`;
         const signW = Math.max(72, signText.length * 7 + 14);
         const signBg = this.add
@@ -193,7 +193,7 @@ export class InteriorScene extends Phaser.Scene {
             color: w.color,
           })
           .setOrigin(0.5);
-        const post = this.add.graphics().lineStyle(2, colorNum, 0.7).lineBetween(cx, signY + 10, cx, cy - 22);
+        const post = this.add.graphics().lineStyle(2, colorNum, 0.7).lineBetween(cx, signY + 10, cx, cy - 36);
 
         const [mark, markColor] = MARKS[w.status] ?? MARKS.working;
         const bullContainer = this.add.container(cx, cy, [
@@ -206,6 +206,7 @@ export class InteriorScene extends Phaser.Scene {
             .setOrigin(0.5),
         ]);
 
+        bullContainer.setScale(1.6);
         this.dynamicLayer.add([post, signBg, signLabel, bullContainer]);
       });
     }
