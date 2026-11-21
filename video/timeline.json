@@ -40,7 +40,7 @@
       "rate": 1,
       "label": "File lock: shared/auth.ts",
       "shot": "api holds shared/auth.ts. web waits at the door. Lease panel shows the countdown and the queue.",
-      "vo": "Two agents want auth.ts. The first takes a live lock. The second waits at the door, and never writes a conflicting branch."
+      "vo": "Two agents want auth.ts. The first takes a live lock. The second waits at the door until the file is free."
     },
     {
       "id": "05-deny",

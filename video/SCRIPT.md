@@ -1,7 +1,7 @@
 # Bullpen demo video script (2:00)
 
 - 13 slots, 120 s, 1080p30. Slots, lines and timings live in `timeline.json`; change them there, then update this file.
-- Voiceover: 253 words. "say" is the placeholder voice's time at 150 words per minute, a natural speaking pace. A take may run up to the slot length minus 0.3 s.
+- Voiceover: 252 words. "say" is the placeholder voice's time at 150 words per minute, a natural speaking pace. A take may run up to the slot length minus 0.3 s.
 - Captions are the voiceover text, burned in at the bottom. Labels sit top left.
 - Sound: voice on top, the app's sound effects from each clip lowered under it, optional music bed lowest.
 - The spoken line names no model. The three model names are on screen in slot 12.
@@ -9,7 +9,7 @@
 
 ## The core problem
 
-Two agents work in separate worktrees on the same code. Each pull request has no conflict with main, but the two conflict with each other. The second merge breaks, and someone redoes the work. Bullpen stops that before it happens: agents take live locks on files while they work, so the second agent waits or adapts and never writes the conflicting branch.
+Two agents work in separate worktrees on the same code. Each pull request has no conflict with main, but the two conflict with each other. The second merge breaks, and someone redoes the work. Bullpen stops that before it happens: agents take live locks on files while they work, so the second agent waits or adapts while the first one works. If two branches still conflict at merge time, the merge aborts cleanly and nothing breaks on main.
 
 ## Shot list and voiceover
 
@@ -30,7 +30,7 @@ Two agents work in separate worktrees on the same code. Each pull request has no
 | Time | Slot | Picture | Label on screen | Voiceover | say |
 |---|---|---|---|---|---|
 | 0:15-0:25 | `03-ask` | One ask in the chat box, three bulls walk onto campus | One ask, three agents | One ask. The orchestrator splits it into three tasks, and three Claude Code agents walk onto campus, each on its own branch. | 8.6 s |
-| 0:25-0:35 | `04-lock` | api holds `shared/auth.ts`, web waits at the door, lease countdown | File lock: shared/auth.ts | Two agents want auth.ts. The first takes a live lock. The second waits at the door, and never writes a conflicting branch. | 8.0 s |
+| 0:25-0:35 | `04-lock` | api holds `shared/auth.ts`, web waits at the door, lease countdown | File lock: shared/auth.ts | Two agents want auth.ts. The first takes a live lock. The second waits at the door until the file is free. | 6.8 s |
 | 0:35-0:46 | `05-deny` | db reaches for the schema, the referee log shows the deny row | Referee: db/** is guarded | The database agent reaches for the schema. The referee, a Jetson on the desk, says no. The agent reads the reason and changes its plan. | 9.2 s |
 | 0:46-0:55 | `06-undo` | Undo on web, scaffolding collapses, commits leave the timeline | Undo one agent | Don't like what one agent did? Undo that agent alone. Its commits roll back, and the others keep working. | 6.9 s |
 | 0:55-1:05 | `07-merge` | Building interior, real diff, Merge, intent card | Merge through an intent card | Happy with another? Open its building, read the real diff, and merge through an intent card that says what changed and why. | 7.5 s |
@@ -54,7 +54,7 @@ This is Bullpen. Source control for AI agents.
 
 One ask. The orchestrator splits it into three tasks, and three Claude Code agents walk onto campus, each on its own branch.
 
-Two agents want auth.ts. The first takes a live lock. The second waits at the door, and never writes a conflicting branch.
+Two agents want auth.ts. The first takes a live lock. The second waits at the door until the file is free.
 
 The database agent reaches for the schema. The referee, a Jetson on the desk, says no. The agent reads the reason and changes its plan.
 

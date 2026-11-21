@@ -35,20 +35,20 @@ and three Claude Code agents walk onto
 campus, each on its own branch.
 
 10
-00:00:25,000 --> 00:00:26,622
+00:00:25,000 --> 00:00:26,593
 Two agents want auth.ts.
 
 11
-00:00:26,622 --> 00:00:28,514
+00:00:26,593 --> 00:00:28,450
 The first takes a live lock.
 
 12
-00:00:28,514 --> 00:00:30,474
-The second waits at the door,
+00:00:28,450 --> 00:00:30,308
+The second waits at the door
 
 13
-00:00:30,474 --> 00:00:33,042
-and never writes a conflicting branch.
+00:00:30,308 --> 00:00:31,835
+until the file is free.
 
 14
 00:00:35,000 --> 00:00:37,940
