@@ -223,11 +223,35 @@ export class CampusScene extends Phaser.Scene {
     return bull;
   }
 
-  // The Bull's body. Swap this for a sprite later; everything else hangs off the container.
+  // The Bull's body: 20x15 pixel art (2px cells) facing right, in the agent's color.
+  // No dark outline (it vanishes on the campus); a darker shade of the color marks the underside and far legs.
   private makeBull(color: number): Phaser.GameObjects.GameObject[] {
-    const horns = this.add.graphics().fillStyle(0xf5f0e1);
-    horns.fillTriangle(6, -8, 9, -16, 11, -8).fillTriangle(15, -8, 18, -16, 20, -8);
-    return [this.add.ellipse(0, 0, 28, 16, color), this.add.circle(13, -5, 7, color), horns];
+    const rows = [
+      "..............h....h",
+      "..............h....h",
+      "..............hh..hh",
+      ".....cccc.....hhhh..",
+      "....cccccccc..ccccc.",
+      ".d.ccccccccccdccccc.",
+      ".dcccccccccccdeepcc.",
+      ".dcccccccccccdcctttt",
+      "..cccccccccccccctttt",
+      "..ddddddddddddddddd.",
+      "...cc.dd....cc.dd...",
+      "...cc.dd....cc.dd...",
+      "...cc.dd....cc.dd...",
+      "...cc.dd....cc.dd...",
+      "...kk.kk....kk.kk...",
+    ];
+    const shade = Phaser.Display.Color.IntegerToColor(color).darken(40).color;
+    const fills: Record<string, number> = { c: color, d: shade, t: 0xd9b382, h: 0xf5f0e1, e: 0xffffff, p: 0x1b1b2f, k: 0x2a2a40 };
+    const g = this.add.graphics();
+    rows.forEach((row, y) =>
+      [...row].forEach((ch, x) => {
+        if (fills[ch] !== undefined) g.fillStyle(fills[ch]).fillRect(-16 + x * 2, -22 + y * 2, 2, 2);
+      }),
+    );
+    return [g];
   }
 
   private bull({ agent, color }: BullSpec) {
