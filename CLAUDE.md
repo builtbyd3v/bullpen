@@ -2,41 +2,76 @@ Keep CLAUDE.md and AGENTS.md identical.
 
 # Bullpen
 
-Git was built for humans. Bullpen is version control for agents. Several Claude Code agents work in parallel, each in its own git worktree and branch. A hook asks a referee before every edit. The referee leases files so two agents never edit the same one, asks a human before guarded edits, commits every edit, and lets the human merge or undo a whole branch. The web app shows it live as the USF campus: each folder is a building, `main` is the campus, each agent's branch is a colored layer.
+Git was built for humans. Bullpen is version control for agents.
+
+You chat (or speak) to one orchestrator. It splits the ask into tasks and starts 3 Claude Code agents (api, web, db), each in its own git worktree and branch. Everything runs on the user's Claude subscription through the `claude` CLI, with no API key. Bullpen stops the agents overwriting each other: file leases, guarded folders, an auto-commit per edit, per-agent undo, ask-why, and merge through an intent card. The web app shows it live as the USF campus: each folder is a building, `main` is the campus, each agent's branch is a colored layer.
+
+Pitch: "Your sub writes the code. The Jetson keeps it honest, free, and private." Demo script: `docs/DEMO.md`.
+
+## The Jetson's role
+1. **Referee.** Every edit is allow, ask or deny from the Jetson, never from the agent. The rules sit on separate hardware the agents cannot reach. Jetson down = every edit denied (the unplug demo).
+2. **Free and private history.** `/commit_msg`, `/summarize` and `/ask` run on local models, so they cost no Claude usage and no code leaves the room.
+3. **Secret guard.** `/scan` checks diffs for keys and `.env` values before they reach Claude.
+4. **Stretch: voice.** whisper.cpp in, Piper reads approvals aloud.
+
+## Models
+| Job | Model |
+|---|---|
+| Orchestrator and the 3 agents | Claude Code on the user's subscription (`claude` CLI) |
+| Jetson `/check` | rules only, no model |
+| Jetson `/commit_msg` | qwen2.5-coder:3b |
+| Jetson `/summarize` | llama3.2:3b |
+| Jetson `/ask` | nomic-embed-text + llama3.2:3b |
+| Voice (stretch) | whisper.cpp small.en + Piper |
 
 HackJam '26, USF Tampa, Sat Nov 21, 2026. Hacking 11:00 AM to 6:00 PM ET, submission closes 6:00 PM sharp. Judging: about 3 min showcase plus 1 min Q&A at the table.
 
 Mode: hackathon
 
 ## Rules
-- Only edit your own folder (table below). Need a change elsewhere? Ask the owner.
+- Only edit your own folders (table below). Need a change elsewhere? Ask the owner.
 - Contract changes go through `shared/events.md` first, plus a heads-up in the group chat.
-- Pull `main` before you start. Small PRs to `main`. `main` is protected: CI (`ci-ok`) must pass.
+- Pull `main` before you start. Monisha and Caua open small PRs from their own branches. Dev (builtbyd3v) is the integrator: Dev reviews and merges every PR to `main` once CI (`ci-ok`) passes. `main` is protected.
+- The server stays on Dev's Mac (port 8600), next to the git worktrees. The Jetson is policy and local models only.
 - No code from before 11:00 AM on Nov 21. Everything is built fresh in this repo.
 - Credit all AI use (models and tools) and list every framework in the README and the MLH submission. Missing credit means disqualification.
 - No reskin of an existing AI tool. Do not name mascots or UI after AI models or products.
-- Scope: 3 core features end to end (referee, live layers, merge and undo). MVP freeze 3:30 PM, stop coding 5:00 PM.
-- One prize per team. We enter Best Overall. Weights: Technical 25, Innovation 20, Track relevance 20, Execution 20, Presentation 15.
+- Never cut: claims (leases), the fence (guarded folders), undo.
+- One prize per team. We enter Best Overall only (creativity, a well-rounded solution, a well composed idea and execution). Weights: Technical 25, Innovation 20, Track relevance 20, Execution 20, Presentation 15.
+
+## Timeline (Nov 21, ET)
+| When | What |
+|---|---|
+| by 2:00 to 3:00 PM | Full project done, end to end |
+| 3:00 to 5:00 PM | Testing, feedback from other hackers, fixes |
+| 5:00 to 5:30 PM | Finalized and done. No new features. |
+| 5:30 to 6:20 PM | Pitch prep. Submit on MLH OrganizerHQ before 6:00 PM sharp. |
+| 6:20 to 7:50 PM | Judging |
 
 ## Ownership
 
-| Folder | Owner | GitHub |
+| Area | Owner | GitHub |
 |---|---|---|
-| `hooks/`, `jetson/`, `scripts/`, `demo-seed/` | Dev | builtbyd3v |
-| `server/` | Monisha | Monisha-Repos |
-| `web/`, `design/` | Caua | caua-fm234 |
-| `shared/`, `campus/`, `CLAUDE.md`, `AGENTS.md` | shared: change through the contract rule | |
+| `jetson/` (all of it), `hooks/`, `orchestrator/` and all AI setup, `scripts/`, `demo-seed/` (demo kit and baseline) | Dev | builtbyd3v |
+| `server/` (the whole backend) | Monisha | Monisha-Repos |
+| `web/` (frontend and design) | Caua | caua-fm234 |
+| `shared/`, `campus/`, `docs/`, `CLAUDE.md`, `AGENTS.md` | shared: change through the contract rule | |
 
 ## Ports and URLs
 
 | Service | Port | URL |
 |---|---|---|
 | web (Next.js 16 + Phaser 3) | 5173 | http://localhost:5173 (`?fake` runs without a server) |
-| server (FastAPI) | 8600 | `SERVER_URL=http://localhost:8600`; the web reads `NEXT_PUBLIC_SERVER_URL` from `web/.env.local` |
+| server (FastAPI) | 8600 | `SERVER_URL=http://localhost:8600`; the web reads `NEXT_PUBLIC_SERVER_URL` (set it in a new `web/.env.local` only if the server is not on localhost) |
+| orchestrator (FastAPI + `claude` CLI) | 8650 | `NEXT_PUBLIC_ORCHESTRATOR_URL=http://localhost:8650` |
 | Jetson (FastAPI + Ollama) | 8700 | `JETSON_URL=http://192.168.55.1:8700` (USB cable). Fallback: `http://dev.local:8700` |
 
 ## The flow
 ```
+you type or say one ask -> web chat box -> orchestrator POST /orchestrate
+  -> Claude Code splits it into 3 tasks (api, web, db) -> scripts/demo_start.sh starts the agents
+  -> orchestrator tells the server the plan (POST /hook, event "Plan")
+
 agent wants to edit a file
   -> hook (PreToolUse)  POST server /checkout
        -> server        POST Jetson /check   -> allow | ask | deny   (rules first; db/** = ask)
@@ -58,7 +93,8 @@ agent stops -> hook (Stop) POST server /hook -> server releases that agent's lea
 
 ## API per service
 **server (8600)**: `GET /health`, `POST /checkout`, `POST /hook`, `GET /state`, `WS /ws`, `POST /undo/{agent}`, `POST /merge/{agent}`, `POST /approve/{id}`, `GET /history?file=`, `GET /replay`.
-**Jetson (8700)**: `GET /health`, `POST /check`, `POST /commit_msg`, `POST /ask`, `POST /summarize`, `POST /reset`.
+**orchestrator (8650)**: `GET /health`, `POST /orchestrate`, `POST /ask`.
+**Jetson (8700)**: `GET /health`, `POST /check`, `POST /commit_msg`, `POST /ask`, `POST /summarize`, `POST /scan`, `POST /reset`.
 **hook**: `python3 hooks/bullpen_hook.py <Event>` reads Claude Code hook JSON on stdin. Env: `SERVER_URL`, `BULLPEN_AGENT`.
 
 ## Done and to do
@@ -67,10 +103,11 @@ Open work is tracked as GitHub issues, titled with a checkpoint time and labeled
 | Area | Done | To do |
 |---|---|---|
 | `hooks/` | Posts every event to `/hook`; PreToolUse fails closed | Call `/checkout`; handle allow, wait, ask, deny; timeout over 60 s |
-| `jetson/` | Deployed on the device; `/health`, `/check` (always allow), `/commit_msg`, `/ask` | `/check` rules (`db/**` = ask), `/reset`, pre-warm, `/summarize`, voice (stretch) |
-| `scripts/` | `make_demo.sh`: demo repo, 3 worktrees, hook settings | `demo-seed/`, 3 prompts, `demo_start.sh`, `demo_reset.sh`, baseline without Bullpen |
+| `jetson/` | Deployed on the device; `/health`, `/check` (always allow), `/commit_msg`, `/ask` | `/check` rules (`db/**` = ask), `/reset`, pre-warm, `/summarize`, `/scan` secret guard, per-endpoint models, voice (stretch) |
+| `scripts/` | `make_demo.sh`: demo repo, 3 worktrees, hook settings | `demo-seed/`, `demo_start.sh` (starts the 3 agents from the orchestrator's tasks), `demo_reset.sh`, baseline without Bullpen with measured lost edits |
+| `orchestrator/` | Nothing yet | `/orchestrate` (ask -> 3 tasks -> start agents), `/ask` (ask-why through the Jetson) |
 | `server/` | Stub: `/health`, `/hook` (always allow), `/state` (event list), `/ws` (bare bodies), CORS | Everything in the flow: `/checkout` with leases, real git `/state`, WS envelope, undo, merge, approvals, auto-commit, history, replay |
-| `web/` | Next.js app; campus scene with agents, flags, scaffolding, conflict flag, branch tabs, animations; side panel; fake mode and scripted demo; real-mode client with reconnect | Verify against the real server; intent card on merge; health strip; replay label; sprites and polish |
+| `web/` | Next.js app; campus scene with agents, flags, scaffolding, conflict flag, branch tabs, animations; side panel; fake mode and scripted demo; real-mode client with reconnect | Verify against the real server; working approval card; orchestrator chat box; intent card on merge; health strip; replay label; sprites and polish |
 | `design/` | Caua's prototype lives in PR #1 for reference only. It is not merged. | |
 
 ## Machine notes (Dev's Mac and Jetson)
