@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import campus from "../../campus/campus.json" with { type: "json" };
+import { layersByBuilding } from "@/lib/campus.ts";
 import type { Store, StoreState } from "@/lib/store.ts";
 import type { Building } from "@/lib/types.ts";
 
@@ -9,6 +10,8 @@ const bullrunner = byId.get("bullrunner")!;
 
 type Placed = { color: number; x: number; y: number };
 type BullSpec = Placed & { agent: string };
+type ScaffoldSpec = { color: number; b: Building; offset: number };
+type ConflictSpec = { colors: number[]; b: Building };
 
 const tint = (hex: string) => Phaser.Display.Color.HexStringToColor(hex).color;
 // Agent i's slot below building b. Bulls spread from the door; flags line up at the left of the door.
@@ -20,6 +23,8 @@ export class CampusScene extends Phaser.Scene {
   private store!: Store;
   private bulls = new Map<string, Phaser.GameObjects.Container>();
   private flags = new Map<string, Phaser.GameObjects.Container>();
+  private scaffolds = new Map<string, Phaser.GameObjects.Graphics>();
+  private conflicts = new Map<string, Phaser.GameObjects.Container>();
 
   constructor() {
     super("campus");
@@ -56,6 +61,19 @@ export class CampusScene extends Phaser.Scene {
   private render({ data }: StoreState) {
     const ws = data.worktrees;
     const index = new Map(ws.map((w, i) => [w.agent, i]));
+
+    const color = new Map(ws.map((w) => [w.agent, tint(w.color)]));
+    const scaffolds = new Map<string, ScaffoldSpec>();
+    const conflicts = new Map<string, ConflictSpec>();
+    for (const [id, agents] of layersByBuilding(ws, buildings)) {
+      const b = byId.get(id);
+      if (!b) continue;
+      for (const a of agents) scaffolds.set(`${a}|${id}`, { color: color.get(a)!, b, offset: index.get(a)! * 6 });
+      if (agents.length > 1) conflicts.set(`${id}|${agents.join()}`, { colors: agents.map((a) => color.get(a)!), b });
+    }
+    const noop = () => {};
+    this.sync(this.scaffolds, scaffolds, (s) => this.scaffold(s), noop);
+    this.sync(this.conflicts, conflicts, (c) => this.conflict(c), noop);
 
     const flags = new Map<string, Placed>();
     for (const w of ws) {
@@ -116,6 +134,24 @@ export class CampusScene extends Phaser.Scene {
         this.add.text(0, 10, agent, { fontFamily: "monospace", fontSize: "11px", color: "#ffffff" }).setOrigin(0.5, 0),
       ])
       .setDepth(4);
+  }
+
+  // Branch changes on a building: a see-through grid in the agent's color, offset per agent so layers stay visible.
+  private scaffold({ color, b, offset }: ScaffoldSpec) {
+    const g = this.add.graphics().lineStyle(2, color, 0.5).setDepth(1);
+    for (let x = b.x + 12 + offset; x < b.x + b.w; x += 24) g.lineBetween(x, b.y, x, b.y + b.h);
+    for (let y = b.y + 12 + offset; y < b.y + b.h; y += 24) g.lineBetween(b.x, y, b.x + b.w, y);
+    return g;
+  }
+
+  // Two or more branches on one building: a striped flag on the roof that flashes.
+  private conflict({ colors, b }: ConflictSpec) {
+    const g = this.add.graphics();
+    g.lineStyle(2, 0xdddddd).lineBetween(0, -36, 0, 0);
+    colors.forEach((c, i) => g.fillStyle(c).fillRect(1, -36 + i * 6, 22, 6));
+    const flag = this.add.container(b.x + b.w - 30, b.y, [g]).setDepth(3);
+    this.tweens.add({ targets: flag, alpha: 0.35, duration: 450, yoyo: true, repeat: -1 });
+    return flag;
   }
 
   private flag({ color, x, y }: Placed) {
