@@ -39,4 +39,18 @@ Behaviour worth knowing:
 - A human "allow" holds for that agent and file until the agent is undone, so its retries go straight through.
 - Jetson `/scan` or `/commit_msg` down: the commit still happens, with the message `Edit <file>`. Only `/check` fails closed.
 
+## Tests
+
+```sh
+cd server
+uv run python -m unittest discover tests      # or: python -m unittest discover tests
+```
+
+About 1.5 minutes, no Jetson, Mac or agents needed. Each test class builds a throwaway demo repo with agent worktrees, starts a fake Jetson (`db/` = ask, its endpoints can be switched to down or bad replies) and the real server on a free port.
+
+- `tests/test_unit.py` (fast, no server): lease grant, renew, wait queue order, expiry and release; approvals; agent status; file -> building (longest prefix, root, annex, campus reload); path normalization (`..`, outside the worktree, sibling folders); git log and trailer parsing.
+- `tests/test_api.py` (real server): leases across worktrees, expiry with a short TTL, `BULLPEN_RELEASE_ON_COMMIT=0`, fail-closed policy (Jetson down, bad reply, unreachable), approvals (approve, deny with note, timeout, shared retries, lease still applies, undo forgets), auto-commit (trailers, fallbacks, secret guard, deletes, spaces, unicode, parallel edits), undo, merge (conflict aborts cleanly), reads, malformed input, and a missing demo repo.
+
+Test-only env vars: `BULLPEN_LEASE_TTL`, `BULLPEN_APPROVAL_TIMEOUT` (seconds), `BULLPEN_RELEASE_ON_COMMIT` (`0` keeps a lease until Stop, undo or expiry). Defaults match the contract.
+
 Smoke test: `curl -X POST localhost:8600/checkout -H 'Content-Type: application/json' -d '{"agent":"api","tool_name":"Edit","cwd":"/path/to/demo-api","tool_input":{"file_path":"/path/to/demo-api/api/users.py"}}'`
