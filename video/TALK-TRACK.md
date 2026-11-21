@@ -1,19 +1,23 @@
-# Judging talk track (about 3:30)
+# Judging talk track (3:00, then 1:00 of questions)
 
-- Order: Dev intro (30 s), the video (1:30), Caua and Monisha on depth (30 s each), then questions.
+- Pitch, 3:00 total: Dev intro 0:00 to 0:48, the video 0:48 to 2:00, Caua 2:00 to 2:30, Monisha 2:30 to 3:00.
+- Then 1:00 of questions with one judge.
+- The video is 1:12. It is the demo. Do not start a live run.
 - The Jetson is not connected at the table. On the laptop, use fake mode only: `/`, `/campus?fake`, `/prs?fake`.
-- The video is the demo. Do not start a live run.
 - Have the video open and paused at 0:00, and the three pages open in tabs.
 
-## 1. Dev, intro (30 s)
+## 1. Dev, intro (48 s)
 
 - We are Dev, Monisha and Caua.
 - Bullpen is source control for AI agents.
 - Put three coding agents on one repo. Each pull request is clean against main, but they conflict with each other, so the second merge breaks.
 - Bullpen stops that while the agents work: file locks, a referee on separate hardware, and undo per agent.
-- Here are 90 seconds of it running.
+- Git finds that conflict at merge. Bullpen decides before the edit.
+- Here are 72 seconds of it running.
 
-## 2. Play the video (1:30)
+## 2. Play the video (1:12)
+
+- 0:00 the problem, 0:15 the fix in Bullpen, 0:50 why it is different, 1:07 the one-liner.
 
 ## 3. Caua, frontend (30 s). On screen: `/campus?fake`, then `/prs?fake`
 

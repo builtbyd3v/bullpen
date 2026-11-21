@@ -1,131 +1,135 @@
 1
-00:00:00,000 --> 00:00:00,755
-This is Bullpen.
-
-2
-00:00:00,755 --> 00:00:02,123
-Source control for AI agents.
-
-3
-00:00:04,333 --> 00:00:05,720
+00:00:00,000 --> 00:00:01,580
 Two AI agents, two branches.
 
+2
+00:00:01,580 --> 00:00:03,951
+Both pull requests are green against main.
+
+3
+00:00:03,951 --> 00:00:05,757
+Merge one, and the other breaks.
+
 4
-00:00:05,720 --> 00:00:07,106
-Both are green against main.
+00:00:06,567 --> 00:00:07,528
+Here is why.
 
 5
-00:00:08,400 --> 00:00:10,955
-But both rewrite the same lines of auth.ts.
+00:00:07,528 --> 00:00:10,650
+Both rewrite the same lines of auth.ts.
 
 6
-00:00:12,267 --> 00:00:13,512
-Git only finds out at merge.
+00:00:11,967 --> 00:00:13,241
+And git only finds out at merge.
 
 7
-00:00:13,512 --> 00:00:14,935
-One lands, and the other breaks.
-
-8
-00:00:16,233 --> 00:00:17,660
+00:00:14,533 --> 00:00:15,877
 Bullpen stops it before it happens.
 
-9
-00:00:18,867 --> 00:00:19,694
+8
+00:00:17,667 --> 00:00:18,323
 You type one ask.
 
-10
-00:00:21,500 --> 00:00:22,966
+9
+00:00:20,133 --> 00:00:21,693
 Three Claude Code agents start work,
 
-11
-00:00:22,966 --> 00:00:23,903
+10
+00:00:21,693 --> 00:00:22,690
 each on its own branch.
 
-12
-00:00:25,200 --> 00:00:26,582
+11
+00:00:24,000 --> 00:00:25,548
 Two of them want the same file.
 
-13
-00:00:26,582 --> 00:00:27,385
+12
+00:00:25,548 --> 00:00:26,447
 One gets the lock.
 
-14
-00:00:28,700 --> 00:00:29,539
+13
+00:00:27,733 --> 00:00:28,729
 The other waits in line,
 
-15
-00:00:29,539 --> 00:00:30,447
+14
+00:00:28,729 --> 00:00:29,807
 so nothing is overwritten.
 
-16
-00:00:31,733 --> 00:00:33,108
+15
+00:00:31,100 --> 00:00:32,355
 A guarded folder needs a human.
 
-17
-00:00:33,108 --> 00:00:34,482
+16
+00:00:32,355 --> 00:00:33,610
 Bullpen shows an approval card.
 
-18
-00:00:35,767 --> 00:00:36,754
+17
+00:00:34,900 --> 00:00:35,769
 Deny it, and the agent
 
-19
-00:00:36,754 --> 00:00:37,741
+18
+00:00:35,769 --> 00:00:36,638
 writes a plan instead.
 
-20
-00:00:39,033 --> 00:00:40,489
+19
+00:00:37,933 --> 00:00:39,508
 Don't like one agent's work?
 
-21
-00:00:40,489 --> 00:00:41,320
+20
+00:00:39,508 --> 00:00:40,408
 Undo that agent.
 
-22
-00:00:41,320 --> 00:00:42,724
+21
+00:00:40,408 --> 00:00:41,927
 Only its branch rolls back.
 
-23
-00:00:43,833 --> 00:00:44,713
+22
+00:00:43,033 --> 00:00:43,890
 Happy with another?
 
-24
-00:00:44,713 --> 00:00:45,499
+23
+00:00:43,890 --> 00:00:44,656
 Merge it to main.
 
-25
-00:00:47,300 --> 00:00:48,731
+24
+00:00:46,467 --> 00:00:47,918
 The other branches sync with it at once.
 
-26
-00:00:50,433 --> 00:00:51,826
+25
+00:00:49,633 --> 00:00:51,097
 Every edit is checked by a referee,
 
-27
-00:00:51,826 --> 00:00:53,576
+26
+00:00:51,097 --> 00:00:52,938
 on separate hardware the agents can't touch.
 
-28
-00:00:54,867 --> 00:00:56,968
+27
+00:00:54,233 --> 00:00:56,518
 Pause the referee, and every edit is denied.
 
-29
-00:00:56,968 --> 00:00:57,732
+28
+00:00:56,518 --> 00:00:57,348
 It fails closed.
 
-30
-00:00:59,033 --> 00:01:00,556
+29
+00:00:58,633 --> 00:01:00,005
 And every edit is a commit, tagged
 
-31
-00:01:00,556 --> 00:01:01,810
+30
+00:01:00,005 --> 00:01:01,135
 with the agent that made it.
 
+31
+00:01:02,433 --> 00:01:04,051
+Git finds the conflict at merge.
+
 32
-00:01:03,100 --> 00:01:04,154
-Git tracks what changed.
+00:01:04,051 --> 00:01:05,670
+Bullpen decides before the edit.
 
 33
-00:01:04,154 --> 00:01:06,085
+00:01:06,667 --> 00:01:07,798
+Git tracks what changed.
+
+34
+00:01:07,798 --> 00:01:09,873
 Bullpen controls who's allowed to change it.
