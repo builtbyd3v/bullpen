@@ -81,5 +81,6 @@ test("the demo ends with no approvals, api merged, web undone, and every commit 
   assert.equal(byAgent.api.status, "done");
   assert.equal(byAgent.web.ahead, 0);
   assert.equal(byAgent.db.ahead, 2);
+  assert.equal(byAgent.db.status, "working");
   for (const sha of ["b7c8d9e", "e1f2a3b", "c4d5e6f", "a1b2c3d"]) assert.ok(snapshot.feed.some((f) => f.sha === sha), sha);
 });

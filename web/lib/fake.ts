@@ -63,7 +63,12 @@ const reset = (w: Worktree): Worktree => ({
 // Mirrors the server's section 6 actions so ?fake mode exercises the same dispatch path.
 export function fakeServer(action: Action): Envelope[] {
   if (action.kind === "approve") {
-    data = { ...data, approvals: data.approvals.filter((a) => a.id !== action.id) };
+    const agent = data.approvals.find((a) => a.id === action.id)?.agent;
+    data = {
+      worktrees: data.worktrees.map((w) => (w.agent === agent ? { ...w, status: "working" } : w)),
+      main: data.main,
+      approvals: data.approvals.filter((a) => a.id !== action.id),
+    };
     return [{ type: "state", data }];
   }
   const sha = data.worktrees.find((w) => w.agent === action.agent)?.commits[0]?.sha ?? "";

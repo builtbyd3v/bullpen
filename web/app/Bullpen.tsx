@@ -108,7 +108,7 @@ type SectionProps = { title: string; children: ReactNode };
 function Section({ title, children }: SectionProps) {
   return (
     <section className="border-b border-white/10 p-4">
-      <h2 className="mb-3 text-xs font-bold tracking-widest text-white/50 uppercase">{title}</h2>
+      <h2 className="mb-3 text-base font-bold tracking-widest text-white/80 uppercase">{title}</h2>
       {children}
     </section>
   );
