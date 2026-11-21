@@ -66,6 +66,7 @@ def test_starts_three_agents_detached(setup):
         assert "--append-system-prompt" in rec
         assert f"You are the {a} agent in a Bullpen demo" in rec
         assert f"docs/{a}-plan.md" in rec
+        assert "Do not use Bash to read or list files." in rec
         assert wait_for(fake_dir / "logs" / f"{a}.log").strip() == f"started {a}"
     assert "line 2" in (fake_dir / "rec-db").read_text()
 

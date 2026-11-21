@@ -52,7 +52,8 @@ while IFS= read -r -d '' agent && IFS= read -r -d '' task; do
 A referee checks every edit. If an edit is denied or you are told to wait, do not retry in a loop: \
 do your other files first, then retry that file once at the end. If an edit needs approval or is \
 denied for a guarded folder (db/), do not retry: write what you wanted to change and why to \
-docs/$agent-plan.md and stop. Do not run git commands; Bullpen commits each edit for you. \
+docs/$agent-plan.md and stop. Read files with the Read tool and search with Grep and Glob. \
+Do not use Bash to read or list files. Do not run git commands; Bullpen commits each edit for you. \
 Keep the change small."
   # -p: headless. acceptEdits: file edits need no prompt; the PreToolUse hook in the worktree's
   # .claude/settings.json still runs first and its deny always wins. --permission-prompts none:
