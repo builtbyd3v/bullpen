@@ -1,0 +1,138 @@
+{
+ "image": "buildings-sheet.png",
+ "scale_note": "1 sprite px = 1 px at native size; draw at 2x or 3x with pixelArt: true",
+ "frames": {
+  "library": {
+   "name": "USF Tampa Library",
+   "folder": "shared/",
+   "x": 0,
+   "y": 0,
+   "w": 52,
+   "h": 42,
+   "door": {
+    "x": 26,
+    "y": 42
+   }
+  },
+  "msc": {
+   "name": "Marshall Student Center",
+   "folder": "web/",
+   "x": 54,
+   "y": 0,
+   "w": 68,
+   "h": 44,
+   "door": {
+    "x": 34,
+    "y": 44
+   }
+  },
+  "enb": {
+   "name": "Engineering Building II",
+   "folder": "api/",
+   "x": 124,
+   "y": 0,
+   "w": 72,
+   "h": 46,
+   "door": {
+    "x": 36,
+    "y": 46
+   }
+  },
+  "enc": {
+   "name": "Engineering Building III",
+   "folder": "tests/",
+   "x": 198,
+   "y": 0,
+   "w": 52,
+   "h": 38,
+   "door": {
+    "x": 26,
+    "y": 38
+   }
+  },
+  "muma": {
+   "name": "Muma College of Business",
+   "folder": "config/",
+   "x": 252,
+   "y": 0,
+   "w": 56,
+   "h": 52,
+   "door": {
+    "x": 28,
+    "y": 52
+   }
+  },
+  "cooper": {
+   "name": "Cooper Hall",
+   "folder": "docs/",
+   "x": 310,
+   "y": 0,
+   "w": 50,
+   "h": 26,
+   "door": {
+    "x": 25,
+    "y": 26
+   }
+  },
+  "rec": {
+   "name": "Campus Recreation Center",
+   "folder": "scripts/",
+   "x": 362,
+   "y": 0,
+   "w": 66,
+   "h": 38,
+   "door": {
+    "x": 33,
+    "y": 38
+   }
+  },
+  "sundome": {
+   "name": "Sun Dome (Yuengling Center)",
+   "folder": "db/",
+   "x": 430,
+   "y": 0,
+   "w": 76,
+   "h": 62,
+   "door": {
+    "x": 38,
+    "y": 62
+   }
+  },
+  "juniper": {
+   "name": "Juniper-Poplar Hall",
+   "folder": null,
+   "x": 508,
+   "y": 0,
+   "w": 44,
+   "h": 38,
+   "door": {
+    "x": 22,
+    "y": 38
+   }
+  },
+  "bullrunner": {
+   "name": "Bull Runner stop",
+   "folder": "",
+   "x": 554,
+   "y": 0,
+   "w": 44,
+   "h": 26,
+   "door": {
+    "x": 22,
+    "y": 26
+   }
+  },
+  "mlk-plaza": {
+   "name": "MLK Plaza and the Bull statue",
+   "folder": null,
+   "x": 600,
+   "y": 0,
+   "w": 48,
+   "h": 34,
+   "door": {
+    "x": 24,
+    "y": 34
+   }
+  }
+ }
+}
