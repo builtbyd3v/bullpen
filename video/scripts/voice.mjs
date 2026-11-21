@@ -37,17 +37,21 @@ if (mode === "list") {
     process.exit(1);
   }
   const only = process.argv.slice(3);
-  mkdirSync(join(root, "raw/vo"), { recursive: true });
+  mkdirSync(process.env.VOICE_OUT ?? join(root, "raw/vo"), { recursive: true });
   for (const slot of JSON.parse(readFileSync(join(root, "timeline.json"), "utf8")).slots) {
     if (!slot.vo || (only.length && !only.includes(slot.id))) continue;
     // The file name is read letter by letter, so it is spelled the way it should sound.
     const text = slot.vo.replaceAll("auth.ts", "auth dot T S");
     const res = await api(`/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {
       method: "POST",
-      body: JSON.stringify({ text, model_id: process.env.ELEVENLABS_MODEL ?? "eleven_multilingual_v2" }),
+      // VOICE_SETTINGS is JSON, for example {"stability":0.3,"style":0.45,"speed":1.1}.
+      // Lower stability gives more emotion, style exaggerates the delivery, speed runs from 0.7 to 1.2.
+      body: JSON.stringify({ text, model_id: process.env.ELEVENLABS_MODEL ?? "eleven_multilingual_v2", voice_settings: JSON.parse(process.env.VOICE_SETTINGS ?? "{}") }),
     });
-    writeFileSync(join(root, `raw/vo/${slot.id}.mp3`), Buffer.from(await res.arrayBuffer()));
-    console.log(`raw/vo/${slot.id}.mp3`);
+    // VOICE_OUT picks another folder, for samples that must not replace the takes in the film.
+    const file = join(process.env.VOICE_OUT ?? join(root, "raw/vo"), `${slot.id}.mp3`);
+    writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+    console.log(file);
   }
 } else {
   console.error("Usage: node scripts/voice.mjs list | make [slot id ...]");
