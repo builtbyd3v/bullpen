@@ -1,0 +1,129 @@
+{
+  "fps": 30,
+  "slots": [
+    {
+      "id": "01-problem",
+      "kind": "clip",
+      "dur": 10,
+      "start": 0,
+      "rate": 1,
+      "keepAudio": true,
+      "shot": "Real life. Person at a laptop, two agent terminals overwrite auth.ts, they slump.",
+      "vo": "Three AI agents, one repo. Two of them just rewrote the same file. One version is gone, and nothing recorded it."
+    },
+    {
+      "id": "02-title",
+      "kind": "title",
+      "dur": 5,
+      "tagline": "Source control for AI agents",
+      "vo": "This is Bullpen. Source control for AI agents."
+    },
+    {
+      "id": "03-ask",
+      "kind": "clip",
+      "dur": 10,
+      "start": 0,
+      "rate": 1,
+      "label": "One ask, three agents",
+      "shot": "Type the ask in the chat box. Three bulls walk onto the campus.",
+      "vo": "One ask. The orchestrator splits it into three tasks, and three Claude Code agents walk onto campus, each on its own branch."
+    },
+    {
+      "id": "04-lock",
+      "kind": "clip",
+      "dur": 10,
+      "start": 0,
+      "rate": 1,
+      "label": "File lock: shared/auth.ts",
+      "shot": "api holds shared/auth.ts. web waits at the door. Lease panel shows the countdown and the queue.",
+      "vo": "Two agents want auth.ts. The first one takes the lock. The second waits at the door until the file is free."
+    },
+    {
+      "id": "05-deny",
+      "kind": "clip",
+      "dur": 11,
+      "start": 0,
+      "rate": 1,
+      "label": "Referee: db/** is guarded",
+      "shot": "db edits the schema. Referee log shows the deny row with the db/** rule. db moves on.",
+      "vo": "The database agent reaches for the schema. The referee, a Jetson on the desk, says no. The agent reads the reason and changes its plan."
+    },
+    {
+      "id": "06-undo",
+      "kind": "clip",
+      "dur": 9,
+      "start": 0,
+      "rate": 1,
+      "label": "Undo one agent",
+      "shot": "Click Undo on web. Its scaffolding collapses and its commits leave the timeline.",
+      "vo": "Don't like what one agent did? Undo that agent alone. Its commits roll back, and the others keep working."
+    },
+    {
+      "id": "07-merge",
+      "kind": "clip",
+      "dur": 10,
+      "start": 0,
+      "rate": 1,
+      "label": "Merge through an intent card",
+      "shot": "Click api's building, show the diff, click Merge, show the intent card, building flashes.",
+      "vo": "Happy with another? Open its building, read the real diff, and merge through an intent card that says what changed and why."
+    },
+    {
+      "id": "08-unplug",
+      "kind": "clip",
+      "dur": 10,
+      "start": 0,
+      "rate": 1,
+      "label": "Jetson unplugged: every edit denied",
+      "shot": "Pull the Jetson's USB cable on camera or picture-in-picture. Referee log shows OFFLINE and denies.",
+      "vo": "Now pull the Jetson's cable. The referee is offline, so every edit is denied. Bullpen fails closed."
+    },
+    {
+      "id": "09-evidence",
+      "kind": "clip",
+      "dur": 9,
+      "start": 0,
+      "rate": 1,
+      "label": "File locks before every edit, 90 s TTL",
+      "shot": "Evidence panel close-up: leases with the TTL countdown running.",
+      "vo": "Under the pixels, everything is real. Agents lock a file before each edit, and the lock expires after ninety seconds."
+    },
+    {
+      "id": "10-campus",
+      "kind": "clip",
+      "dur": 8,
+      "start": 0,
+      "rate": 1,
+      "label": "Auto-commit per edit: Bullpen-Agent, Bullpen-Task",
+      "shot": "Campus built from a second repo, then the commit timeline with the trailers.",
+      "vo": "Point Bullpen at any repo and it builds your campus. Each edit becomes a commit, tagged with its agent."
+    },
+    {
+      "id": "11-interior",
+      "kind": "clip",
+      "dur": 6,
+      "start": 0,
+      "rate": 1,
+      "label": "Your own Claude subscription, no API key",
+      "shot": "Building interior zoom: agent at its file, branch sign, mini log, real diff.",
+      "vo": "It runs on your own Claude subscription, with no API key."
+    },
+    {
+      "id": "12-referee",
+      "kind": "clip",
+      "dur": 10,
+      "start": 0,
+      "rate": 1,
+      "label": "On the Jetson: qwen2.5-coder:3b, llama3.2:3b, nomic-embed-text",
+      "shot": "Referee log scrolling: rule, latency, model per row. Jetson visible if possible.",
+      "vo": "The referee runs on separate hardware the agents cannot reach. Small on-device models write the history, and a secret guard scans each diff."
+    },
+    {
+      "id": "13-close",
+      "kind": "title",
+      "dur": 12,
+      "tagline": "Git tracks what changed. Bullpen controls who's allowed to change it.",
+      "vo": "Anthropic rebuilt source control for agents, and called it Scion. Bullpen brings that to every engineer. Git tracks what changed. Bullpen controls who's allowed to change it."
+    }
+  ]
+}

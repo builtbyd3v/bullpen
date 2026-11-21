@@ -1,0 +1,21 @@
+{
+  "name": "bullpen-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node scripts/build.mjs",
+    "prep": "node scripts/build.mjs --no-render",
+    "studio": "remotion studio src/index.tsx --props=out/props.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.545",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.545"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "typescript": "^5.9.0"
+  }
+}
