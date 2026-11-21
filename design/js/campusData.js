@@ -282,7 +282,7 @@ window.BullpenCampusData = (function () {
 
   function createSampleChangeForFolder(folder, idx) {
     const label = getFolderLabel(folder).toLowerCase();
-    const models = ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+    const models = ['agent-api', 'agent-web', 'agent-db'];
     const modelId = models[idx % models.length];
     const agentId = `agent-${(idx % 3) + 1}`;
     const commits = ['a4f91c2', 'c82e0b7', '71d4e9a', 'e09a31f', '5b912cc', '9d3a10e', '3f88b21', 'f12c4d9'];
@@ -586,7 +586,7 @@ window.BullpenCampusData = (function () {
     ENB: [
       {
         task: 'Optimize WebSocket lease broadcast loop',
-        reason: 'Reduce heartbeat jitter when 3+ Claude agents edit concurrently.',
+        reason: 'Reduce heartbeat jitter when 3+ agents edit concurrently.',
         summary: 'Batched lease state deltas into 60ms frames with zero dropped packets.',
         file: '/backend/ws/leaseHub.ts',
         diff: [

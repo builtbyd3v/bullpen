@@ -294,7 +294,7 @@ window.BullpenMapRenderer = (function () {
 
       // Walk path previews & waiting-line tethers
       state.agents.forEach(agent => {
-        const model = window.BullpenPalette.CLAUDE_MODELS[agent.modelId];
+        const model = window.BullpenPalette.AGENT_COLORS[agent.modelId];
         if (agent.state === 'walking' && agent.path && agent.path.length) {
           ctx.save();
           ctx.strokeStyle = model ? model.primary : USF.gold;

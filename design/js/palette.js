@@ -1,5 +1,5 @@
 /* ============================================================================
-   BULLPEN — Official USF Brand Palette & Claude Model Mascot Colors
+   BULLPEN — Official USF Brand Palette & Agent Mascot Colors
    Source: https://www.usf.edu/ucm/marketing/colors.aspx
    ============================================================================ */
 
@@ -47,12 +47,12 @@ window.BullpenPalette = (function () {
     ribbonRed:  '#C8373B',
   };
 
-  // Distinct USF-harmonized colors assigned to each Claude model (Claude models only)
-  const CLAUDE_MODELS = {
-    'claude-opus-4-6': {
-      id: 'claude-opus-4-6',
-      shortName: 'Opus 4.6',
-      displayName: 'Claude Opus 4.6',
+  // Distinct USF-harmonized colors assigned to each agent (api, web, db)
+  const AGENT_COLORS = {
+    'agent-api': {
+      id: 'agent-api',
+      shortName: 'api',
+      displayName: 'api agent',
       primary: '#DBE442',     // Lemongrass / Gold jersey
       secondary: '#CFC493',   // USF Gold trim
       accent: '#005432',      // Evergreen outline
@@ -62,10 +62,10 @@ window.BullpenPalette = (function () {
       bullFurLight: '#7A5033',
       horns: '#EDEBD1',
     },
-    'claude-sonnet-4-6': {
-      id: 'claude-sonnet-4-6',
-      shortName: 'Sonnet 4.6',
-      displayName: 'Claude Sonnet 4.6',
+    'agent-web': {
+      id: 'agent-web',
+      shortName: 'web',
+      displayName: 'web agent',
       primary: '#29AFCE',     // Sky jersey
       secondary: '#006484',   // Storm trim
       accent: '#0D231B',
@@ -75,10 +75,10 @@ window.BullpenPalette = (function () {
       bullFurLight: '#6B4E3B',
       horns: '#EDEBD1',
     },
-    'claude-haiku-4-5': {
-      id: 'claude-haiku-4-5',
-      shortName: 'Haiku 4.5',
-      displayName: 'Claude Haiku 4.5',
+    'agent-db': {
+      id: 'agent-db',
+      shortName: 'db',
+      displayName: 'db agent',
       primary: '#9CCB3B',     // Apple green jersey
       secondary: '#009374',   // Teal trim
       accent: '#003822',
@@ -90,5 +90,5 @@ window.BullpenPalette = (function () {
     },
   };
 
-  return { USF, CLAUDE_MODELS };
+  return { USF, AGENT_COLORS };
 })();

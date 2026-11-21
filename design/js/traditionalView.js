@@ -5,7 +5,7 @@
    ============================================================================ */
 
 window.BullpenTraditionalView = (function () {
-  const { CLAUDE_MODELS } = window.BullpenPalette;
+  const { AGENT_COLORS } = window.BullpenPalette;
 
   function escapeHtml(str) {
     return String(str || '')
@@ -61,7 +61,7 @@ window.BullpenTraditionalView = (function () {
           <div class="trad-folder-meta">
             ${waiters.length ? `<span class="trad-queue-pill">⏳ ${waiters.length} WAIT</span>` : ''}
             ${statusBadgeHtml(status)}
-            ${activeAgent ? `<span class="trad-owner-dot" style="background:${CLAUDE_MODELS[activeAgent.modelId].primary}"></span>` : ''}
+            ${activeAgent ? `<span class="trad-owner-dot" style="background:${AGENT_COLORS[activeAgent.modelId].primary}"></span>` : ''}
           </div>
         </button>
       `;
@@ -69,7 +69,7 @@ window.BullpenTraditionalView = (function () {
 
     // 2. Agent Swimlanes
     const agentCardsHtml = state.agents.map(agent => {
-      const model = CLAUDE_MODELS[agent.modelId];
+      const model = AGENT_COLORS[agent.modelId];
       const pct = Math.round((agent.workProgress || 0) * 100);
       const targetB = agent.targetBuildingId ? state.getBuilding(agent.targetBuildingId) : null;
 
@@ -112,7 +112,7 @@ window.BullpenTraditionalView = (function () {
     });
 
     const tableRowsHtml = allChanges.slice(0, 8).map(c => {
-      const model = CLAUDE_MODELS[c.modelId] || CLAUDE_MODELS['claude-opus-4-6'];
+      const model = AGENT_COLORS[c.modelId] || AGENT_COLORS['agent-api'];
       return `
         <tr data-inspect-bldg="${c.building.id}" class="trad-commit-row">
           <td><code class="commit-sha">${escapeHtml(c.commit)}</code></td>
@@ -136,7 +136,7 @@ window.BullpenTraditionalView = (function () {
             <div class="trad-folder-list">${folderItemsHtml}</div>
           </section>
           <section class="trad-panel trad-lanes-panel">
-            <div class="trad-panel-title">ACTIVE CLAUDE AGENTS (WORKFLOW LANES)</div>
+            <div class="trad-panel-title">ACTIVE AGENTS (WORKFLOW LANES)</div>
             <div class="trad-agent-list">${agentCardsHtml}</div>
           </section>
         </div>

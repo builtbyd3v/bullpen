@@ -5,7 +5,7 @@
    ============================================================================ */
 
 (function () {
-  const { CLAUDE_MODELS } = window.BullpenPalette;
+  const { AGENT_COLORS } = window.BullpenPalette;
   const Data = window.BullpenCampusData;
   const { state, tick } = window.BullpenState;
   const { CampusMapRenderer } = window.BullpenMapRenderer;
@@ -229,11 +229,11 @@
   });
 
   // ==========================================================================
-  // 1. CLAUDE MODEL COLOR LEGEND (Header)
+  // 1. AGENT COLOR LEGEND (Header)
   // ==========================================================================
   function renderModelLegend() {
     legendEl.innerHTML = state.agents.map(agent => {
-      const m = CLAUDE_MODELS[agent.modelId];
+      const m = AGENT_COLORS[agent.modelId];
       const dotPulse = agent.state === 'working' ? 'pulsing' : '';
       const stateLabel = agent.state === 'waiting'
         ? `WAIT #${agent.queuePos || 1}`
@@ -298,7 +298,7 @@
 
     let activeHtml = '';
     if (active) {
-      const m = CLAUDE_MODELS[active.modelId];
+      const m = AGENT_COLORS[active.modelId];
       const pct = Math.round(active.workProgress * 100);
       const rem = Math.max(0, Math.ceil(state.timeLimitSec - (active.workElapsed || 0)));
       activeHtml += `
@@ -361,7 +361,7 @@
 
     let activeBlock = '';
     if (active) {
-      const m = CLAUDE_MODELS[active.modelId];
+      const m = AGENT_COLORS[active.modelId];
       const pct = Math.round(active.workProgress * 100);
       const rem = Math.max(0, Math.ceil(state.timeLimitSec - (active.workElapsed || 0)));
       activeBlock = `
@@ -385,7 +385,7 @@
         <div class="drawer-queue-box">
           <div class="drawer-section-label">⏳ WAITING OUTSIDE DOOR (${waiters.length})</div>
           ${waiters.map(w => {
-            const m = CLAUDE_MODELS[w.modelId];
+            const m = AGENT_COLORS[w.modelId];
             return `
               <div class="drawer-queue-item">
                 <span class="model-swatch" style="background:${m.primary}"></span>
@@ -400,7 +400,7 @@
 
     const changesHtml = b.changes.length
       ? b.changes.map(c => {
-          const m = CLAUDE_MODELS[c.modelId] || CLAUDE_MODELS['claude-opus-4-6'];
+          const m = AGENT_COLORS[c.modelId] || AGENT_COLORS['agent-api'];
           const filesHtml = c.files.map(f => `
             <div class="diff-file">
               <div class="diff-file-head">
@@ -592,7 +592,7 @@
     };
 
     oracleListEl.innerHTML = state.oracleFeed.map(item => {
-      const m = CLAUDE_MODELS[item.modelId] || CLAUDE_MODELS['claude-opus-4-6'];
+      const m = AGENT_COLORS[item.modelId] || AGENT_COLORS['agent-api'];
       const b = item.buildingId ? state.getBuilding(item.buildingId) : null;
       const bldgLabel = b ? Data.getFolderLabel(b.folder) : 'CAMPUS';
       return `
@@ -646,7 +646,7 @@
   // ==========================================================================
   function populateDemoSelectors() {
     demoAgentSelect.innerHTML = state.agents.map(a => {
-      const m = CLAUDE_MODELS[a.modelId];
+      const m = AGENT_COLORS[a.modelId];
       return `<option value="${a.id}">${escapeHtml(a.shortLabel)} (${escapeHtml(m.shortName)})</option>`;
     }).join('');
 

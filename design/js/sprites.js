@@ -4,7 +4,7 @@
    ============================================================================ */
 
 window.BullpenSprites = (function () {
-  const { USF, CLAUDE_MODELS } = window.BullpenPalette;
+  const { USF, AGENT_COLORS } = window.BullpenPalette;
 
   // Helper: snap to integer pixel rect
   function px(ctx, x, y, w, h, color) {
@@ -790,10 +790,10 @@ window.BullpenSprites = (function () {
   }
 
   // ==========================================================================
-  // PIXEL BULL MASCOT (Rocky-style USF Bull with Claude Model Color!)
+  // PIXEL BULL MASCOT (Rocky-style USF Bull in its agent color)
   // ==========================================================================
   function drawBull(ctx, agent, time, timeLimitSec = 15) {
-    const model = CLAUDE_MODELS[agent.modelId] || CLAUDE_MODELS['claude-opus-4-6'];
+    const model = AGENT_COLORS[agent.modelId] || AGENT_COLORS['agent-api'];
     const facingLeft = agent.facing < 0;
     const state = agent.state; // 'idle' | 'walking' | 'waiting' | 'working' | 'kicked' | 'celebrating'
 
@@ -892,7 +892,7 @@ window.BullpenSprites = (function () {
     px(ctx, -2, -1, 1, 1, USF.ink);
     px(ctx, 1, -1, 1, 1, USF.ink);
 
-    // Claude Model-Colored Jersey / Vest
+    // Agent-Colored Jersey / Vest
     px(ctx, -5, 1, 10, 4, model.primary);
     px(ctx, -5, 3, 10, 1, model.secondary);
     px(ctx, -1, 1, 2, 3, USF.white);

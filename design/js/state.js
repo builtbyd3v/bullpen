@@ -47,9 +47,9 @@ window.BullpenState = (function () {
     return [
       {
         id: 'agent-1',
-        name: 'Agent 1 (Opus)',
-        shortLabel: 'OPUS',
-        modelId: 'claude-opus-4-6',
+        name: 'Agent 1 (api)',
+        shortLabel: 'API',
+        modelId: 'agent-api',
         x: p0.x, y: p0.y,
         facing: 1,
         state: 'idle',
@@ -68,9 +68,9 @@ window.BullpenState = (function () {
       },
       {
         id: 'agent-2',
-        name: 'Agent 2 (Sonnet)',
-        shortLabel: 'SONNET',
-        modelId: 'claude-sonnet-4-6',
+        name: 'Agent 2 (web)',
+        shortLabel: 'WEB',
+        modelId: 'agent-web',
         x: p1.x, y: p1.y,
         facing: -1,
         state: 'idle',
@@ -89,9 +89,9 @@ window.BullpenState = (function () {
       },
       {
         id: 'agent-3',
-        name: 'Agent 3 (Haiku)',
-        shortLabel: 'HAIKU',
-        modelId: 'claude-haiku-4-5',
+        name: 'Agent 3 (db)',
+        shortLabel: 'DB',
+        modelId: 'agent-db',
         x: p2.x, y: p2.y,
         facing: 1,
         state: 'idle',
@@ -213,7 +213,7 @@ window.BullpenState = (function () {
           time: nowTimeLabel(),
           buildingId: state.buildings[0] ? state.buildings[0].id : null,
           agentId: 'agent-1',
-          modelId: 'claude-opus-4-6',
+          modelId: 'agent-api',
           title: `Analyzed ${state.rootFolder}: ${state.buildings.length} folder${state.buildings.length === 1 ? '' : 's'} mapped`,
           detail: `Campus cropped to ${state.cropRect.tierLabel} (${state.cropRect.w}x${state.cropRect.h}) — all ${state.buildings.length} visible.`,
         },
@@ -225,7 +225,7 @@ window.BullpenState = (function () {
             time: chg ? chg.time : nowTimeLabel(),
             buildingId: b.id,
             agentId: chg ? chg.agentId : 'agent-1',
-            modelId: chg ? chg.modelId : 'claude-opus-4-6',
+            modelId: chg ? chg.modelId : 'agent-api',
             title: b.guarded
               ? `Guarded Zone detected in ${b.folder}`
               : `Mapped ${b.folder} -> ${b.name}`,
@@ -346,7 +346,7 @@ window.BullpenState = (function () {
             summary: `Updated core handlers inside ${b ? b.folder : '/src'}.`,
             file: `${b ? b.folder : '/src'}/index.ts`,
             diff: [
-              { type: 'add', text: '// Updated by Bullpen Claude agent' },
+              { type: 'add', text: '// Updated by Bullpen agent' },
               { type: 'add', text: 'export const status = "verified";' },
             ]
           };
@@ -522,7 +522,7 @@ window.BullpenState = (function () {
         state.dispatchAgent('agent-2', b0.id, {
           duration: 8,
           task: `Ship clean follow-up in ${b0.folder}`,
-          reason: `Queued outside ${b0.folder} waiting for Opus to finish.`,
+          reason: `Queued outside ${b0.folder} waiting for api to finish.`,
         });
       }, 1400);
 
@@ -535,9 +535,9 @@ window.BullpenState = (function () {
 
       const t3 = setTimeout(() => {
         if (!state.autoDemoRunning) return;
-        const opus = state.getAgent('agent-1');
-        if (opus && opus.state === 'working') {
-          kickOutAgent(opus, 'error', `Build error in ${b0.folder} — evicted from building!`);
+        const apiAgent = state.getAgent('agent-1');
+        if (apiAgent && apiAgent.state === 'working') {
+          kickOutAgent(apiAgent, 'error', `Build error in ${b0.folder} — evicted from building!`);
         }
       }, 8200);
 
