@@ -70,7 +70,7 @@ The pixel campus is the hero. Next to it is a live evidence panel, and every ani
 | Agents | none | 3 Claude Code agents (`claude -p`) on the user's Claude Max subscription, OAuth login, no API key. Sonnet runs the agents (`BULLPEN_AGENT_MODEL`), Haiku splits the ask |
 | Hook | none | `hooks/bullpen_hook.py`, Python standard library |
 | CI | none | GitHub Actions: web test, typecheck and build; server, Jetson and hook checks; one required `ci-ok` |
-| Demo video | none | Remotion, ffmpeg, Playwright, ElevenLabs voice |
+| Demo video | none | Remotion and ffmpeg (video edit), Playwright (screen recording), ElevenLabs (voice "Jessica") |
 
 ## On-device models (Jetson)
 
@@ -90,7 +90,7 @@ All three models stay loaded together in 8 GB (`num_ctx` 4096), so this work cos
 2. Start the server: `cd server && uv sync && BULLPEN_RELEASE_ON_COMMIT=0 uv run uvicorn main:app --host 0.0.0.0 --port 8600`. The env var keeps a lease until Stop, undo or expiry, so the collision is visible (see [`docs/TECH.md`](docs/TECH.md)).
 3. Start the orchestrator: `cd orchestrator && uv sync && uv run uvicorn main:app --port 8650`. It needs a logged-in `claude` CLI.
 4. Start the Jetson service per [`jetson/README.md`](jetson/README.md) (`JETSON_URL`, default `http://192.168.55.1:8700`).
-5. Start the web app: `cd web && npm install && npm run dev`, then open http://localhost:5173 (`/` landing, `/campus` dashboard, `/campus?fake` scripted demo with no server). Click a suggested ask in the chat box, or run `scripts/demo_start.sh` for the canned tasks. Reset between runs with Settings, Reset demo, or `scripts/demo_reset.sh`.
+5. Start the web app: `cd web && npm install && npm run dev`, then open http://localhost:5173 (`/` landing, `/campus` dashboard, `/prs` pull requests, `?fake` on either for the scripted demo with no server). Click a suggested ask in the orchestrator panel, or run `scripts/demo_start.sh` for the canned tasks. Reset between runs with Settings, Reset demo, or `scripts/demo_reset.sh`.
 
 ## Repo layout
 
@@ -120,6 +120,9 @@ web/           Next.js + Phaser campus view
 ## Demo
 
 One ask to the orchestrator starts three agents. Two of them collide on one file and one waits. The db agent hits the guarded Sun Dome, gets denied, and adapts. We ask why, undo one agent, merge another, then unplug the Jetson and every edit stops. The full script is in [`docs/DEMO.md`](docs/DEMO.md).
+
+- **Video:** `video/out/bullpen-demo.mp4` (1:30). Build it with `cd video && npm run render`; the file is not committed. Pipeline: [`video/README.md`](video/README.md).
+- **Conflict view:** the pull-request conflict view in the video is the scripted `?fake` mode at http://localhost:5173/prs?fake, so it needs no server.
 
 ## How we built it
 
@@ -154,6 +157,6 @@ The AI tools wrote most of the code, docs, tests and design mockups, and reviewe
 - Design prototype: HTML, CSS and JavaScript, with the Pixelify Sans and Press Start 2P fonts from Google Fonts; Python with Pillow for the mockup sprite generator (`design/mockups-v3/sprites/make_sprites.py`).
 - Server, orchestrator and Jetson: Python, FastAPI, uvicorn, websockets, httpx, pydantic, uv.
 - Models: Ollama. Voice input and output (whisper.cpp, Piper) was planned as a stretch goal and not built.
-- Video: Remotion, React, TypeScript, ffmpeg, and Playwright (`playwright-core`) to drive Chrome for the automated video recorder.
+- Video: Remotion and ffmpeg for the edit, Playwright (`playwright-core`) to drive Chrome for the screen recording, ElevenLabs for the voice, React and TypeScript.
 - Testing: pytest (Jetson, orchestrator), Python unittest (server), the Node.js test runner (web).
 - Tooling: git worktrees, GitHub Actions, ruff, npm.
