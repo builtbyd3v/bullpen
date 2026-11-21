@@ -28,10 +28,12 @@ python3 - "$HOOK" > .claude/settings.json <<'PY'
 import json, sys
 hook = sys.argv[1]
 def cmd(event):
-    # timeout is in seconds: an approval can hold PreToolUse for 60 s, the hook's HTTP timeout is 70 s.
+    # timeout is in seconds and must exceed the hook's 70 s HTTP timeout (an approval can hold it 60 s).
+    # onFailure "block" (Claude Code 2.1.295+): a crashed, killed or timed-out hook blocks the edit.
     h = {"type": "command", "command": f'python3 "{hook}" {event}'}
     if event == "PreToolUse":
-        h["timeout"] = 75
+        h["timeout"] = 90
+        h["onFailure"] = "block"
     return [h]
 print(json.dumps({"hooks": {
     "PreToolUse": [{"matcher": "Edit|Write|MultiEdit|Bash", "hooks": cmd("PreToolUse")}],

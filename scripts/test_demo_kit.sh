@@ -24,7 +24,8 @@ python3 - "$DEMO_DIR/.claude/settings.json" <<'PY' || fail "settings.json"
 import json, sys
 h = json.load(open(sys.argv[1]))["hooks"]
 assert sorted(h) == ["Notification", "PostToolUse", "PreToolUse", "Stop"], sorted(h)
-assert h["PreToolUse"][0]["hooks"][0]["timeout"] == 75
+pre = h["PreToolUse"][0]["hooks"][0]
+assert pre["timeout"] == 90 and pre["onFailure"] == "block", pre
 PY
 ok "make_demo.sh"
 
