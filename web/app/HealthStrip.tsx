@@ -1,6 +1,7 @@
 "use client";
 
 import { triggerReplay } from "@/lib/server.ts";
+import { SoundToggle } from "./Alerts";
 import type { Store } from "@/lib/store.ts";
 import type { CheckEvent, HealthState, HealthStatus } from "@/lib/types.ts";
 
@@ -60,6 +61,7 @@ export function HealthStrip({ store, health, latestCheck, replaying }: HealthStr
       <HealthPill label="Orchestrator" status={health.orchestrator} />
 
       <div className="ml-auto flex items-center gap-2">
+        <SoundToggle className="rounded border border-white/15 bg-white/5 px-2.5 py-0.5 font-mono text-xs font-semibold text-white/80 hover:bg-white/15 hover:text-white" />
         {replaying && (
           <span
             role="status"
