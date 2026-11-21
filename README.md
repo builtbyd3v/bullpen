@@ -120,7 +120,7 @@ Everything in this repo was built during HackJam '26, starting at 11:00 AM on No
 
 **AI tools we used to build it**
 
-- **Claude Code** (Anthropic), with the Claude Opus 5.5 and Claude Fable 5.2 models, run through T3 Code and the Claude Code extension for VS Code. It wrote most of the code, docs, tests and design mockups, and reviewed its own changes, under our direction. We set the product, the architecture, the contract in `shared/events.md`, the work split and the demo, and we reviewed and tested what it produced.
+- **Claude Code** (Anthropic), with the Claude Opus 5.5, Claude Fable 5.2, Claude Sonnet 5.5 and Claude Haiku 5.5 models, run through T3 Code and the Claude Code extension for VS Code. It wrote most of the code, docs, tests and design mockups, and reviewed its own changes, under our direction. We set the product, the architecture, the contract in `shared/events.md`, the work split and the demo, and we reviewed and tested what it produced.
 
 **AI the product uses at run time**
 
