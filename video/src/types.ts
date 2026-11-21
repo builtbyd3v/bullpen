@@ -2,7 +2,7 @@ export type Cue = { from: number; to: number; text: string };
 
 export type Slot = {
   id: string;
-  kind: "clip" | "title";
+  kind: "clip" | "title" | "problem";
   dur: number;
   start?: number;
   rate?: number;

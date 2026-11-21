@@ -1,6 +1,6 @@
 # Shots to record
 
-- 11 clips and 13 voiceover takes. File names must match the slot ids below.
+- 10 clips and 13 voiceover takes. The short version of this page is `RECORDING.md`. File names must match the slot ids below.
 - Record each beat as its own clip, 3 to 5 s longer than its slot. The build trims.
 - Screen: a 16:9 box over the app (1504 x 846 on the MacBook), with the app's sound and no microphone. Voice: one take per beat.
 - Run `scripts/demo_reset.sh` before each demo take. The health strip must be all green.
@@ -34,7 +34,6 @@ Move the pointer slowly. Pause one second before and after each click. Leave the
 
 | File in `raw/` | Slot | Screen | What must be visible |
 |---|---|---|---|
-| `01-problem` | 10 s | Phone camera, landscape, 1080p30 | Turn HDR video off in the phone camera settings first. Over the shoulder: a laptop with two agent terminals, both writing `auth.ts`. One version vanishes. The person drops their head or throws their hands up. Keep the room sound. |
 | `03-ask` | 10 s | Web app, real mode | Type the ask in the chat box, press Enter. Three bulls walk onto the campus. Speed up with `rate` if the split takes long. |
 | `04-lock` | 10 s | Web app | api holds `shared/auth.ts`, web waits at the door. Lease panel: holder, countdown, queue. |
 | `05-deny` | 11 s | Web app | db reaches for the schema at the Sun Dome. Referee log: the highlighted deny row with the `db/**` rule. db moves to other work. |
@@ -46,7 +45,7 @@ Move the pointer slowly. Pause one second before and after each click. Leave the
 | `11-interior` | 6 s | Web app | Building interior: agent at its file, branch sign, mini log, diff. |
 | `12-referee` | 10 s | Web app, zoom 150% on the referee log | Rows with rule, latency and model. Or a phone shot of the Jetson next to the screen. |
 
-`02-title` and `13-close` are generated. Record voiceover takes for all 13 slots.
+`01-problem`, `02-title` and `13-close` are generated. Record voiceover takes for all 13 slots.
 
 ## Fallbacks
 

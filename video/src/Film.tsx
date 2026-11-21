@@ -1,4 +1,5 @@
 import { AbsoluteFill, Audio, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { ProblemCard } from "./ProblemCard";
 import { TitleCard } from "./TitleCard";
 import { C, MONO, type Cue, type FilmProps, type Slot } from "./types";
 
@@ -64,6 +65,8 @@ export function Film({ slots, cues, mix, music }: FilmProps) {
           <Sequence key={slot.id} from={from} durationInFrames={frames}>
             {slot.kind === "title" ? (
               <TitleCard tagline={slot.tagline ?? ""} still={slot.still} />
+            ) : slot.kind === "problem" ? (
+              <ProblemCard />
             ) : slot.clip ? (
               <OffthreadVideo
                 src={staticFile(slot.clip)}
