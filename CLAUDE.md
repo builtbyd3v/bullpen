@@ -97,15 +97,19 @@ agent wants to edit a file
        -> server applies the lease {file, agent, expires_at}
             free or held by this agent -> allow (TTL 90 s, renewed by the holder)
             held by another agent      -> wait
+            merge guard (lease free):  another agent's unmerged branch changed the file -> wait;
+                                       this agent's copy is stale -> sync main into its branch, then retry
             ask -> approval shown in the web; no answer in 60 s = deny
   <- answer to the hook: allow | wait | ask | deny, with a reason
 agent edits -> hook (PostToolUse) POST server /hook -> server auto-commits the edit
                (trailers Bullpen-Agent, Bullpen-Task) and broadcasts commit + state
 agent stops -> hook (Stop) POST server /hook -> server releases that agent's leases
+human merges -> server merges the branch into main, then syncs main into every other agent branch
 ```
 - The Jetson is policy only. It holds no lease state.
 - Fail closed: server down, Jetson down, or a bad reply means deny.
-- Leases are released on commit, on Stop, and when they expire.
+- Leases are released on commit, on Stop, and when they expire (the demo runs with `BULLPEN_RELEASE_ON_COMMIT=0`: no release on commit).
+- No two branches change the same file before one is merged (merge guard, `BULLPEN_BLOCK_UNMERGED`), so merges never conflict on a file.
 
 ## Contract
 `shared/events.md` is the source of truth for every request, response and WebSocket event. `campus/campus.json` maps folders to buildings.
