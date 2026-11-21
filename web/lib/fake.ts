@@ -71,7 +71,14 @@ export function fakeServer(action: Action): Envelope[] {
     };
     return [{ type: "state", data }];
   }
-  const sha = data.worktrees.find((w) => w.agent === action.agent)?.commits[0]?.sha ?? "";
+  const target = data.worktrees.find((w) => w.agent === action.agent);
+  const sha = target?.commits[0]?.sha ?? "";
+  const intent =
+    target && target.commits.length > 0
+      ? `Implemented "${target.task}" across ${target.commits.length} commit${target.commits.length === 1 ? "" : "s"} (${target.commits.map((c) => c.message).join("; ")}).`
+      : target
+        ? `Merged ${target.branch} for "${target.task}".`
+        : "";
   data = {
     ...data,
     worktrees: data.worktrees.map((w) =>
@@ -79,7 +86,9 @@ export function fakeServer(action: Action): Envelope[] {
     ),
   };
   const first: Envelope =
-    action.kind === "merge" ? { type: "merge", data: { agent: action.agent, sha } } : { type: "undo", data: { agent: action.agent } };
+    action.kind === "merge"
+      ? { type: "merge", data: { agent: action.agent, sha, intent } }
+      : { type: "undo", data: { agent: action.agent } };
   return [first, { type: "state", data }];
 }
 

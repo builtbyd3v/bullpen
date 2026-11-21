@@ -27,7 +27,18 @@ export type Envelope =
   | { type: "state"; data: BullpenState }
   | { type: "commit"; data: { agent: string } & Commit }
   | { type: "undo"; data: { agent: string } }
-  | { type: "merge"; data: { agent: string; sha: string } };
+  | { type: "merge"; data: { agent: string; sha: string; intent?: string } };
+
+export type MergeCard = {
+  id: string;
+  agent: string;
+  color: string;
+  branch: string;
+  sha: string;
+  intent: string;
+  commits: Commit[];
+  at: number;
+};
 
 export type Fx =
   | { kind: "commit"; agent: string; building: string }

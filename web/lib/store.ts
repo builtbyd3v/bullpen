@@ -8,6 +8,7 @@ export function createStore() {
   let state: StoreState = {
     data: { main: "main", worktrees: [], approvals: [] },
     feed: [],
+    merges: [],
     ui: { tab: "main", selected: null },
   };
   const listeners = new Set<() => void>();
@@ -25,8 +26,14 @@ export function createStore() {
     },
     dispatch(envelope: Envelope) {
       const { snapshot, fx } = reduce(state, envelope);
-      if (snapshot.data !== state.data || snapshot.feed !== state.feed) set({ ...state, ...snapshot });
+      if (snapshot.data !== state.data || snapshot.feed !== state.feed || snapshot.merges !== state.merges) {
+        set({ ...state, ...snapshot });
+      }
       fx.forEach((f) => fxListeners.forEach((l) => l(f)));
+    },
+    dismissMerge(id: string) {
+      const merges = state.merges.filter((m) => m.id !== id);
+      if (merges.length !== state.merges.length) set({ ...state, merges });
     },
     setUi(partial: Partial<UiState>) {
       set({ ...state, ui: { ...state.ui, ...partial } });
