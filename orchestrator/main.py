@@ -40,12 +40,24 @@ SCHEMA = {
     "required": ["tasks"],
 }
 
+MAX_REPO_FILES = 200
+
 PROMPT = """You plan work for three coding agents that share one git repo.
 Split the ask below into exactly 3 tasks, one per agent:
 - api: backend routes and server logic, files under api/
 - web: frontend pages and components, files under web/
-- db: schema and migrations, files under db/
-Each task is one short imperative sentence the agent can finish in a few minutes.
+- db: the schema, files under db/
+Rules:
+- Name concrete files from the file list below. Do not invent files when a listed one fits.
+- Shared code lives under shared/. Both the api task and the web task must start by editing
+  the same shared file their feature needs (for example shared/auth.ts), and each of the two
+  tasks must say so by its path. Both edit it unconditionally: never "only if missing", never
+  "just import it".
+- The db task changes the schema file under db/ (for example db/schema.sql).
+- Each task is one or two short imperative sentences the agent can finish in a few minutes.
+
+Tracked files in the repo:
+{files}
 
 Ask: {ask}"""
 
@@ -90,8 +102,20 @@ def child_env() -> dict:
     return {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
 
 
+def repo_files() -> str:
+    """Tracked files of the demo repo, so the planner names real paths. Empty if git fails."""
+    demo = env("DEMO_DIR", str(REPO.parent / "demo"))
+    try:
+        out = subprocess.run(["git", "-C", demo, "ls-files"], capture_output=True, text=True,
+                             timeout=5, check=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return "\n".join(out.splitlines()[:MAX_REPO_FILES])
+
+
 def split_with_claude(ask: str) -> list[dict] | None:
-    cmd = [env("CLAUDE_BIN", "claude"), "-p", PROMPT.format(ask=ask),
+    prompt = PROMPT.format(ask=ask, files=repo_files() or "(unknown)")
+    cmd = [env("CLAUDE_BIN", "claude"), "-p", prompt,
            "--output-format", "json", "--json-schema", json.dumps(SCHEMA),
            "--model", "haiku", "--tools", "", "--no-session-persistence",
            "--permission-prompts", "none"]

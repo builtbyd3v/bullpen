@@ -47,13 +47,21 @@ while IFS= read -r -d '' agent && IFS= read -r -d '' task; do
       kill "$old" 2>/dev/null || true
     fi
   fi
+  # Same referee behavior for every agent, kept out of the task text (UI and Bullpen-Task trailer).
+  rules="You are the $agent agent in a Bullpen demo. Other agents edit this repo in parallel. \
+A referee checks every edit. If an edit is denied or you are told to wait, do not retry in a loop: \
+do your other files first, then retry that file once at the end. If an edit needs approval or is \
+denied for a guarded folder (db/), do not retry: write what you wanted to change and why to \
+docs/$agent-plan.md and stop. Do not run git commands; Bullpen commits each edit for you. \
+Keep the change small."
   # -p: headless. acceptEdits: file edits need no prompt; the PreToolUse hook in the worktree's
   # .claude/settings.json still runs first and its deny always wins. --permission-prompts none:
   # anything else that would prompt is denied instead of hanging. No ANTHROPIC_API_KEY: subscription.
   (
     cd "$PARENT/demo-$agent"
     BULLPEN_AGENT="$agent" SERVER_URL="$SERVER_URL" nohup env -u ANTHROPIC_API_KEY \
-      "$CLAUDE_BIN" -p "$task" --permission-mode acceptEdits --permission-prompts none \
+      "$CLAUDE_BIN" -p "$task" --append-system-prompt "$rules" \
+      --permission-mode acceptEdits --permission-prompts none \
       < /dev/null > "$LOG/$agent.log" 2>&1 &
     echo $! > "$pid_file"
   )

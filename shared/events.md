@@ -108,16 +108,16 @@ The server must send CORS headers (allow all origins): the web app runs on anoth
 
 ## 6b. Orchestrator: `{ORCHESTRATOR_URL}` (port 8650)
 `NEXT_PUBLIC_ORCHESTRATOR_URL=http://localhost:8650`. FastAPI, CORS allows all origins. Runs on Dev's Mac next to the worktrees.
-Env: `SERVER_URL` (default `http://localhost:8600`), `JETSON_URL` (default `http://192.168.55.1:8700`), `DEMO_START_CMD` (default `<repo>/scripts/demo_start.sh`), `CLAUDE_BIN` (default `claude`).
+Env: `SERVER_URL` (default `http://localhost:8600`), `JETSON_URL` (default `http://192.168.55.1:8700`), `DEMO_START_CMD` (default `<repo>/scripts/demo_start.sh`), `CLAUDE_BIN` (default `claude`), `DEMO_DIR` (default `<parent of repo>/demo`, as in `make_demo.sh`).
 - `GET /health` -> `{"ok": true}`.
 - `POST /orchestrate` body `{"ask": str}` -> 200 `{"ask": str, "tasks": [{"agent": "api" | "web" | "db", "task": str}], "source": "claude" | "canned", "started": true}`. Empty or missing `ask` -> 422.
-  1. The `claude` CLI runs headless on the user's subscription (no API key) and splits the ask into exactly 3 tasks, one each for `api`, `web`, `db`. The orchestrator validates the plan strictly.
+  1. The `claude` CLI runs headless on the user's subscription (no API key) and splits the ask into exactly 3 tasks, one each for `api`, `web`, `db`. The planner gets `git -C $DEMO_DIR ls-files` (first 200 lines; none if git fails) and must name real files: api and web both edit the same `shared/` file first, db edits the schema under `db/`. The orchestrator validates the plan strictly.
   2. CLI failure, timeout (45 s) or an invalid plan -> the canned tasks in `scripts/demo_tasks.json` (tasks file shape below), `source: "canned"`. That file missing or invalid too -> 502 `{"error": str}`.
   3. It writes a tasks file and runs `DEMO_START_CMD <tasks file>`. Non-zero exit -> 502 `{"error": str}`.
   4. `POST {SERVER_URL}/hook` body `{"event": "Plan", "agent": "orchestrator", "ask": str, "tasks": [{agent, task}]}`. The server broadcasts `plan` (section 4). A server failure here does not fail the request: the response adds `"plan_posted": false`.
 - `POST /ask` body `{"question": str}` -> `{"answer": str}`. The orchestrator fetches `GET {SERVER_URL}/state` as free-text context (server down -> empty context), then calls Jetson `POST /ask` `{question, context}` (section 7) and returns its `answer`. Jetson down, timeout (25 s) or bad reply -> 503 `{"error": str}`. No Claude usage on this path.
 - Tasks file (JSON): `{"ask": str, "tasks": [{"agent": "api", "task": str}, {"agent": "web", "task": str}, {"agent": "db", "task": str}]}`.
-- `scripts/demo_start.sh [tasks file]` (default `scripts/demo_tasks.json`) starts one headless agent per task in `demo-<agent>` with `BULLPEN_AGENT=<agent>`, logs to `$BULLPEN_LOG_DIR/<agent>.log` (default `/tmp/bullpen`), pid in `<agent>.pid`, and returns right away.
+- `scripts/demo_start.sh [tasks file]` (default `scripts/demo_tasks.json`) starts one headless agent per task in `demo-<agent>` with `BULLPEN_AGENT=<agent>`, logs to `$BULLPEN_LOG_DIR/<agent>.log` (default `/tmp/bullpen`), pid in `<agent>.pid`, and returns right away. Each agent gets fixed referee ground rules through `--append-system-prompt` (on deny or wait: do other files first, retry once at the end; on a guarded `db/` ask or deny: write `docs/<agent>-plan.md` and stop; no git commands), so the task text stays clean.
 
 ## Campus layout: `campus/campus.json` (generated file, no endpoint)
 `python3 scripts/make_campus.py <repo path>` writes it. The web imports the file; the server reads the same file. Deterministic: the same repo gives the same layout.

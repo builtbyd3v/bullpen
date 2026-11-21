@@ -1,4 +1,5 @@
 import json
+import subprocess
 import time
 
 import main
@@ -141,3 +142,26 @@ def test_ask_jetson_down_is_503(client, calls):
     r = client.post("/ask", json={"question": "why?"})
     assert r.status_code == 503
     assert "error" in r.json()
+
+
+def test_planner_sees_demo_repo_files(client, fake_dir):
+    demo = fake_dir / "demo"
+    for f in ("shared/auth.ts", "api/users.ts", "web/Header.tsx", "db/schema.sql"):
+        (demo / f).parent.mkdir(parents=True, exist_ok=True)
+        (demo / f).write_text("x")
+    subprocess.run(["git", "init", "-q", str(demo)], check=True)
+    subprocess.run(["git", "-C", str(demo), "add", "-A"], check=True)
+
+    r = client.post("/orchestrate", json={"ask": "add login"})
+
+    assert r.json()["source"] == "claude"
+    prompt = (fake_dir / "claude_args").read_text()
+    for f in ("shared/auth.ts", "api/users.ts", "web/Header.tsx", "db/schema.sql"):
+        assert f in prompt
+
+
+def test_missing_demo_repo_still_plans(client, fake_dir):
+    assert not (fake_dir / "demo").exists()
+    r = client.post("/orchestrate", json={"ask": "add login"})
+    assert r.status_code == 200
+    assert r.json()["source"] == "claude"
