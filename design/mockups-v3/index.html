@@ -1602,19 +1602,19 @@ main.sheet { display: grid; gap: 72px; padding-block: 28px 80px; }
     $('op-label').textContent = (b < 3 ? 'WITHOUT BULLPEN' : 'WITH BULLPEN') + ' · ' + Math.floor(t) + 's';
     $('op-bar').style.width = (t / 10 * 100) + '%';
     // scene
-    o.fillStyle = USF.turfMid; o.fillRect(0, 0, W, H);
-    for (let x = 0; x < W; x += 3) for (let y = (x % 2); y < H; y += 5) { o.fillStyle = USF.turfLight; o.fillRect(x, y, 1, 1); }
-    o.fillStyle = USF.roadMid; o.fillRect(0, 92, W, 14); o.fillStyle = USF.roadLight; o.fillRect(0, 94, W, 10);
+    o.fillStyle = '#0d1b14'; o.fillRect(0, 0, W, H);
+    for (let y = 6; y < H; y += 24) for (let x = 6; x < W; x += 32) if (((x + y) / 6 | 0) % 2 === 0) { o.fillStyle = '#11241b'; o.fillRect(x, y, 14, 9); }
+    o.fillStyle = '#1e3d2f'; o.fillRect(0, 92, W, 14); o.fillStyle = '#142920'; o.fillRect(0, 93, W, 12); o.fillStyle = '#0f2018'; for (let x = 8; x < W; x += 12) o.fillRect(x, 94, 1, 10);
     const bad = b === 1 || b === 2, ok = b === 3;
     const bx = 70, by = 18, bw = 100, bh = 56;
-    o.fillStyle = USF.ink; o.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-    o.fillStyle = bad ? '#7a2a2a' : USF.bldgMid; o.fillRect(bx, by, bw, bh); o.fillStyle = bad ? '#a23b3b' : USF.bldgLight; o.fillRect(bx, by, bw, 9);
-    for (let x = bx + 6; x < bx + bw - 8; x += 9) { o.fillStyle = bad ? '#3b1414' : USF.storm; o.fillRect(x, by + 30, 5, 5); }
+    o.fillStyle = 'rgba(4,10,7,0.72)'; o.fillRect(bx + 2, by + 3, bw, bh); o.fillStyle = '#07120d'; o.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+    o.fillStyle = bad ? '#521d22' : '#1a3328'; o.fillRect(bx, by, bw, bh); o.fillStyle = bad ? '#381316' : '#2a4d3d'; o.fillRect(bx, by + 34, bw, bh - 34); o.fillStyle = bad ? '#ff6b6b' : USF.gold; o.fillRect(bx, by + 33, bw, 2);
+    for (let x = bx + 6; x < bx + bw - 8; x += 10) { if (Math.abs(x + 3 - (bx + bw / 2)) < 8) continue; o.fillStyle = '#07120d'; o.fillRect(x - 1, by + 38, 8, 10); o.fillStyle = bad ? '#ff9a9a' : '#f4d57c'; o.fillRect(x, by + 39, 6, 8); }
     o.fillStyle = USF.ink; o.fillRect(bx + 4, by + 13, 88, 11); drawText(o, 'SHARED/AUTH.TS', bx + 6, by + 15, { color: bad ? '#ff8a8e' : USF.gold });
     o.fillStyle = USF.ink; o.fillRect(bx + bw / 2 - 6, by + bh - 10, 12, 10); o.fillStyle = USF.evergreen; o.fillRect(bx + bw / 2 - 5, by + bh - 9, 10, 9);
     if (b === 2) { // smoke: work lost
       for (let i = 0; i < 6; i++) { const p = (lt * 0.6 + i / 6) % 1; o.fillStyle = `rgba(200,200,200,${0.6 * (1 - p)})`; o.fillRect(bx + 20 + i * 12, by - 4 - p * 16, 6, 4); }
-      drawText(o, 'WORK LOST', bx + bw / 2, by + 40, { color: '#fff', shadow: USF.ink, align: 'center' });
+      drawText(o, 'WORK LOST', bx + bw / 2, by + 24, { color: '#fff', shadow: USF.ink, align: 'center' });
     }
     if (ok) { o.strokeStyle = '#4ade80'; o.strokeRect(bx - 3.5, by - 3.5, bw + 7, bh + 7); }
     // agents
@@ -1888,7 +1888,7 @@ main.sheet { display: grid; gap: 72px; padding-block: 28px 80px; }
   const bg = (ctx, c = BG) => { ctx.fillStyle = c; ctx.fillRect(0, 0, W, H); };
 
   // Dev's bull, green body, gold horns, sand outline so the shade and far legs read on forest.
-  const PAL = { ...bullPal(USF.green), h: GOLD, o: SAND };
+  const PAL = { ...bullPal(USF.green), h: GOLD, H: GOLD, o: SAND };
   const BULL = outline(BULL_ROWS, 'o');                       // 22 x 17
   const RUN = outline(BULL_ROWS.map((r, y) => y < 12 ? r : ['..cc...dd..cc...dd..', '..cc...dd..cc...dd..', '..kk...kk..kk...kk..'][y - 12]), 'o');
   const BC = 4, BW = BULL[0].length * BC, BX = W / 2 - BW / 2, BY = 64;
