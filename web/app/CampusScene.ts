@@ -123,7 +123,7 @@ export class CampusScene extends Phaser.Scene {
     });
     const sel = ui.selected;
     const updateBull = (o: Phaser.GameObjects.Container, s: BullSpec) => {
-      const [mark, markColor] = MARKS[s.status];
+      const [mark, markColor] = MARKS[s.status] ?? MARKS.working;
       (o.getByName("mark") as Phaser.GameObjects.Text).setText(mark).setColor(markColor);
       (o.getByName("ring") as Phaser.GameObjects.Ellipse).setVisible(sel?.kind === "bull" && sel.agent === s.agent);
       return this.walk(o, s);

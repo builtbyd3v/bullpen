@@ -31,6 +31,7 @@ def chat(system: str, user: str, max_tokens: int) -> str:
                 "model": MODEL,
                 "stream": False,
                 "think": False,
+                "keep_alive": "60m",
                 "options": {"num_ctx": 8192, "num_predict": max_tokens, "temperature": 0.2},
                 "messages": [
                     {"role": "system", "content": system},
@@ -72,10 +73,12 @@ def commit_msg(body: CommitMsgIn):
         f"Diff:\n{body.diff[:MAX_INPUT_CHARS]}\n\nCommit message:",
         max_tokens=40,
     )
-    line = next(l for l in text.splitlines() if l.strip()).strip()
-    line = re.sub(r"^(commit message:\s*)", "", line, flags=re.I).strip(" '.")
+    lines = (re.sub(r"^(commit message:\s*)", "", l.strip(), flags=re.I).strip(" '\"`.") for l in text.splitlines())
+    line = next((l for l in lines if l), "")
+    if not line:
+        raise ModelError("model returned no commit message")
     if len(line) > 72:
-        line = line[:73].rsplit(" ", 1)[0]
+        line = line[:72].rsplit(" ", 1)[0]
     return {"message": line}
 
 

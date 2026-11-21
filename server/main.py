@@ -1,6 +1,9 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Bullpen server")
+# The web app runs on another port (5173), so the browser needs CORS headers.
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 clients: set[WebSocket] = set()
 events: list[dict] = []
 

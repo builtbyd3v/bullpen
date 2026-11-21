@@ -64,6 +64,7 @@ Server TODO (Monisha): `server/main.py` still sends bare hook bodies. Wrap them 
 - Colors: api `#e5484d`, web `#3e63dd`, db `#f5b400`.
 
 ## 6. Actions (web -> server)
+The server must send CORS headers (allow all origins): the web app runs on another port.
 - `POST /undo/{agent}`: `git reset --hard main` in that worktree, release its claims, broadcast `undo` then `state`. In that `state`, the agent's `building` is `"bullrunner"` (the Bull walks to the hub).
 - `POST /merge/{agent}`: merge the branch into main, broadcast `merge` then `state`. In that `state`, the agent's `building` is `"bullrunner"` and `status` is `"done"`.
 - `POST /approve/{id}` body `{"decision": "allow" | "deny"}`: resolve a pending approval, broadcast `state`.
