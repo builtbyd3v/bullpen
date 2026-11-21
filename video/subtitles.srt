@@ -1,0 +1,191 @@
+1
+00:00:00,000 --> 00:00:01,770
+Three AI agents, one repo.
+
+2
+00:00:01,770 --> 00:00:04,426
+Two of them just rewrote the same file.
+
+3
+00:00:04,426 --> 00:00:07,490
+One version is gone, and nothing recorded it.
+
+4
+00:00:10,000 --> 00:00:11,159
+This is Bullpen.
+
+5
+00:00:11,159 --> 00:00:13,261
+Source control for AI agents.
+
+6
+00:00:15,000 --> 00:00:15,519
+One ask.
+
+7
+00:00:15,519 --> 00:00:18,374
+The orchestrator splits it into three tasks,
+
+8
+00:00:18,374 --> 00:00:20,839
+and three Claude Code agents walk onto
+
+9
+00:00:20,839 --> 00:00:22,851
+campus, each on its own branch.
+
+10
+00:00:25,000 --> 00:00:26,439
+Two agents want auth.ts.
+
+11
+00:00:26,439 --> 00:00:28,177
+The first one takes the lock.
+
+12
+00:00:28,177 --> 00:00:29,856
+The second waits at the door
+
+13
+00:00:29,856 --> 00:00:31,234
+until the file is free.
+
+14
+00:00:35,000 --> 00:00:37,673
+The database agent reaches for the schema.
+
+15
+00:00:37,673 --> 00:00:39,200
+The referee, a Jetson on
+
+16
+00:00:39,200 --> 00:00:40,346
+the desk, says no.
+
+17
+00:00:40,346 --> 00:00:42,000
+The agent reads the reason
+
+18
+00:00:42,000 --> 00:00:43,336
+and changes its plan.
+
+19
+00:00:46,000 --> 00:00:47,846
+Don't like what one agent did?
+
+20
+00:00:47,846 --> 00:00:49,199
+Undo that agent alone.
+
+21
+00:00:49,199 --> 00:00:50,799
+Its commits roll back, and
+
+22
+00:00:50,799 --> 00:00:52,275
+the others keep working.
+
+23
+00:00:55,000 --> 00:00:56,073
+Happy with another?
+
+24
+00:00:56,073 --> 00:00:58,219
+Open its building, read the real diff,
+
+25
+00:00:58,219 --> 00:01:00,308
+and merge through an intent card that
+
+26
+00:01:00,308 --> 00:01:01,776
+says what changed and why.
+
+27
+00:01:05,000 --> 00:01:06,919
+Now pull the Jetson's cable.
+
+28
+00:01:06,919 --> 00:01:08,700
+The referee is offline, so
+
+29
+00:01:08,700 --> 00:01:10,139
+every edit is denied.
+
+30
+00:01:10,139 --> 00:01:11,578
+Bullpen fails closed.
+
+31
+00:01:15,000 --> 00:01:17,314
+Under the pixels, everything is real.
+
+32
+00:01:17,314 --> 00:01:19,691
+An agent takes a file lock before each
+
+33
+00:01:19,691 --> 00:01:22,693
+edit, and the lock expires after ninety seconds.
+
+34
+00:01:24,000 --> 00:01:25,480
+Point Bullpen at any repo
+
+35
+00:01:25,480 --> 00:01:27,019
+and it builds your campus.
+
+36
+00:01:27,019 --> 00:01:28,617
+Each edit becomes a commit,
+
+37
+00:01:28,617 --> 00:01:29,919
+tagged with its agent.
+
+38
+00:01:32,000 --> 00:01:33,707
+It runs on your own Claude
+
+39
+00:01:33,707 --> 00:01:35,677
+subscription, with no API key.
+
+40
+00:01:38,000 --> 00:01:39,640
+The referee runs on separate
+
+41
+00:01:39,640 --> 00:01:41,572
+hardware the agents cannot reach.
+
+42
+00:01:41,572 --> 00:01:44,208
+Small on-device models write the history, and
+
+43
+00:01:44,208 --> 00:01:46,023
+a secret guard scans each diff.
+
+44
+00:01:48,000 --> 00:01:50,151
+Anthropic rebuilt source control for
+
+45
+00:01:50,151 --> 00:01:51,823
+agents, and called it Scion.
+
+46
+00:01:51,823 --> 00:01:54,093
+Bullpen brings that to every engineer.
+
+47
+00:01:54,093 --> 00:01:55,527
+Git tracks what changed.
+
+48
+00:01:55,527 --> 00:01:58,155
+Bullpen controls who's allowed to change it.
