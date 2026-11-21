@@ -77,7 +77,9 @@ const click = async (locator, label) => {
   await locator.first().click({ timeout: 5000 }).catch((e) => console.log(`        ${label} click failed: ${e.message.split("\n")[0]}`));
 };
 
-await page.goto(mode === "fake" ? `${url}/?fake` : url, { waitUntil: "load" });
+// The app lives at /campus once the landing page takes over /. Use it when it exists.
+const app = (await fetch(`${url}/campus`).then((r) => r.ok, () => false)) ? `${url}/campus` : url;
+await page.goto(mode === "fake" ? `${app}?fake` : app, { waitUntil: "load" });
 await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
 await pause(2);
 
