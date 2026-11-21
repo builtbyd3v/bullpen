@@ -5,6 +5,7 @@
 - Fallback: `GET /replay` on the server, or `?fake` plus "Play demo" in the web app.
 - Before judging: run `scripts/demo_reset.sh`, check the health strip is all green.
 - Never cut: claims, the fence, undo.
+- Timeline: project done by 3:00 PM, testing until 5:00 PM, pitch prep 5:30 PM, submit on MLH before 6:00 PM, judging 6:20 to 7:50 PM.
 
 | Time | Beat | What the judge sees |
 |---|---|---|

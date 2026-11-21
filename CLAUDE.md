@@ -36,8 +36,17 @@ Mode: hackathon
 - No code from before 11:00 AM on Nov 21. Everything is built fresh in this repo.
 - Credit all AI use (models and tools) and list every framework in the README and the MLH submission. Missing credit means disqualification.
 - No reskin of an existing AI tool. Do not name mascots or UI after AI models or products.
-- Never cut: claims (leases), the fence (guarded folders), undo. MVP freeze 3:30 PM, stop coding 5:00 PM.
+- Never cut: claims (leases), the fence (guarded folders), undo.
 - One prize per team. We enter Best Overall only (creativity, a well-rounded solution, a well composed idea and execution). Weights: Technical 25, Innovation 20, Track relevance 20, Execution 20, Presentation 15.
+
+## Timeline (Nov 21, ET)
+| When | What |
+|---|---|
+| by 2:00 to 3:00 PM | Full project done, end to end |
+| 3:00 to 5:00 PM | Testing, feedback from other hackers, fixes |
+| 5:00 to 5:30 PM | Finalized and done. No new features. |
+| 5:30 to 6:20 PM | Pitch prep. Submit on MLH OrganizerHQ before 6:00 PM sharp. |
+| 6:20 to 7:50 PM | Judging |
 
 ## Ownership
 
