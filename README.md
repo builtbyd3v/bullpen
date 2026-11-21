@@ -13,6 +13,7 @@ Built at HackJam '26 (USF Tampa, Nov 21, 2026). Track: Best Overall. Q&A cheat s
 Git was built for humans. Bullpen puts a referee in front of every agent edit:
 
 - **File leases.** One agent holds a file at a time (TTL 90 s). A second agent waits in a queue.
+- **No merge conflicts on a file.** A file that another agent's branch changed and has not merged yet is off limits too, so no two branches ever change the same file before one is merged. After every merge, the server brings `main` into the other agents' branches, so a waiting agent gets the new version and keeps all its own work.
 - **Guarded folders.** An edit in `db/` needs a human to approve it. No answer in 60 s means deny.
 - **Auto-commit per edit.** Every edit is a commit with `Bullpen-Agent` and `Bullpen-Task` trailers.
 - **Per-agent undo and merge.** Undo one agent's whole branch, or merge it with an intent summary.
@@ -32,12 +33,13 @@ flowchart TD
     H -->|POST /checkout| S["Server :8600 on the Mac"]
     S -->|POST /check| J["Jetson :8700<br/>rules only: allow, ask or deny<br/>db/** = ask"]
     J --> S
-    S --> L{"Lease on the file<br/>TTL 90 s, wait queue"}
+    S --> L{"Lease on the file<br/>TTL 90 s, wait queue<br/>+ merge guard"}
     L -->|allow| E[Agent edits the file]
-    L -->|held by another agent| WQ[wait: work on something else, retry]
+    L -->|held by another agent, or changed on its unmerged branch| WQ[wait: work on something else, retry]
     E -->|PostToolUse| C["Auto-commit in the agent's worktree<br/>Jetson /scan secret guard<br/>Jetson /commit_msg message<br/>Bullpen-Agent and Bullpen-Task trailers"]
     C -->|WebSocket events| W["Web :5173<br/>Next.js 16 + Phaser campus"]
     W -->|approve, undo, merge| S
+    S -->|after a merge: sync main into the other branches| A
     W -->|ask why| O
 ```
 

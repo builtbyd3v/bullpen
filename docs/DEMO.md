@@ -4,6 +4,7 @@
 - **In person:** open the site (`/` landing, then `/campus`), let it run at rest, and optionally click one preset prompt chip and Run. All 3 chips reliably give the collision on `shared/auth.ts` and the Sun Dome approval within about 25 s. Click **Deny** on the approval card (no answer = deny after 60 s).
 - **Between runs:** Settings, **Reset demo** (or `scripts/demo_reset.sh`). It also releases leftover locks through the server's undo.
 - **Before judging:** start the server with `BULLPEN_RELEASE_ON_COMMIT=0` (in `server/`: `BULLPEN_RELEASE_ON_COMMIT=0 uv run uvicorn main:app --host 0.0.0.0 --port 8600`); without it the lock drops at each auto-commit (about 1 s) and the collision does not show. Pre-warm the Jetson (`POST /reset` on port 8700, about 70 s cold). Check the health strip. Click the page once and answer the browser's notification prompt so it does not pop up on stage.
+- **Merge guard (on by default):** after api finishes, web keeps waiting for `shared/auth.ts` until api is **merged or undone**, because api's change is still unmerged. When api is merged, web's branch is updated from `main` automatically and web's retry succeeds, with its own work kept. The script undoes web before merging api, so in this run web does not edit `auth.ts`. For the old flow, start the server with `BULLPEN_BLOCK_UNMERGED=0`. The Merge click takes a few seconds (Jetson summary, then the branch updates): click it once.
 - **Fallback:** `/campus?fake` plus "Play demo", or `GET /replay` on the server.
 - Never cut: claims, the fence, undo.
 
@@ -22,6 +23,7 @@
 | 2:20-3:00 | Tech walk | hook -> server `/checkout` -> Jetson `/check` -> lease -> auto-commit. Claude Code runs on the subscription; the Jetson does the referee work and the history on local models. Close: "Git was built for humans. Bullpen is version control for agents." |
 
 ## Questions to expect
+- Can two agents still end up with a merge conflict? Not on the same file: leases stop simultaneous edits, and the merge guard stops a second branch changing a file the first has not merged yet. After each merge the other branches are updated from `main`. Edits that break each other across different files are still possible; git does not catch those either. Details: `docs/TECH.md`.
 - What did you build, and what is AI-generated? (See the README credits.)
 - Why a Jetson? Rules on hardware the agents cannot reach; history that is free and private.
 - What happens when the server or the Jetson is down? Every edit is denied.
