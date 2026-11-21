@@ -101,7 +101,12 @@
       "src": "take-live",
       "from": "undo",
       "start": -1.5,
-      "rate": 0.75
+      "rate": 0.75,
+      "zoom": {
+        "scale": 1.25,
+        "x": 0,
+        "y": 0
+      }
     },
     {
       "id": "08-merge",
@@ -112,8 +117,13 @@
       "vo": "Happy with another? Open its building, read the real diff, and merge. The other branches sync with main at once.",
       "src": "take-live",
       "from": "interior",
-      "start": 0.5,
-      "rate": 1.5
+      "start": 2,
+      "rate": 1.5,
+      "zoom": {
+        "scale": 1.25,
+        "x": 0,
+        "y": 100
+      }
     },
     {
       "id": "09-locks",
@@ -154,14 +164,11 @@
       "kind": "clip",
       "dur": 5,
       "label": "Referee offline: every edit denied",
-      "shot": "referee OFFLINE, every edit blocked (cable pulled during the take, or the OFFLINE rows in the referee log)",
+      "shot": "the referee service paused: OFFLINE rows in the Referee panel, every edit denied",
       "vo": "Unplug it, and every edit is denied. Bullpen fails closed.",
       "src": "take-live",
-      "from": [
-        "unplug",
-        "referee"
-      ],
-      "start": 2,
+      "from": "unplug",
+      "start": 6.5,
       "rate": 1,
       "zoom": {
         "scale": 1.5,
@@ -182,7 +189,7 @@
       "rate": 1,
       "zoom": {
         "scale": 1.4,
-        "x": 100,
+        "x": 89,
         "y": 60
       }
     },

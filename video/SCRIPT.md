@@ -5,7 +5,6 @@
 - 13 slots, 90 s, 1080p30. Slots, lines and timings live in `timeline.json`; change them there, then update this file.
 - Voiceover: 176 words, ElevenLabs voice Jessica at speed 1.1. "take" is the length of the current take. A take may run up to the slot length minus 0.3 s.
 - Captions are the voiceover text, burned in at the bottom. Labels sit top left. The spoken line names no model; the three model names are on screen in `10-referee`.
-- Lines `06-deny` and `08-merge` changed after the takes were made: regenerate those two with `node scripts/voice.mjs make 06-deny 08-merge`.
 - The server's merge guard (`BULLPEN_BLOCK_UNMERGED`, on by default) refuses a file that another agent's unmerged branch already changed, so two branches never change the same file before one merges.
 - Sound: voice on top, the app's sound effects lowered under it, optional music bed lowest.
 

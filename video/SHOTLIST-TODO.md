@@ -1,4 +1,4 @@
-# Clips still to capture
+# Clips (all captured for the final cut)
 
 - 10 app clips, cut from automated takes: `node scripts/record.mjs live` in `video/`. Nobody films anything.
 - The problem clip, the title and the closing card are generated. The voice is ElevenLabs (Jessica, speed 1.1).
