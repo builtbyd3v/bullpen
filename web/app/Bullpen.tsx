@@ -311,18 +311,6 @@ const SUGGESTED_ASKS = [
 // ============================================================================
 // ISSUE #27 — Orchestrator chat box (POST /orchestrate + POST /ask)
 // ============================================================================
-// Claude spark mark: the orchestrator and agents are Claude Code on the user's plan.
-function ClaudeMark() {
-  const rays = Array.from({ length: 12 }, (_, i) => i * 30);
-  return (
-    <svg viewBox="-12 -12 24 24" width="18" height="18" aria-label="Claude" role="img" className="shrink-0">
-      {rays.map((deg, i) => (
-        <rect key={deg} x="-1.3" y={i % 2 ? -9.5 : -11.5} width="2.6" height={i % 2 ? 8 : 10} rx="1.3" fill="#D97757" transform={`rotate(${deg})`} />
-      ))}
-    </svg>
-  );
-}
-
 function OrchestratorBox() {
   const store = useStore();
   const plan = useBullpen((s) => s.plan);
@@ -389,9 +377,8 @@ function OrchestratorBox() {
   return (
     <section className="card orch">
       <h2>
-        <ClaudeMark />
         Orchestrator
-        <span className="tag ok">Claude Code · your Claude plan</span>
+        <span className="tag ok">via the claude CLI</span>
         <span className="src">{campus.repo}</span>
       </h2>
       <div className="term" aria-live="polite">
