@@ -48,9 +48,11 @@ export function HealthStrip({ store, health, latestCheck, replaying }: HealthStr
   return (
     <header
       aria-label="System health"
-      className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 bg-[#07120d] px-3 py-1.5"
+      className="flex shrink-0 flex-wrap items-center gap-2 border-b-2 border-[#cfc493]/40 bg-[#005432] px-3 py-1.5"
     >
-      <span className="mr-1 font-mono text-[11px] font-bold tracking-widest text-white/50 uppercase">Health</span>
+      <img src="/logo.svg" alt="" width={32} height={32} className="[image-rendering:pixelated]" />
+      <span className="mr-3 font-mono text-lg font-black tracking-wider text-[#edebd1]">BULLPEN</span>
+      <span className="mr-1 font-mono text-[11px] font-bold tracking-widest text-[#cfc493] uppercase">Health</span>
       <HealthPill label="Server" status={health.server} />
       <HealthPill label="WebSocket" status={health.ws} detail="connected" />
       <HealthPill label="Jetson" status={jetson} detail={`${latestCheck?.latency_ms ?? 0} ms`} pending="no checks yet" />
