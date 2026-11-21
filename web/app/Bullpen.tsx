@@ -311,6 +311,18 @@ const SUGGESTED_ASKS = [
 // ============================================================================
 // ISSUE #27 — Orchestrator chat box (POST /orchestrate + POST /ask)
 // ============================================================================
+// Claude spark mark: the orchestrator and agents are Claude Code on the user's plan.
+function ClaudeMark() {
+  const rays = Array.from({ length: 12 }, (_, i) => i * 30);
+  return (
+    <svg viewBox="-12 -12 24 24" width="18" height="18" aria-label="Claude" role="img" className="shrink-0">
+      {rays.map((deg, i) => (
+        <rect key={deg} x="-1.3" y={i % 2 ? -9.5 : -11.5} width="2.6" height={i % 2 ? 8 : 10} rx="1.3" fill="#D97757" transform={`rotate(${deg})`} />
+      ))}
+    </svg>
+  );
+}
+
 function OrchestratorBox() {
   const store = useStore();
   const plan = useBullpen((s) => s.plan);
@@ -362,36 +374,79 @@ function OrchestratorBox() {
     }
   };
 
+  const leases = useBullpen((s) => s.data.leases ?? []);
+  const approvals = useBullpen((s) => s.data.approvals ?? []);
+  const health = useBullpen((s) => s.health);
+  const pane = (agent: string) => {
+    const held = leases.find((l) => l.agent === agent);
+    const wait = leases.find((l) => l.waiters.includes(agent));
+    const asks = approvals.find((x) => x.agent === agent);
+    if (asks) return { tag: "ask", cls: "s-ask", line: `Edit ${asks.target}`, sub: "? needs approval" };
+    if (wait) return { tag: "wait", cls: "s-wait", line: `wait #${wait.waiters.indexOf(agent) + 1} ${wait.file}`, sub: "" };
+    if (held) return { tag: "edit", cls: "s-run", line: `Edit ${held.file}`, sub: "" };
+    return { tag: "idle", cls: "s-idle", line: "idle", sub: "" };
+  };
   return (
-    <section className="card">
-      <h2>Orchestrator <span className="src">POST :8650/orchestrate</span></h2>
-      <div className="ask">
-        <form onSubmit={handleOrchestrate}>
-          <input value={askInput} onChange={(e) => setAskInput(e.target.value)} placeholder="Tell Bullpen what to build..." aria-label="Orchestrate task" />
-          <button className="btn primary" type="submit" disabled={orchestrating || !askInput.trim()}>{orchestrating ? "Planning..." : "Run"}</button>
-        </form>
-        {!plan && (
-          <div className="flex flex-wrap gap-1.5">
-            {SUGGESTED_ASKS.slice(0, 2).map((q) => (
-              <button key={q} type="button" className="btn" onClick={() => setAskInput(q)}>{q}</button>
-            ))}
-          </div>
+    <section className="card orch">
+      <h2>
+        <ClaudeMark />
+        Orchestrator
+        <span className="tag ok">Claude Code · your Claude plan</span>
+        <span className="src">{campus.repo}</span>
+      </h2>
+      <div className="term" aria-live="polite">
+        {plan ? (
+          <>
+            <div><span className="p">❯</span> bullpen run &quot;{plan.ask}&quot;</div>
+            <div className="m">  planning with Claude Code…</div>
+            <div><span className="g">  ✓</span> split into {plan.tasks.length} tasks → {plan.tasks.map((t, i) => (<span key={t.agent}>{i > 0 && " / "}<span style={{ color: colorFor(t.agent) }}>{t.agent}</span></span>))}</div>
+            {plan.tasks.map((t) => (<div key={t.agent} className="m">  <span style={{ color: colorFor(t.agent) }}>{t.agent}</span>: {t.task}</div>))}
+            <div><span className="g">  ✓</span> one worktree and branch per agent, hooks armed</div>
+            <div className={health.server === "down" ? "bad" : "m"}>  {health.server === "down" ? "server offline: every edit is denied" : "edits go through the Jetson referee first"}</div>
+          </>
+        ) : (
+          <>
+            <div className="m">  3 Claude Code agents (api, web, db), one git worktree each.</div>
+            <div className="m">  Runs on your Claude plan through the claude CLI. No API key.</div>
+          </>
         )}
-        {orchError && <p className="text-[13px] text-(--red)">{orchError}</p>}
-        {plan && (
-          <div className="plan">
-            {plan.tasks.map((t) => (
-              <div key={t.agent}><span className="dot" style={{ background: colorFor(t.agent) }} /><b>{t.agent}</b>{t.task}</div>
-            ))}
-          </div>
-        )}
-        <form onSubmit={handleAsk}>
-          <input value={questionInput} onChange={(e) => setQuestionInput(e.target.value)} placeholder="Ask why (e.g. Why is db blocked?)" aria-label="Ask why" />
-          <button className="btn" type="submit" disabled={asking || !questionInput.trim()}>{asking ? "Asking..." : "Ask"}</button>
-        </form>
-        {askError && <p className="text-[13px] text-(--red)">{askError}</p>}
-        {answer && <p className="text-[13px] text-(--ink-2)"><b className="mono">Jetson:</b> {answer}</p>}
+        {answer && (<div><span className="p">❯</span> why <span className="m">·</span> <span className="g">jetson:</span> {answer}</div>)}
+        {orchError && <div className="bad">  {orchError}</div>}
+        {askError && <div className="bad">  {askError}</div>}
+        <div><span className="p">❯</span> <span className="caret" /></div>
       </div>
+      {worktrees.length > 0 && (
+        <div className="panes">
+          {worktrees.map((w) => {
+            const s = pane(w.agent);
+            const last = w.commits[0];
+            return (
+              <div key={w.agent} className="pane">
+                <div className="t"><span className="dot" style={{ background: w.color }} />{w.agent} <span className={`status ${s.cls}`}>{s.tag}</span></div>
+                <div className="l">{s.line}</div>
+                <div className="l">{s.sub || (last ? `✓ commit ${last.sha.slice(0, 7)}` : "no commits yet")}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {!plan && (
+        <div className="ghosts">
+          {SUGGESTED_ASKS.slice(0, 3).map((q) => (
+            <button key={q} type="button" onClick={() => setAskInput(q)}>❯ {q}</button>
+          ))}
+        </div>
+      )}
+      <form className="termin" onSubmit={handleOrchestrate}>
+        <span className="p">❯</span>
+        <input value={askInput} onChange={(e) => setAskInput(e.target.value)} placeholder="Tell the agents what to build" aria-label="Orchestrate task" />
+        <button className="btn primary" type="submit" disabled={orchestrating || !askInput.trim()}>{orchestrating ? "Planning..." : "Run"}</button>
+      </form>
+      <form className="termin" onSubmit={handleAsk}>
+        <span className="p">?</span>
+        <input value={questionInput} onChange={(e) => setQuestionInput(e.target.value)} placeholder="Ask why (e.g. Why is db blocked?)" aria-label="Ask why" />
+        <button className="btn" type="submit" disabled={asking || !questionInput.trim()}>{asking ? "Asking..." : "Ask"}</button>
+      </form>
     </section>
   );
 }
