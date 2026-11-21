@@ -72,7 +72,7 @@ Every message is an envelope: `{"type": <type>, "data": <object>}`.
 | `secret_blocked` | `{agent, file, kind}` | the secret guard stopped a diff |
 | `merge` | `{agent, sha, intent}` | after `POST /merge/{agent}`; `intent` is the Jetson `/summarize` text, or `""` |
 
-Clients must ignore types they do not know. Server TODO: `server/main.py` still sends bare hook bodies.
+Clients must ignore types they do not know.
 
 ## 5. `GET /state`
 ```json

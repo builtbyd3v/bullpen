@@ -1,25 +1,55 @@
 # Bullpen
 
-Bullpen is version control for AI agents. Tell one orchestrator what you want; it spins up Claude Code agents on your own sub, and a Jetson referee checks every edit with file locks, human approval, auto-commits, and per-agent undo, all live on a pixel campus.
+**Version control for AI agents.** You give one orchestrator an ask. It starts 3 Claude Code agents, each in its own git worktree and branch, and a referee on a Jetson checks every edit: file locks, guarded folders, an auto-commit per edit, per-agent undo, and merge with a stated intent.
 
-Built at HackJam '26 (USF Tampa, Nov 21, 2026). Track: Best Overall.
+Built at HackJam '26 (USF Tampa, Nov 21, 2026). Track: Best Overall. Q&A cheat sheet: [`docs/TECH.md`](docs/TECH.md).
 
-## What it is and why
+## The problem
 
-Git was built for humans. Put three AI agents on one repo and they overwrite each other, and you cannot see what any of them is doing.
+- **Agents in separate worktrees** each open a PR, and the PRs conflict with each other. You find out at merge time.
+- **Agents in one checkout** silently overwrite each other. Our scripted replay of the demo's three tasks loses **2 of 10 edits** with zero history entries ([`docs/BASELINE.md`](docs/BASELINE.md); a deterministic replay of the interleaving, not a live agent run).
+- **No history** of which agent changed what, or why.
 
-Bullpen gives each agent its own git worktree and branch, and puts a referee in front of every edit:
+Git was built for humans. Bullpen puts a referee in front of every agent edit:
 
-- **File leases.** One agent holds a file at a time. A second agent waits.
-- **Guarded folders.** An edit in `db/` needs a human to approve it. No answer in 60 seconds means deny.
+- **File leases.** One agent holds a file at a time (TTL 90 s). A second agent waits in a queue.
+- **Guarded folders.** An edit in `db/` needs a human to approve it. No answer in 60 s means deny.
 - **Auto-commit per edit.** Every edit is a commit with `Bullpen-Agent` and `Bullpen-Task` trailers.
-- **Per-agent undo and merge.** Undo one agent's whole branch, or merge it through an intent card.
-- **Ask why.** Ask what an agent is doing and get an answer from local history.
-- **A live map.** The repo is the USF campus: each folder is a building, `main` is the campus, and each agent's branch is a colored layer on top.
-
-The agents run on your own Claude subscription through the `claude` CLI, with no API key. The referee runs on a Jetson, which is separate hardware the agents cannot reach. It is always on and it fails closed: unplug it and every edit stops. Its local models write the commit messages and summaries, so that work costs no subscription usage and the history stays private.
+- **Per-agent undo and merge.** Undo one agent's whole branch, or merge it with an intent summary.
+- **Ask why.** Ask what an agent is doing; a local model answers from the event log.
+- **A live map.** The repo is the USF campus: each top-level folder is a building, `main` is the campus, each agent's branch is a colored layer.
 
 > Your sub writes the code. The Jetson keeps it honest, free, and private.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    U[You: one ask in the web chat] --> O["Orchestrator :8650<br/>POST /orchestrate<br/>claude CLI (haiku) splits it into 3 tasks"]
+    O --> DS[scripts/demo_start.sh]
+    DS --> A["3 Claude Code agents: api, web, db<br/>claude -p --model sonnet, one git worktree each"]
+    A -->|PreToolUse| H[hooks/bullpen_hook.py]
+    H -->|POST /checkout| S["Server :8600 on the Mac"]
+    S -->|POST /check| J["Jetson :8700<br/>rules only: allow, ask or deny<br/>db/** = ask"]
+    J --> S
+    S --> L{"Lease on the file<br/>TTL 90 s, wait queue"}
+    L -->|allow| E[Agent edits the file]
+    L -->|held by another agent| WQ[wait: work on something else, retry]
+    E -->|PostToolUse| C["Auto-commit in the agent's worktree<br/>Jetson /scan secret guard<br/>Jetson /commit_msg message<br/>Bullpen-Agent and Bullpen-Task trailers"]
+    C -->|WebSocket events| W["Web :5173<br/>Next.js 16 + Phaser campus"]
+    W -->|approve, undo, merge| S
+    W -->|ask why| O
+```
+
+- **Fail closed.** Server down, Jetson down, or a bad reply: the hook denies the edit.
+- **Contract.** Every request, response and event is in [`shared/events.md`](shared/events.md).
+
+| Service | Port |
+|---|---|
+| Web (Next.js + Phaser) | 5173 |
+| Server (FastAPI, leases, git) | 8600 |
+| Orchestrator (FastAPI + `claude` CLI) | 8650 |
+| Jetson (FastAPI + Ollama) | 8700 |
 
 ## What you see, and what is real underneath
 
@@ -32,55 +62,28 @@ The pixel campus is the hero. Next to it is a live evidence panel, and every ani
 | Jetson referee log | Every decision with the matched rule, latency and model. Unplug the Jetson and it shows OFFLINE, and every edit is denied | The Jetson's `/check` replies |
 | Building click | Zooms inside: rooms are subfolders or hot files, each agent sits at the file it is editing under a sign with its branch, with a live log of its actions and the real diff | Leases, hook events, `git diff main...<branch>` |
 
-**Point it at any repo and it builds your campus.** A small deterministic generator scans the repo, ranks the top-level folders by file count, and puts the top 8 into fixed USF building slots. Everything else goes into one Annex building. The same repo always gives the same layout.
+**Point it at any repo and it builds your campus.** `scripts/make_campus.py` scans the repo, ranks the top-level folders by file count, and puts the top 7 into fixed USF building slots. The guarded folder (`db/`) takes the Sun Dome, root files go to the Bull Runner stop, and everything else goes into one Annex building. The same repo always gives the same layout.
 
-The demo opens with the problem: two agents overwrite `auth.ts` and the work is gone, with no history. Then the same run with Bullpen.
+## Models
 
-## Architecture
-
-```mermaid
-flowchart TD
-    U[You: chat or voice] --> O[Orchestrator :8650<br/>claude CLI splits the ask into 3 tasks]
-    O --> A[3 Claude Code agents: api, web, db<br/>tmux + one git worktree each]
-    A -->|every tool call| H[Hook<br/>hooks/bullpen_hook.py]
-    H -->|POST /checkout| S[Server on the Mac :8600<br/>leases, approvals, auto-commit, undo, merge]
-    S -->|POST /check| J[Jetson :8700<br/>rules for /check, secret guard<br/>qwen2.5-coder:3b, llama3.2:3b, nomic-embed-text]
-    J -->|allow, ask or deny| S
-    S -->|allow, wait, ask or deny| H
-    S -->|WebSocket| W[Web :5173<br/>Next.js 16 + Phaser campus]
-    W -->|approve, undo, merge| S
-    W -->|ask| O
-```
-
-Every request, response and event is specified in [`shared/events.md`](shared/events.md).
-
-## Models and tech
-
-| Part | Tech | Model |
+| Job | Where | Model |
 |---|---|---|
-| Orchestrator and the 3 agents | Claude Code (`claude` CLI) on the user's subscription | Claude Haiku (orchestrator), Claude Sonnet (agents) |
-| Referee `/check` and secret guard `/scan` | FastAPI on a Jetson Orin Nano Super | rules only, no model |
+| The 3 agents | Claude Code (`claude` CLI) on the user's Claude Max subscription, OAuth login, no API key | Claude Sonnet (`--model sonnet` in `scripts/demo_start.sh`, override with `BULLPEN_AGENT_MODEL`) |
+| Orchestrator split | Claude Code (`claude` CLI), same subscription | Claude Haiku (`--model haiku` in `orchestrator/main.py`) |
+| Referee `/check` and secret guard `/scan` | Jetson Orin Nano Super | rules only, no model |
 | Commit messages `/commit_msg` | Ollama on the Jetson | qwen2.5-coder:3b |
 | Branch intent `/summarize` | Ollama on the Jetson | llama3.2:3b |
 | Ask why `/ask` | Ollama on the Jetson | nomic-embed-text + llama3.2:3b |
-| Voice (stretch) | whisper.cpp and Piper on the Jetson | small.en |
-| Server | Python, FastAPI, uvicorn, websockets, git worktrees | none |
-| Web | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Phaser 3 | none |
-| Hook | Python standard library | none |
 
-## Quickstart
+All Jetson chat calls use `num_ctx` 4096, so the three models stay loaded together in 8 GB. Each model is an env var in [`jetson/README.md`](jetson/README.md).
 
-| Part | Port | Run |
-|---|---|---|
-| Server | 8600 | `cd server && uv sync && uv run uvicorn main:app --port 8600` |
-| Orchestrator | 8650 | `cd orchestrator && uv sync && uv run uvicorn main:app --port 8650` |
-| Web | 5173 | `cd web && npm install && npm run dev`, then open http://localhost:5173 |
-| Jetson | 8700 | Deploy and start per [`jetson/README.md`](jetson/README.md). `JETSON_URL=http://192.168.55.1:8700` |
-| Hook and demo repo | none | `./scripts/make_demo.sh` creates a demo repo with 3 worktrees and wires the hook into each. `scripts/demo_reset.sh` resets it between runs, `scripts/demo_start.sh` starts the agents |
+## How to run
 
-- The web app runs without a server at http://localhost:5173/campus?fake. "Play demo" runs a scripted sequence.
-- Copy `.env.example` to `.env` for `SERVER_URL` and `JETSON_URL`.
-- Start an agent in a worktree with `BULLPEN_AGENT=api claude` (or `web`, `db`).
+1. Create the demo repo and its 3 worktrees, with the hook wired in: `./scripts/make_demo.sh` (creates `../demo`, `../demo-api`, `../demo-web`, `../demo-db`).
+2. Start the server: `cd server && uv sync && BULLPEN_RELEASE_ON_COMMIT=0 uv run uvicorn main:app --host 0.0.0.0 --port 8600`. The env var keeps a lease until Stop, undo or expiry, so the collision is visible (see [`docs/TECH.md`](docs/TECH.md)).
+3. Start the orchestrator: `cd orchestrator && uv sync && uv run uvicorn main:app --port 8650`. It needs a logged-in `claude` CLI.
+4. Start the Jetson service per [`jetson/README.md`](jetson/README.md) (`JETSON_URL`, default `http://192.168.55.1:8700`).
+5. Start the web app: `cd web && npm install && npm run dev`, then open http://localhost:5173 (`/` landing, `/campus` dashboard, `/campus?fake` scripted demo with no server). Click a suggested ask in the chat box, or run `scripts/demo_start.sh` for the canned tasks. Reset between runs with Settings, Reset demo, or `scripts/demo_reset.sh`.
 
 ## Repo layout
 
@@ -88,7 +91,7 @@ Every request, response and event is specified in [`shared/events.md`](shared/ev
 campus/        campus.json: folder -> building map
 demo-seed/     the seed app the demo agents work on
 design/        Caua's campus design prototype and mockups
-docs/          DEMO.md: the demo script; BASELINE.md: lost edits without Bullpen
+docs/          DEMO.md: demo script; BASELINE.md: lost edits without Bullpen; TECH.md: Q&A
 hooks/         bullpen_hook.py: the Claude Code hook
 jetson/        referee and local-model service (runs on the Jetson)
 orchestrator/  chat ask -> 3 tasks -> agents (port 8650)
@@ -124,6 +127,11 @@ Everything in this repo was built during HackJam '26, starting at 11:00 AM on No
 - **Claude Code** (`claude` CLI, on the user's subscription): Claude Sonnet runs the three demo agents, and Claude Haiku splits the ask into tasks in the orchestrator.
 - **Local models through Ollama on the Jetson**: qwen2.5-coder:3b (commit messages), llama3.2:3b (branch intent and ask-why), nomic-embed-text (ask-why retrieval). lfm3:1.7b was used during development.
 
+**AI used for the demo video**
+
+- **ElevenLabs** text to speech for the voiceover (stock library voice "Misa", model eleven_multilingual_v2).
+- macOS `say` for placeholder voiceover only.
+
 **What Bullpen is not:** it is not a reskin of an AI tool. Claude Code is the agent being controlled. What we built is the layer around it: the hook, the referee and its rules, file leases, approvals, auto-commits, undo and merge, the orchestrator, and the campus view.
 
 **Frameworks and libraries**
@@ -131,7 +139,7 @@ Everything in this repo was built during HackJam '26, starting at 11:00 AM on No
 - Web: Next.js 16, React 19, TypeScript, Tailwind CSS 4, Phaser 3, Node.js.
 - Design prototype: HTML, CSS and JavaScript, with the Pixelify Sans and Press Start 2P fonts from Google Fonts; Python with Pillow for the mockup sprite generator (`design/mockups-v3/sprites/make_sprites.py`).
 - Server, orchestrator and Jetson: Python, FastAPI, uvicorn, websockets, httpx, pydantic, uv.
-- Models and speech: Ollama; whisper.cpp and Piper for voice (stretch).
-- Video: Remotion, ffmpeg, and macOS `say` for placeholder voiceover.
+- Models: Ollama. Voice input and output (whisper.cpp, Piper) was planned as a stretch goal and not built.
+- Video: Remotion, React, TypeScript, ffmpeg, and Playwright (`playwright-core`) to drive Chrome for the automated video recorder.
 - Testing: pytest (Jetson, orchestrator), Python unittest (server), the Node.js test runner (web).
 - Tooling: git worktrees, tmux, GitHub Actions, ruff, npm.
