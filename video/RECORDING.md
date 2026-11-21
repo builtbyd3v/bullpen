@@ -4,7 +4,7 @@
 - Tool: OBS, because it records the app's sound with the picture. Output 1920x1080, 30 fps.
 - One clip per beat, in the order below. Two takes of each, keep the better one.
 - Each clip runs 3 to 5 s longer than its slot. The build trims it.
-- Then: `cd video && npm run render`. The film is `video/out/final.mp4`.
+- Then: `cd video && npm run render`. The film is `video/out/bullpen-demo.mp4`.
 
 ## Screen: set up once
 

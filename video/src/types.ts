@@ -9,6 +9,8 @@ export type Slot = {
   // false mutes the clip's own sound (app sound effects, room sound).
   audio?: boolean;
   still?: boolean;
+  // Filmed with a camera, not a screen recording.
+  irl?: boolean;
   label?: string;
   shot?: string;
   tagline?: string;

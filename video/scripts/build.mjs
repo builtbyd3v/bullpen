@@ -103,6 +103,8 @@ if (problems.length) {
   process.exit(1);
 }
 if (!process.argv.includes("--no-render")) {
-  execFileSync("npx", ["remotion", "render", "src/index.tsx", "Film", "out/final.mp4", "--props=out/props.json"], { cwd: root, stdio: "inherit" });
-  console.log(`\n${p("out/final.mp4")}  ${seconds(p("out/final.mp4")).toFixed(1)} s`);
+  // --out=<name> picks the file name in out/, for example --out=bullpen-demo-v0.
+  const name = process.argv.find((a) => a.startsWith("--out="))?.slice(6) ?? "bullpen-demo";
+  execFileSync("npx", ["remotion", "render", "src/index.tsx", "Film", `out/${name}.mp4`, "--props=out/props.json"], { cwd: root, stdio: "inherit" });
+  console.log(`\n${p(`out/${name}.mp4`)}  ${seconds(p(`out/${name}.mp4`)).toFixed(1)} s`);
 }

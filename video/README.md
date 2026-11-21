@@ -1,6 +1,6 @@
 # Bullpen demo video
 
-- `npm run render` builds `out/final.mp4` (2:00, 1080p30) from `timeline.json` and whatever is in `raw/`.
+- `npm run render` builds `out/bullpen-demo.mp4` (2:00, 1080p30) from `timeline.json` and whatever is in `raw/`.
 - A missing clip renders as a labeled placeholder. A missing voiceover take is spoken by macOS `say`.
 - `timeline.json` is the one place to change timing, trims, speed, labels and voiceover lines.
 - The script: `SCRIPT.md`. What to record: `SHOTS.md`.
@@ -11,7 +11,7 @@
 ```
 cd video
 npm install
-npm run render      # out/final.mp4 and subtitles.srt, 1 to 2 minutes
+npm run render      # out/bullpen-demo.mp4 and subtitles.srt, 1 to 2 minutes
 npm run studio      # live preview; run `npm run prep` first
 ```
 
