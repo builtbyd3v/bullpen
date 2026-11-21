@@ -100,6 +100,14 @@ export type Envelope = { replay?: boolean } & (
 
 export type Conn = "connecting" | "live" | "offline";
 
+export type HealthStatus = "checking" | "ok" | "down";
+
+export type HealthState = {
+  server: HealthStatus;
+  ws: HealthStatus;
+  orchestrator: HealthStatus;
+};
+
 export type MergeCard = {
   id: string;
   agent: string;

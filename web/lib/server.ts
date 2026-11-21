@@ -34,13 +34,30 @@ function isEnvelope(msg: unknown): msg is Envelope {
   return typeof msg === "object" && msg !== null && "type" in msg && TYPES.has(String(msg.type));
 }
 
+async function fetchJson(url: string, timeoutMs = 2500): Promise<Record<string, unknown> | null> {
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) return null;
+    const body = (await res.json()) as unknown;
+    return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 export function connect(store: Store): () => void {
   if (isFake()) {
     store.dispatch({ type: "state", data: FAKE_STATE });
     [...FAKE_CHECKS].reverse().forEach((c) => store.dispatch({ type: "check", data: c }));
     [...FAKE_HOOKS].reverse().forEach((h) => store.dispatch({ type: "hook", data: h }));
+    store.setHealth({ server: "ok", ws: "ok", orchestrator: "ok" });
     return () => {};
   }
+
   let closed = false;
   let ws: WebSocket | undefined;
   let retry: ReturnType<typeof setTimeout> | undefined;
@@ -49,6 +66,22 @@ export function connect(store: Store): () => void {
       .then((r) => r.json() as Promise<unknown>)
       .then((data) => closed || dispatch({ type: "state", data }))
       .catch((e: unknown) => console.warn("[bullpen] /state failed", e));
+  // Jetson status comes from `check` events (the browser cannot reach the Jetson: no CORS there).
+  const pollHealth = async () => {
+    const [serverBody, orchBody] = await Promise.all([
+      fetchJson(`${SERVER_URL.replace(/\/$/, "")}/health`),
+      fetchJson(`${ORCHESTRATOR_URL.replace(/\/$/, "")}/health`),
+    ]);
+    if (closed) return;
+    store.setHealth({
+      server: serverBody && serverBody.ok !== false ? "ok" : "down",
+      orchestrator: orchBody && orchBody.ok !== false ? "ok" : "down",
+    });
+  };
+
+  void pollHealth();
+  const healthTimer = window.setInterval(() => void pollHealth(), 5000);
+
   const open = () => {
     // /state loads on its own too, so the campus fills even if the socket cannot connect.
     loadState();
@@ -56,6 +89,7 @@ export function connect(store: Store): () => void {
     // Refetch once the socket is up, so nothing sent between the fetch and the connect is missed.
     ws.onopen = () => {
       store.setUi({ conn: "live" });
+      store.setHealth({ ws: "ok" });
       loadState();
     };
     ws.onmessage = (m: MessageEvent<string>) => {
@@ -65,9 +99,13 @@ export function connect(store: Store): () => void {
         console.warn("[bullpen] bad ws message", e);
       }
     };
+    ws.onerror = () => {
+      if (!closed) store.setHealth({ ws: "down" });
+    };
     ws.onclose = () => {
       if (closed) return;
       store.setUi({ conn: "offline" });
+      store.setHealth({ ws: "down" });
       retry = setTimeout(open, 1500);
     };
   };
@@ -80,8 +118,20 @@ export function connect(store: Store): () => void {
   return () => {
     closed = true;
     clearTimeout(retry);
+    window.clearInterval(healthTimer);
     ws?.close();
   };
+}
+
+export function triggerReplay(store: Store): void {
+  if (isFake()) {
+    const currentlyReplaying = store.getState().replaying;
+    store.dispatch({ type: "state", data: store.getState().data, replay: !currentlyReplaying });
+    return;
+  }
+  fetch(`${SERVER_URL.replace(/\/$/, "")}/replay`).catch((e: unknown) =>
+    console.warn("[bullpen] GET /replay failed", e),
+  );
 }
 
 export function act(store: Store, action: Action): void {

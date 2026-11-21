@@ -14,6 +14,7 @@ const start: Snapshot = {
   plan: null,
   hooks: [],
   notice: null,
+  replaying: false,
 };
 
 test("state replaces data and emits no fx", () => {
@@ -314,4 +315,17 @@ test("the demo shows a wait queue, then hands the file over and ends with nobody
   assert.ok(queues.includes("db@enb#1 web@enb#2"), queues.join(" | "));
   assert.ok(queues.includes("web@enb#1"), queues.join(" | "));
   assert.equal(queues.at(-1), "");
+});
+
+test("envelopes with replay: true set replaying and live envelopes clear it", () => {
+  const replayed = reduce(start, { type: "state", data: FAKE_STATE, replay: true }).snapshot;
+  assert.equal(replayed.replaying, true);
+  const replayedCommit = reduce(replayed, {
+    type: "commit",
+    data: { agent: "web", sha: "rep1234", message: "Replayed edit", files: ["web/App.tsx"] },
+    replay: true,
+  }).snapshot;
+  assert.equal(replayedCommit.replaying, true);
+  const live = reduce(replayedCommit, { type: "state", data: FAKE_STATE }).snapshot;
+  assert.equal(live.replaying, false);
 });
