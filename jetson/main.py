@@ -1,5 +1,8 @@
+import math
 import os
 import re
+import threading
+from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request
@@ -7,11 +10,45 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-MODEL = os.environ.get("JETSON_MODEL", "lfm3:1.7b-q4_K_M")
+COMMIT_MODEL = os.environ.get("COMMIT_MODEL", "qwen2.5-coder:3b")
+SUMMARIZE_MODEL = os.environ.get("SUMMARIZE_MODEL", "llama3.2:3b")
+ASK_MODEL = os.environ.get("ASK_MODEL", "llama3.2:3b")
+EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
+GUARDED = [g.strip().strip("/") for g in os.environ.get("BULLPEN_GUARDED", "db").split(",") if g.strip().strip("/")]
+BUILDINGS = {"db": "Sun Dome"}
 # ~4 chars per token keeps the prompt well under num_ctx 8192.
 MAX_INPUT_CHARS = 12_000
+# /ask context above this size is ranked by embedding similarity to the question.
+ASK_CONTEXT_CHARS = 3_000
+ASK_MAX_LINES = 400
 
-app = FastAPI(title="Bullpen jetson")
+
+def warm() -> list[str]:
+    warmed = []
+    for model in dict.fromkeys([COMMIT_MODEL, SUMMARIZE_MODEL, ASK_MODEL]):
+        # A chat call with no messages only loads the model.
+        try:
+            httpx.post(
+                f"{OLLAMA_URL}/api/chat", json={"model": model, "messages": [], "keep_alive": "60m"}, timeout=60
+            ).raise_for_status()
+            warmed.append(model)
+        except httpx.HTTPError:
+            pass
+    try:
+        embed(["ok"])
+        warmed.append(EMBED_MODEL)
+    except ModelError:
+        pass
+    return warmed
+
+
+@asynccontextmanager
+async def lifespan(app):
+    threading.Thread(target=warm, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Bullpen jetson", lifespan=lifespan)
 
 
 class ModelError(Exception):
@@ -23,14 +60,13 @@ def model_error(request: Request, exc: ModelError):
     return JSONResponse(status_code=503, content={"error": str(exc)})
 
 
-def chat(system: str, user: str, max_tokens: int) -> str:
+def chat(model: str, system: str, user: str, max_tokens: int) -> str:
     try:
         r = httpx.post(
             f"{OLLAMA_URL}/api/chat",
             json={
-                "model": MODEL,
+                "model": model,
                 "stream": False,
-                "think": False,
                 "keep_alive": "60m",
                 "options": {"num_ctx": 8192, "num_predict": max_tokens, "temperature": 0.2},
                 "messages": [
@@ -50,14 +86,123 @@ def chat(system: str, user: str, max_tokens: int) -> str:
     return text
 
 
+def embed(texts: list[str]) -> list[list[float]]:
+    try:
+        r = httpx.post(
+            f"{OLLAMA_URL}/api/embed",
+            json={"model": EMBED_MODEL, "input": texts, "keep_alive": "60m"},
+            timeout=20,
+        )
+        r.raise_for_status()
+        vecs = r.json()["embeddings"]
+    except (httpx.HTTPError, KeyError, ValueError) as e:
+        raise ModelError(f"embed call failed: {e!r}")
+    if len(vecs) != len(texts):
+        raise ModelError("embed returned the wrong count")
+    return vecs
+
+
+def first_sentences(text: str, n: int = 2) -> str:
+    return " ".join(re.split(r"(?<=[.!?])\s+", " ".join(text.split()))[:n])
+
+
 @app.get("/health")
 def health():
     return {"ok": True}
 
 
+@app.post("/reset")
+def reset():
+    # No per-demo memory lives here yet; reset only pre-warms the models.
+    return {"ok": True, "warmed": warm()}
+
+
+class CheckIn(BaseModel):
+    agent: str
+    tool_name: str
+    file: str | None = None
+    command: str | None = None
+
+
+def guarded_folder(file: str | None, command: str | None) -> str | None:
+    path = "/" + (file or "").strip().replace("\\", "/").removeprefix("./")
+    for g in GUARDED:
+        if f"/{g}/" in path:
+            return g
+        # A path token in the command that is the folder or sits under it.
+        if command and re.search(rf"(?:^|[\s'\"=<>|;&(`])(?:\S*/)?{re.escape(g)}(?:/|(?=[\s'\";&|)`]|$))", command):
+            return g
+    return None
+
+
 @app.post("/check")
-def check(event: dict):
-    return {"decision": "allow"}
+def check(body: CheckIn):
+    g = guarded_folder(body.file, body.command)
+    if g is None:
+        return {"decision": "allow", "reason": "", "rule": "default", "model": "rules"}
+    return {
+        "decision": "ask",
+        "reason": f"{BUILDINGS.get(g, g)} is guarded: {g}/ needs human approval",
+        "rule": f"{g}/**",
+        "model": "rules",
+    }
+
+
+SECRET_PATTERNS = [
+    ("aws_access_key", re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b")),
+    ("github_token", re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})")),
+    ("anthropic_key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}")),
+    ("openai_key", re.compile(r"\bsk-(?!ant-)(?:proj-|svcacct-|admin-)?[A-Za-z0-9_-]{20,}")),
+    ("slack_token", re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}")),
+    ("private_key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+]
+ENV_LINE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$")
+SECRET_NAME = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSWD", re.I)
+GENERIC_SECRET = re.compile(
+    r"(?i)[\w.-]*(?:secret|token|password|passwd|api_?key)[\w.-]*[\"']?\s*(?::\s*[\w<>\[\]|]+\s*)?(?::|=|:=)\s*[\"']([^\"'\s]{12,})[\"']"
+)
+PLACEHOLDER = re.compile(r"(?i)changeme|change_me|placeholder|example|your[_ -]|xxxx|dummy|redacted|^<.*>$|^\$\{?\w+\}?$")
+HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+
+
+def is_secret_value(value: str) -> bool:
+    value = value.strip().strip("\"'")
+    return bool(value) and not PLACEHOLDER.search(value)
+
+
+def line_kinds(path: str, text: str) -> list[str]:
+    kinds = [kind for kind, pattern in SECRET_PATTERNS if pattern.search(text)]
+    if kinds:
+        return kinds
+    if os.path.basename(path).startswith(".env"):
+        m = ENV_LINE.match(text)
+        if m and SECRET_NAME.search(m[1]) and is_secret_value(m[2]):
+            return ["env_value"]
+        return []
+    m = GENERIC_SECRET.search(text)
+    return ["generic_secret"] if m and is_secret_value(m[1]) else []
+
+
+class ScanIn(BaseModel):
+    diff: str
+
+
+@app.post("/scan")
+def scan(body: ScanIn):
+    findings, path, line, prev = [], None, 0, ""
+    for raw in body.diff.splitlines():
+        if raw.startswith("+++ ") and prev.startswith("--- "):
+            target = raw[4:].split("\t")[0].strip()
+            path = None if target == "/dev/null" else target.removeprefix("b/")
+        elif m := HUNK.match(raw):
+            line = int(m[1])
+        elif path and raw.startswith("+"):
+            findings += [{"file": path, "line": line, "kind": k} for k in line_kinds(path, raw[1:])]
+            line += 1
+        elif raw.startswith(" "):
+            line += 1
+        prev = raw
+    return {"ok": not findings, "findings": findings}
 
 
 class CommitMsgIn(BaseModel):
@@ -68,6 +213,7 @@ class CommitMsgIn(BaseModel):
 @app.post("/commit_msg")
 def commit_msg(body: CommitMsgIn):
     text = chat(
+        COMMIT_MODEL,
         "Write a one-line git commit message for the diff. Imperative mood, "
         "under 72 characters, no quotes, no period. Reply with the message only.",
         f"Diff:\n{body.diff[:MAX_INPUT_CHARS]}\n\nCommit message:",
@@ -82,6 +228,50 @@ def commit_msg(body: CommitMsgIn):
     return {"message": line}
 
 
+class SummarizeIn(BaseModel):
+    agent: str
+    branch: str
+    diff: str
+    commits: list[str] = []
+
+
+@app.post("/summarize")
+def summarize(body: SummarizeIn):
+    commits = "\n".join(f"- {c}" for c in body.commits[-30:]) or "none"
+    text = chat(
+        SUMMARIZE_MODEL,
+        "You read one AI coding agent's git branch. In one or two short plain sentences, "
+        "say what the branch set out to do. Reply with the sentences only.",
+        f"Agent: {body.agent}\nBranch: {body.branch}\nCommits:\n{commits}\n\n"
+        f"Diff:\n{body.diff[:MAX_INPUT_CHARS]}\n\nIntent:",
+        max_tokens=100,
+    )
+    return {"intent": first_sentences(text)}
+
+
+def cosine(a: list[float], b: list[float]) -> float:
+    norm = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
+    return sum(x * y for x, y in zip(a, b)) / norm if norm else 0.0
+
+
+def relevant_context(question: str, context: str) -> str:
+    if len(context) <= ASK_CONTEXT_CHARS:
+        return context
+    lines = [l for l in context.splitlines() if l.strip()][-ASK_MAX_LINES:]
+    try:
+        q, *vecs = embed([question] + lines)
+    except ModelError:
+        return context[-MAX_INPUT_CHARS:]
+    ranked = sorted(range(len(lines)), key=lambda i: cosine(q, vecs[i]), reverse=True)
+    keep, size = set(), 0
+    for i in ranked:
+        if size + len(lines[i]) + 1 > ASK_CONTEXT_CHARS:
+            break
+        keep.add(i)
+        size += len(lines[i]) + 1
+    return "\n".join(lines[i] for i in sorted(keep))
+
+
 class AskIn(BaseModel):
     question: str
     context: str | None = None
@@ -90,14 +280,10 @@ class AskIn(BaseModel):
 @app.post("/ask")
 def ask(body: AskIn):
     text = chat(
+        ASK_MODEL,
         "You watch several AI coding agents working in parallel git worktrees. "
         "Answer the question from the context in at most two short plain sentences.",
-        f"Context:\n{(body.context or 'none')[-MAX_INPUT_CHARS:]}\n\nQuestion: {body.question}",
+        f"Context:\n{relevant_context(body.question, body.context or 'none')}\n\nQuestion: {body.question}",
         max_tokens=120,
     )
-    sentences = re.split(r"(?<=[.!?])\s+", " ".join(text.split()))
-    return {"answer": " ".join(sentences[:2])}
-
-
-# TODO /claim: an agent claims a folder before it edits there.
-# TODO /release: the agent releases its claim.
+    return {"answer": first_sentences(text)}
