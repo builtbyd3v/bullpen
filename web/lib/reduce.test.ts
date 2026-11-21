@@ -11,6 +11,7 @@ const start: Snapshot = {
   checks: [],
   plan: null,
   hooks: [],
+  replaying: false,
 };
 
 test("state replaces data and emits no fx", () => {
@@ -173,4 +174,17 @@ test("merge handles empty intent string cleanly", () => {
   assert.equal(snapshot.merges[0].agent, "web");
   assert.equal(snapshot.merges[0].intent, "");
   assert.equal(snapshot.merges[0].commits.length, 1);
+});
+
+test("envelopes with replay: true set replaying and live envelopes clear it", () => {
+  const replayed = reduce(start, { type: "state", data: FAKE_STATE, replay: true }).snapshot;
+  assert.equal(replayed.replaying, true);
+  const replayedCommit = reduce(replayed, {
+    type: "commit",
+    data: { agent: "web", sha: "rep1234", message: "Replayed edit", files: ["web/App.tsx"] },
+    replay: true,
+  }).snapshot;
+  assert.equal(replayedCommit.replaying, true);
+  const live = reduce(replayedCommit, { type: "state", data: FAKE_STATE }).snapshot;
+  assert.equal(live.replaying, false);
 });

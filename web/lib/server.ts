@@ -19,23 +19,58 @@ function isEnvelope(msg: unknown): msg is Envelope {
   return typeof msg === "object" && msg !== null && "type" in msg && TYPES.has(String(msg.type));
 }
 
+async function fetchJson(url: string, timeoutMs = 2500): Promise<Record<string, unknown> | null> {
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) return null;
+    const body = (await res.json()) as unknown;
+    return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 export function connect(store: Store): () => void {
   if (isFake()) {
     store.dispatch({ type: "state", data: FAKE_STATE });
     [...FAKE_CHECKS].reverse().forEach((c) => store.dispatch({ type: "check", data: c }));
     [...FAKE_HOOKS].reverse().forEach((h) => store.dispatch({ type: "hook", data: h }));
+    store.setHealth({ server: "ok", ws: "ok", orchestrator: "ok" });
     return () => {};
   }
+
   let closed = false;
   let ws: WebSocket | undefined;
+  // Jetson status comes from `check` events (the browser cannot reach the Jetson: no CORS there).
+  const pollHealth = async () => {
+    const [serverBody, orchBody] = await Promise.all([
+      fetchJson(`${SERVER_URL.replace(/\/$/, "")}/health`),
+      fetchJson(`${ORCHESTRATOR_URL.replace(/\/$/, "")}/health`),
+    ]);
+    if (closed) return;
+    store.setHealth({
+      server: serverBody && serverBody.ok !== false ? "ok" : "down",
+      orchestrator: orchBody && orchBody.ok !== false ? "ok" : "down",
+    });
+  };
+
+  void pollHealth();
+  const healthTimer = window.setInterval(() => void pollHealth(), 5000);
+
   const open = () => {
     ws = new WebSocket(`${SERVER_URL.replace(/^http/, "ws")}/ws`);
     // Refetch on every (re)connect so a restarted server or a missed message cannot leave stale state.
-    ws.onopen = () =>
+    ws.onopen = () => {
+      store.setHealth({ ws: "ok" });
       fetch(`${SERVER_URL}/state`)
         .then((r) => r.json() as Promise<unknown>)
         .then((data) => closed || dispatch({ type: "state", data }))
         .catch((e: unknown) => console.warn("[bullpen] /state failed", e));
+    };
     ws.onmessage = (m: MessageEvent<string>) => {
       try {
         dispatch(JSON.parse(m.data));
@@ -43,7 +78,14 @@ export function connect(store: Store): () => void {
         console.warn("[bullpen] bad ws message", e);
       }
     };
-    ws.onclose = () => closed || setTimeout(open, 1000);
+    ws.onerror = () => {
+      if (!closed) store.setHealth({ ws: "down" });
+    };
+    ws.onclose = () => {
+      if (closed) return;
+      store.setHealth({ ws: "down" });
+      setTimeout(open, 1000);
+    };
   };
   const dispatch = (msg: unknown) => {
     if (!isEnvelope(msg)) return;
@@ -53,8 +95,20 @@ export function connect(store: Store): () => void {
   open();
   return () => {
     closed = true;
+    window.clearInterval(healthTimer);
     ws?.close();
   };
+}
+
+export function triggerReplay(store: Store): void {
+  if (isFake()) {
+    const currentlyReplaying = store.getState().replaying;
+    store.dispatch({ type: "state", data: store.getState().data, replay: !currentlyReplaying });
+    return;
+  }
+  fetch(`${SERVER_URL.replace(/\/$/, "")}/replay`).catch((e: unknown) =>
+    console.warn("[bullpen] GET /replay failed", e),
+  );
 }
 
 export function act(store: Store, action: Action): void {
