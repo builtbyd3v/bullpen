@@ -1,6 +1,14 @@
-import { AbsoluteFill, Audio, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Audio, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { TitleCard } from "./TitleCard";
 import { C, MONO, type Cue, type FilmProps, type Slot } from "./types";
+
+// Ducking (lowering one sound while another plays): the level sits at `under` while a voice take plays
+// and returns to `full` over RAMP seconds on each side. Voice times are known up front, so no audio analysis is needed.
+const RAMP = 0.35;
+function duck(t: number, voices: [number, number][], full: number, under: number): number {
+  const dip = Math.max(0, ...voices.map(([from, to]) => interpolate(t, [from - RAMP, from, to, to + RAMP], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })));
+  return full + (under - full) * dip;
+}
 
 // Shown until the team drops the recording into video/raw/.
 function Slate({ slot }: { slot: Slot }) {
@@ -36,9 +44,16 @@ function Captions({ cues }: { cues: Cue[] }) {
   );
 }
 
-export function Film({ slots, cues }: FilmProps) {
-  const { fps } = useVideoConfig();
+export function Film({ slots, cues, mix, music }: FilmProps) {
+  const { fps, durationInFrames } = useVideoConfig();
   let at = 0;
+  let start = 0;
+  const voices: [number, number][] = [];
+  for (const slot of slots) {
+    if (slot.voFile) voices.push([start, start + (slot.voDur ?? slot.dur)]);
+    start += slot.dur;
+  }
+  const end = durationInFrames / fps;
   return (
     <AbsoluteFill style={{ background: C.ink }}>
       {slots.map((slot) => {
@@ -48,24 +63,31 @@ export function Film({ slots, cues }: FilmProps) {
         return (
           <Sequence key={slot.id} from={from} durationInFrames={frames}>
             {slot.kind === "title" ? (
-              <TitleCard tagline={slot.tagline ?? ""} />
+              <TitleCard tagline={slot.tagline ?? ""} still={slot.still} />
             ) : slot.clip ? (
               <OffthreadVideo
                 src={staticFile(slot.clip)}
                 trimBefore={Math.round((slot.start ?? 0) * fps)}
                 playbackRate={slot.rate ?? 1}
-                muted={!slot.keepAudio}
-                volume={0.25}
+                muted={slot.audio === false}
+                volume={(f) => duck(f / fps, slot.voFile ? [[0, slot.voDur ?? slot.dur]] : [], mix.app, mix.appUnderVoice)}
                 style={{ width: "100%", height: "100%" }}
               />
             ) : (
               <Slate slot={slot} />
             )}
             {slot.label ? <LowerThird text={slot.label} /> : null}
-            {slot.voFile ? <Audio src={staticFile(slot.voFile)} /> : null}
+            {slot.voFile ? <Audio src={staticFile(slot.voFile)} volume={mix.voice} /> : null}
           </Sequence>
         );
       })}
+      {music ? (
+        <Audio
+          src={staticFile(music)}
+          loop
+          volume={(f) => duck(f / fps, voices, mix.music, mix.musicUnderVoice) * interpolate(f / fps, [0, 1, end - 2, end], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })}
+        />
+      ) : null}
       <Captions cues={cues} />
     </AbsoluteFill>
   );

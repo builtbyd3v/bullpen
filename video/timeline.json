@@ -1,5 +1,12 @@
 {
   "fps": 30,
+  "mix": {
+    "voice": 1,
+    "app": 0.8,
+    "appUnderVoice": 0.2,
+    "music": 0.25,
+    "musicUnderVoice": 0.08
+  },
   "slots": [
     {
       "id": "01-problem",
@@ -7,7 +14,6 @@
       "dur": 10,
       "start": 0,
       "rate": 1,
-      "keepAudio": true,
       "shot": "Real life. Person at a laptop, two agent terminals overwrite auth.ts, they slump.",
       "vo": "Three AI agents, one repo. Two of them just rewrote the same file. One version is gone, and nothing recorded it."
     },
@@ -123,7 +129,8 @@
       "kind": "title",
       "dur": 12,
       "tagline": "Git tracks what changed. Bullpen controls who's allowed to change it.",
-      "vo": "Anthropic rebuilt source control for agents, and called it Scion. Bullpen brings that to every engineer. Git tracks what changed. Bullpen controls who's allowed to change it."
+      "vo": "Anthropic rebuilt source control for agents, and called it Scion. Bullpen brings that to every engineer. Git tracks what changed. Bullpen controls who's allowed to change it.",
+      "still": true
     }
   ]
 }

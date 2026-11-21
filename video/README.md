@@ -21,7 +21,19 @@ npm run studio      # live preview; run `npm run prep` first
 2. Save each voiceover take as `raw/vo/<slot id>.m4a` (or `.wav`, `.mp3`).
 3. Run `npm run render`.
 
-Any size, codec or frame rate works: the build converts every clip to 1080p30 H.264 and mutes it (only `01-problem` keeps its sound, at 25%).
+Any size, codec or frame rate works: the build converts every clip to 1080p30 H.264.
+
+## Sound
+
+Three layers, mixed by the render:
+
+| Layer | Source | Level |
+|---|---|---|
+| Voice | `raw/vo/<slot id>.m4a` | `mix.voice` |
+| App sound | The audio track of each clip (the app's sound effects, the room in `01-problem`) | `mix.app`, lowered to `mix.appUnderVoice` while the voice plays |
+| Music bed (optional) | `raw/music.mp3` (or `.wav`, `.m4a`). Loops, fades in over 1 s and out over 2 s | `mix.music`, lowered to `mix.musicUnderVoice` while the voice plays |
+
+Levels are 0 to 1 and live in `mix` at the top of `timeline.json`. The level change takes 0.35 s on each side of a voice take. Set `"audio": false` on a slot to mute that clip. With `rate` other than 1, the clip's sound changes speed too: mute it. Use only music you have the rights to, and credit it.
 
 ## Fit a clip to its slot, in `timeline.json`
 
@@ -31,6 +43,7 @@ Any size, codec or frame rate works: the build converts every clip to 1080p30 H.
 | `start` | Second of the recording where the slot begins |
 | `rate` | Playback speed. `2` shows 20 s of recording in a 10 s slot |
 | `label` | Small on-screen label, top left |
+| `audio` | `false` mutes the clip's own sound |
 | `vo` | The voiceover line. Captions and `subtitles.srt` come from it |
 
 The build stops with a clear message when a voiceover take is longer than its slot, or a clip is shorter than `start + dur x rate`.

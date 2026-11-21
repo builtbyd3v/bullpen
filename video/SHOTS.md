@@ -2,7 +2,7 @@
 
 - 11 clips and 13 voiceover takes. File names must match the slot ids below.
 - Record each beat as its own clip, 3 to 5 s longer than its slot. The build trims.
-- Screen: a 16:9 box over the app (1504 x 846 on the MacBook), no sound. Voice: one take per beat.
+- Screen: a 16:9 box over the app (1504 x 846 on the MacBook), with the app's sound and no microphone. Voice: one take per beat.
 - Run `scripts/demo_reset.sh` before each demo take. The health strip must be all green.
 - Drop files into `video/raw/` and `video/raw/vo/`, then run `npm run render` in `video/`.
 
@@ -17,8 +17,10 @@
 
 | Tool | Settings |
 |---|---|
-| QuickTime (simplest) | Cmd+Shift+5, "Record Selected Portion". Drag the box until the size readout is 1504 x 846 and place it over the app. Options: Microphone "None", "Show Mouse Clicks" on. The box stays for the next take. Saves `.mov`. |
-| OBS (if installed) | Canvas and output 1920x1080, 30 fps, Display Capture, encoder Apple VT H264, bitrate 12000 Kbps, format mp4, no audio sources. |
+| OBS (records the app's sound) | Install: `brew install --cask obs`. Source: "macOS Screen Capture", method "Window Capture", pick the Chrome window: it records the window and its sound together. Canvas and output 1920x1080, 30 fps, encoder Apple VT H264, 12000 Kbps, format mp4. Mute the Mic/Aux track in the mixer. |
+| QuickTime (picture only) | Cmd+Shift+5, "Record Selected Portion". Drag the box until the size readout is 1504 x 846 and place it over the app. Options: Microphone "None", "Show Mouse Clicks" on. The box stays for the next take. Saves `.mov`. |
+
+The app's sound effects are part of the film, so record with OBS. QuickTime's screen recording here takes a microphone only; a QuickTime clip still works and plays silent under the voice. Set the Mac volume to about 75% and do not talk during a take.
 
 Move the pointer slowly. Pause one second before and after each click. Leave the top-left corner and the bottom strip free of key content: the label and the captions sit there.
 
