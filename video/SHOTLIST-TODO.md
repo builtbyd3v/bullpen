@@ -1,21 +1,19 @@
-# Clips still to record
+# Clips still to capture
 
-- 10 clips to record, plus 13 voice takes. The problem clip, the title and the closing card are generated.
-- Record each clip 3 to 5 s longer than its length here. Save into `video/raw/` under the name shown.
-- How to record: `RECORDING.md`. After each batch: `cd video && npm run render`.
+- 10 app clips, all cut from one automated take: `node scripts/record.mjs live` in `video/`. Nobody films anything.
+- The problem clip, the title and the closing card are generated. The voice is ElevenLabs.
+- Capture waits for Dev's OK on the design. Before the take: `scripts/demo_reset.sh`, health strip all green.
+- After the take: `npm run render`, then check each beat in `out/bullpen-demo.mp4`.
 
-| Done | Save as | What | Length | Who, where |
+| Done | Slot | What the take must show | Length | Who, where |
 |---|---|---|---|---|
-| [ ] | `03-ask` | Type one ask in the Orchestrator box. Three bulls walk onto campus. | 10 s | Dev, Mac, live app |
-| [ ] | `04-lock` | api holds `shared/auth.ts`, web waits at the door, the lock countdown runs. | 10 s | Dev, Mac, live app |
-| [ ] | `05-deny` | db reaches for the schema. The referee log shows the block on `db/**`. | 11 s | Dev, Mac, live app |
-| [ ] | `06-undo` | Click Undo on web. Its commits leave the timeline. | 9 s | Dev, Mac, live app |
-| [ ] | `07-merge` | Open api's building, show the diff, click Merge to main, the intent card. | 10 s | Dev, Mac, live app |
-| [ ] | `08-unplug` | A hand pulls the Jetson's USB cable. The screen behind shows the referee OFFLINE. | 10 s | Teammate with a phone (landscape, 1080p, HDR off), Dev pulls the cable at the desk |
-| [ ] | `09-evidence` | Locks panel close-up at 150% zoom, a countdown running. | 9 s | Dev, Mac, live app |
-| [ ] | `10-campus` | Campus built from a second repo, then the commit timeline. | 8 s | Dev, Mac, terminal then app |
-| [ ] | `11-interior` | Inside a building: agent at its file, branch sign, real diff. | 6 s | Dev, Mac, live app |
-| [ ] | `12-referee` | Referee log close-up at 150% zoom: rule, latency, model per row. | 10 s | Dev, Mac, live app |
-| [ ] | `raw/vo/<slot id>.m4a` x 13 | Each line of "Read-aloud copy" in `SCRIPT.md`, one file per line. | 2 min total | Dev, quiet room, QuickTime audio |
-
-Optional: `raw/music.mp3`, a music bed you have the rights to.
+| [ ] | `03-ask` | One ask typed in the Orchestrator box. Three bulls walk onto campus. | 10 s | Recorder, Dev's Mac |
+| [ ] | `04-lock` | One agent holds `shared/auth.ts`, the other waits at the door. | 10 s | Recorder |
+| [ ] | `05-deny` | db reaches for the schema. The approval card shows, the edit is denied. | 11 s | Recorder |
+| [ ] | `06-undo` | Undo on web. Its commits leave the timeline. | 9 s | Recorder |
+| [ ] | `07-merge` | Inside api's building, then Merge to main and the intent card. | 10 s | Recorder |
+| [ ] | `08-unplug` | The referee OFFLINE, every edit blocked. | 10 s | Dev pulls the cable when the recorder says so (`UNPLUG=1`). Without Dev: the OFFLINE rows in the Referee panel. |
+| [ ] | `09-evidence` | Locks panel close-up. | 9 s | Recorder |
+| [ ] | `10-campus` | The campus with the agents at work. | 9 s | Recorder |
+| [ ] | `11-interior` | Inside a building: agent at its file, branch sign, diff. | 5 s | Recorder |
+| [ ] | `12-referee` | Referee log close-up: rule, latency, model per row. | 11 s | Recorder |

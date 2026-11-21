@@ -51,8 +51,6 @@ for (const slot of timeline.slots) {
   if (raw && !converted.has(src)) {
     converted.add(src);
     const out = `public/clips/${src}.mp4`;
-    const transfer = run("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=color_transfer", "-of", "csv=p=0", p("raw", raw)]).trim();
-    if (transfer === "arib-std-b67" || transfer === "smpte2084") console.warn(`WARNING ${raw} is HDR and will look washed out. Record again with HDR video off.`);
     // Converted on every run: a cache keyed on file dates kept old takes after a swap in Finder.
     ffmpeg([
       "-i", p("raw", raw),
@@ -67,9 +65,11 @@ for (const slot of timeline.slots) {
     const rate = slot.rate ?? 1;
     let start = slot.start ?? 0;
     if (slot.from) {
-      const m = log.marks.find((x) => x.label === slot.from);
+      // A list means: the first mark that exists in this take. The unplug beat uses it to fall back.
+      const names = [slot.from].flat();
+      const m = names.map((name) => log.marks.find((x) => x.label === name)).find(Boolean);
       if (m) start += m.t;
-      else problems.push(`${slot.id}: no mark "${slot.from}" in raw/${src}.json`);
+      else problems.push(`${slot.id}: no mark "${names.join('" or "')}" in raw/${src}.json`);
     }
     slot.start = Math.max(0, start);
     const need = slot.start + slot.dur * rate;

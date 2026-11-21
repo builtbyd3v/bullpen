@@ -98,10 +98,14 @@
       "dur": 10,
       "start": 0,
       "rate": 1,
-      "label": "Jetson unplugged: every edit denied",
-      "shot": "pull the Jetson's USB cable during a live take, referee log shows OFFLINE and blocks every edit",
-      "vo": "Now pull the Jetson's cable. The referee is offline, so every edit is denied. Bullpen fails closed.",
-      "irl": true
+      "label": "Referee offline: every edit denied",
+      "shot": "referee OFFLINE, every edit blocked (cable pulled during the take, or the OFFLINE rows in the referee log)",
+      "vo": "Unplug the Jetson, and the referee goes offline. Every edit is denied. Bullpen fails closed.",
+      "src": "take-live",
+      "from": [
+        "unplug",
+        "referee"
+      ]
     },
     {
       "id": "09-evidence",

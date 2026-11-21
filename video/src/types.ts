@@ -6,11 +6,9 @@ export type Slot = {
   dur: number;
   start?: number;
   rate?: number;
-  // false mutes the clip's own sound (app sound effects, room sound).
+  // false mutes the clip's own sound (the app's sound effects).
   audio?: boolean;
   still?: boolean;
-  // Filmed with a camera, not a screen recording.
-  irl?: boolean;
   label?: string;
   shot?: string;
   tagline?: string;
@@ -21,7 +19,7 @@ export type Slot = {
   voDur?: number;
   // Recorder takes: the source file, a mark in its log, and the app's sound-effect notes inside this slot.
   src?: string;
-  from?: string;
+  from?: string | string[];
   sfx?: { at: number; file: string }[];
   // Close-up: scale, and the point to zoom on as a percentage of width and height.
   zoom?: { scale: number; x: number; y: number };

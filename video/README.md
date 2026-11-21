@@ -30,7 +30,7 @@ Three layers, mixed by the render:
 | Layer | Source | Level |
 |---|---|---|
 | Voice | `raw/vo/<slot id>.m4a` | `mix.voice` |
-| App sound | The audio track of each clip (the app's sound effects, the room in `01-problem`) | `mix.app`, lowered to `mix.appUnderVoice` while the voice plays |
+| App sound | The audio track of each clip (the app's sound effects) | `mix.app`, lowered to `mix.appUnderVoice` while the voice plays |
 | Music bed (optional) | `raw/music.mp3` (or `.wav`, `.m4a`). Loops, fades in over 1 s and out over 2 s | `mix.music`, lowered to `mix.musicUnderVoice` while the voice plays |
 
 Levels are 0 to 1 and live in `mix` at the top of `timeline.json`. The level change takes 0.35 s on each side of a voice take. Set `"audio": false` on a slot to mute that clip. With `rate` other than 1, the clip's sound changes speed too: mute it. Use only music you have the rights to, and credit it.
@@ -55,7 +55,8 @@ The build stops with a clear message when a voiceover take is longer than its sl
 - Output: `raw/take-<mode>.webm` plus `raw/take-<mode>.json` with the beat marks, the server events, and every sound note the app played.
 - The recording has no sound track. The build plays the logged notes back at the right moments, with the same waves the app uses, under the voice.
 - In `timeline.json`, a slot cuts from a take with `"src": "take-live"`, `"from": "<mark>"` and `start` (seconds after that mark). A new take keeps the same marks, so the cuts follow it.
-- Run `scripts/demo_reset.sh` before a live take. The Jetson cable pull is not automated.
+- Run `scripts/demo_reset.sh` before a live take.
+- `UNPLUG=1 node scripts/record.mjs live` adds a last step: the script tells you when to pull the Jetson's cable and when to plug it back. Without it, the unplug beat cuts to the Referee panel.
 - First use: `npx playwright-core install ffmpeg` (Playwright's video encoder, about 2 MB). Chrome must be installed. macOS asks for no Screen Recording permission, because Chrome records its own page.
 
 ## How it works

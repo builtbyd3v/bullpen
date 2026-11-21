@@ -1,6 +1,7 @@
 # Shots to record
 
 - 10 clips and 13 voiceover takes. The short version of this page is `RECORDING.md`. File names must match the slot ids below.
+- `node scripts/record.mjs live` captures all of these in one automated take. This page is the manual fallback.
 - Record each beat as its own clip, 3 to 5 s longer than its slot. The build trims.
 - Screen: a 16:9 box over the app (1504 x 846 on the MacBook), with the app's sound and no microphone. Voice: one take per beat.
 - Run `scripts/demo_reset.sh` before each demo take. The health strip must be all green.
@@ -26,9 +27,7 @@ Move the pointer slowly. Pause one second before and after each click. Leave the
 
 ## Voiceover
 
-- QuickTime, New Audio Recording, quality Maximum. A phone with Voice Memos held 15 cm away also works.
-- A quiet room, one speaker for all takes, one file per beat.
-- Read the line from `SCRIPT.md`. Speak at a natural pace and aim for the "say" time shown there. The build fails if a take is longer than its slot minus 0.3 s.
+The voice is ElevenLabs: `node scripts/voice.mjs make` writes one take per slot into `raw/vo/`. Steps are in `RECORDING.md`.
 
 ## Clips
 
@@ -39,15 +38,15 @@ Move the pointer slowly. Pause one second before and after each click. Leave the
 | `05-deny` | 11 s | Web app | db reaches for the schema at the Sun Dome. Referee log: the highlighted deny row with the `db/**` rule. db moves to other work. |
 | `06-undo` | 9 s | Web app | Click Undo on web. Scaffolding collapses. web's commits leave the commit timeline. |
 | `07-merge` | 10 s | Web app | Click api's building, show the interior and the diff, click Merge, the intent card, the flash. |
-| `08-unplug` | 10 s | Web app, plus a phone clip if possible | Pull the Jetson's USB-C cable. Referee log shows OFFLINE, then denied edits. |
+| `08-unplug` | 10 s | Web app | The referee OFFLINE and blocking edits. Dev pulls the Jetson's cable during the take, or the take shows the OFFLINE rows in the referee log. |
 | `09-evidence` | 9 s | Web app, zoom 150% on the evidence panel | Leases with the TTL countdown running. |
 | `10-campus` | 8 s | Terminal then web app | Run `scripts/make_campus.py` on a second repo, show the new campus, then the commit timeline with `Bullpen-Agent` trailers. |
 | `11-interior` | 6 s | Web app | Building interior: agent at its file, branch sign, mini log, diff. |
-| `12-referee` | 10 s | Web app, zoom 150% on the referee log | Rows with rule, latency and model. Or a phone shot of the Jetson next to the screen. |
+| `12-referee` | 10 s | Web app, zoom 150% on the referee log | Rows with rule, latency and model. |
 
 `01-problem`, `02-title` and `13-close` are generated. Record voiceover takes for all 13 slots.
 
 ## Fallbacks
 
-- A live beat fails on camera: record that beat from http://localhost:5173/campus?fake with "Play demo", or from the server's `GET /replay`.
+- A live beat fails in a take: record that beat from http://localhost:5173/campus?fake with "Play demo", or from the server's `GET /replay`.
 - A real run is too slow for its slot: set `rate` to 2 or 3 for that slot, or raise `start` to skip the wait.

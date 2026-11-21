@@ -1,6 +1,7 @@
 # Recording the demo (one page)
 
-- 10 screen clips and 13 voice takes. The problem clip, the title and the closing card are generated.
+- 10 screen clips and 13 voice lines. Nothing is filmed with a camera. The problem clip, the title and the closing card are generated.
+- Automated: `node scripts/record.mjs live` records every clip in one take and needs none of the screen steps below. They are the manual fallback.
 - Tool: OBS, because it records the app's sound with the picture. Output 1920x1080, 30 fps.
 - One clip per beat, in the order below. Two takes of each, keep the better one.
 - Each clip runs 3 to 5 s longer than its slot. The build trims it.
@@ -25,7 +26,7 @@ Run `scripts/demo_reset.sh` before each run of the demo. The health strip must b
 | 3 | `05-deny` | 11 s | db reaches for the schema. Show the deny row in the referee log. |
 | 4 | `06-undo` | 9 s | Click Undo on web. Its commits leave the timeline. |
 | 5 | `07-merge` | 10 s | Click api's building, show the diff, click Merge, the intent card. |
-| 6 | `08-unplug` | 10 s | Pull the Jetson's cable. The referee log shows OFFLINE. Plug it back in. |
+| 6 | `08-unplug` | 10 s | The referee OFFLINE. Pull the Jetson's cable if you are at the desk, then plug it back in. Otherwise show the OFFLINE rows in the Referee panel. |
 | 7 | `09-evidence` | 9 s | Zoom 150% on the lease panel while a countdown runs. |
 | 8 | `10-campus` | 8 s | Campus built from a second repo, then the commit timeline. |
 | 9 | `11-interior` | 6 s | Inside a building: agent at its file, branch sign, diff. |
@@ -33,10 +34,9 @@ Run `scripts/demo_reset.sh` before each run of the demo. The health strip must b
 
 Beats 1 to 6 can be one continuous run cut into six files, or one long file: set `start` (the second where the beat begins) per slot in `timeline.json`. A slow beat: set `rate` to 2 and `"audio": false`.
 
-## Voice
+## Voice (ElevenLabs)
 
-1. One quiet room, one speaker. QuickTime, File, New Audio Recording, quality Maximum.
-2. Read each line from "Read-aloud copy" in `SCRIPT.md` at a natural pace. One file per line, 13 files.
-3. Two takes per line. Keep the one closest to the "say" time in `SCRIPT.md`.
-4. Save as `video/raw/vo/<slot id>.m4a`, for example `raw/vo/04-lock.m4a`. Silence at the ends is trimmed for you.
-5. Run `npm run render`. If it says a take is too long for its slot, read it faster or cut a word in `timeline.json`.
+1. The key is `ELEVENLABS_API_KEY` in your shell, or in `video/.env` (gitignored). Never commit it.
+2. `node scripts/voice.mjs list` shows your voices. The film uses Misa: `XlDdozLmuTofIxK4BjPD`.
+3. `ELEVENLABS_VOICE_ID=XlDdozLmuTofIxK4BjPD node scripts/voice.mjs make` writes all 13 takes into `raw/vo/`. Add slot ids to redo single lines, for example `make 08-unplug`.
+4. `npm run render`. If it says a take is too long for its slot, cut a word in `timeline.json` or raise that slot's `dur`.
