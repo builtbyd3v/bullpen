@@ -11,6 +11,7 @@
 // All times are seconds from the first frame of the video.
 import { chromium } from "playwright-core";
 import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -105,6 +106,10 @@ if (mode === "conflict") {
   await pause(0.5);
   await page.getByRole("button", { name: "Run", exact: true }).click();
   mark("run");
+  // The orchestrator sits below the campus. Stay on it while it plans, then go back up to watch the agents.
+  await pause(5);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  mark("campus");
 
   // 2. Collision: first lock, then the second agent waits.
   if (await until(() => seen("claim_granted"), 120)) marks.push({ t: seen("claim_granted").t, label: "lock" });
@@ -156,6 +161,28 @@ if (mode === "conflict") {
     await pause(14);
     console.log("\n>>> PLUG THE CABLE BACK IN.\n\u0007");
     await pause(4);
+  }
+  // 9. Optional: OFFLINE=1 pauses the referee service on the Jetson (the same effect as pulling its cable),
+  // sends two real edit requests through the hook, and resumes the service. The server gets no answer
+  // within 5 s and denies both: those are the OFFLINE rows in the Referee panel.
+  if (process.env.OFFLINE) {
+    const jetson = (signal) => execFileSync("ssh", ["-o", "ConnectTimeout=4", process.env.JETSON_SSH ?? "dev@192.168.55.1", `pkill -${signal} -f "[u]vicorn main:app"; true`]);
+    const demo = process.env.DEMO_DIR ?? "/Users/dev/.t3/projects/demo";
+    mark("unplug");
+    jetson("STOP");
+    try {
+      for (const agent of ["web", "api"]) {
+        const dir = `${demo}-${agent}`;
+        const hook = spawn("python3", [join(root, "../hooks/bullpen_hook.py"), "PreToolUse"], { cwd: dir, env: { ...process.env, SERVER_URL: server, BULLPEN_AGENT: agent, BULLPEN_CHECKOUT_TIMEOUT: "20" }, stdio: ["pipe", "ignore", "ignore"] });
+        hook.stdin.end(JSON.stringify({ hook_event_name: "PreToolUse", tool_name: "Write", tool_input: { file_path: `${dir}/${agent}/new.ts`, content: "x" }, cwd: dir }));
+        await pause(1.5);
+      }
+      await pause(10);
+    } finally {
+      jetson("CONT");
+    }
+    mark("replug");
+    await pause(3);
   }
   mark("end");
 }

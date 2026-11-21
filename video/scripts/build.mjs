@@ -35,7 +35,9 @@ function noteFile(n) {
   const file = `sfx/${n.wave}-${Math.round(n.freq)}-${ms}.wav`;
   if (!existsSync(p("public", file))) {
     const wave = n.wave === "triangle" ? `2/PI*asin(sin(2*PI*${n.freq}*t))` : `(2*gt(sin(2*PI*${n.freq}*t),0)-1)`;
-    ffmpeg(["-f", "lavfi", "-i", `aevalsrc=0.15*${wave}*exp(-7.3*t/${n.len}):d=${n.len}:s=48000`, "-ac", "2", p("public", file)]);
+    // The expression is quoted, because its commas would otherwise split the filter.
+    const len = (ms / 1000).toFixed(3);
+    ffmpeg(["-f", "lavfi", "-i", `aevalsrc='0.15*${wave}*exp(-7.3*t/${len})':d=${len}:s=48000`, "-ac", "2", p("public", file)]);
   }
   return file;
 }

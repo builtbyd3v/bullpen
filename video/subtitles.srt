@@ -43,16 +43,16 @@ The first takes a live lock.
 The second waits at the door.
 
 12
-00:00:30,000 --> 00:00:32,297
-The database agent reaches for the schema.
+00:00:30,000 --> 00:00:32,144
+The database folder is guarded, so
 
 13
-00:00:32,297 --> 00:00:33,555
-The referee says no, so
+00:00:32,144 --> 00:00:33,720
+the referee asks a human.
 
 14
-00:00:33,555 --> 00:00:35,032
-the agent changes its plan.
+00:00:33,720 --> 00:00:36,242
+Denied: the agent writes a plan instead.
 
 15
 00:00:39,000 --> 00:00:40,844
@@ -67,65 +67,69 @@ Undo that agent alone.
 The others keep working.
 
 18
-00:00:47,000 --> 00:00:48,072
+00:00:47,000 --> 00:00:48,055
 Happy with another?
 
 19
-00:00:48,072 --> 00:00:49,427
-Read the real diff, then
+00:00:48,055 --> 00:00:49,555
+Open its building, read the
 
 20
-00:00:49,427 --> 00:00:51,064
-merge through an intent card.
+00:00:49,555 --> 00:00:50,721
+real diff, and merge.
 
 21
+00:00:50,721 --> 00:00:53,053
+The other branches sync with main at once.
+
+22
 00:00:55,000 --> 00:00:57,210
 Under the pixels, everything is real.
 
-22
+23
 00:00:57,210 --> 00:00:59,420
 Agents lock a file before every edit,
 
-23
+24
 00:00:59,420 --> 00:01:01,809
 and each lock expires in ninety seconds.
 
-24
+25
 00:01:03,000 --> 00:01:04,281
 The referee runs on a
 
-25
+26
 00:01:04,281 --> 00:01:06,172
 Jetson the agents cannot reach.
 
-26
+27
 00:01:06,172 --> 00:01:08,552
 On-device models write the history, and
 
-27
+28
 00:01:08,552 --> 00:01:10,504
 a secret guard scans every diff.
 
-28
+29
 00:01:12,000 --> 00:01:13,987
 Unplug it, and every edit is denied.
 
-29
+30
 00:01:13,987 --> 00:01:15,146
 Bullpen fails closed.
 
-30
+31
 00:01:17,000 --> 00:01:18,831
 Every edit is a commit, tagged with
 
-31
+32
 00:01:18,831 --> 00:01:21,080
 its agent, on your own Claude subscription.
 
-32
+33
 00:01:23,000 --> 00:01:24,283
 Git tracks what changed.
 
-33
+34
 00:01:24,283 --> 00:01:26,635
 Bullpen controls who's allowed to change it.

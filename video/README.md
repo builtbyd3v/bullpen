@@ -56,7 +56,9 @@ The build stops with a clear message when a voiceover take is longer than its sl
 - The recording has no sound track. The build plays the logged notes back at the right moments, with the same waves the app uses, under the voice.
 - In `timeline.json`, a slot cuts from a take with `"src": "take-live"`, `"from": "<mark>"` and `start` (seconds after that mark). A new take keeps the same marks, so the cuts follow it.
 - Run `scripts/demo_reset.sh` before a live take.
-- `UNPLUG=1 node scripts/record.mjs live` adds a last step: the script tells you when to pull the Jetson's cable and when to plug it back. Without it, the unplug beat cuts to the Referee panel.
+- `OFFLINE=1 node scripts/record.mjs live` adds a last step: it pauses the referee service on the Jetson over ssh, sends two edit requests through the real hook, and resumes the service. The server denies both, and those are the OFFLINE rows in the Referee panel. `UNPLUG=1` waits for a person to pull the cable instead.
+- `node scripts/record.mjs conflict` records the pull-request conflict view from `/prs?fake`.
+- Check each take for a gray band at the right edge: it appeared after the first Undo click in every take. The undo and merge slots are framed to leave it out.
 - First use: `npx playwright-core install ffmpeg` (Playwright's video encoder, about 2 MB). Chrome must be installed. macOS asks for no Screen Recording permission, because Chrome records its own page.
 
 ## How it works
