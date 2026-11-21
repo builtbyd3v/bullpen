@@ -33,9 +33,9 @@
       "label": "Clean against main. In conflict with each other.",
       "shot": "PR conflict view: two agent branches, both clean against main, the overlapping shared/auth.ts lines highlighted",
       "vo": "Merge one, and the other breaks.",
-      "src": "take-live",
+      "src": "take-conflict",
       "from": "conflict",
-      "start": 1,
+      "start": 0.5,
       "rate": 1
     },
     {

@@ -2,6 +2,7 @@
 // Records the web app in Chrome at 1920x1080 and writes a sidecar log next to the take.
 // Usage: node scripts/record.mjs fake    scripted demo in ?fake mode, no server needed
 //        node scripts/record.mjs live    real mode: types one ask and drives the demo beats on the running stack
+//        node scripts/record.mjs conflict    the cross-PR conflict view, from ?fake data, no server needed
 //        UNPLUG=1 node scripts/record.mjs live    the same, then waits 14 s for a person to pull the Jetson's cable
 // Output: raw/take-<mode>.webm, and raw/take-<mode>.json with
 //   marks: [{ t, label }]   beat times, set by this script
@@ -81,11 +82,22 @@ const click = async (locator, label) => {
 
 // The app lives at /campus once the landing page takes over /. Use it when it exists.
 const app = (await fetch(`${url}/campus`).then((r) => r.ok, () => false)) ? `${url}/campus` : url;
-await page.goto(mode === "fake" ? `${app}?fake` : app, { waitUntil: "load" });
+await page.goto(mode === "live" ? app : `${app}?fake`, { waitUntil: "load" });
 await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
 await pause(2);
 
-if (mode === "fake") {
+if (mode === "conflict") {
+  // The cross-PR conflict view, from fake data: on the real server the merge guard keeps two agent
+  // branches from changing the same file, so a live run has no overlap to show.
+  await click(page.getByRole("button", { name: "Play demo" }), "play");
+  await pause(2);
+  const review = page.getByRole("link", { name: /review/i });
+  if (await review.count()) await review.first().click();
+  else await page.goto(`${url}/prs?fake`, { waitUntil: "load" });
+  await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+  mark("conflict");
+  await pause(7);
+} else if (mode === "fake") {
   await click(page.getByRole("button", { name: "Play demo" }), "play");
   await pause(23);
 } else {
@@ -116,17 +128,8 @@ if (mode === "fake") {
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await pause(14);
 
-  // 5. Once both agents have commits: the cross-PR conflict view, then back to the campus.
+  // 5. Undo web, once both agents have commits to show.
   await until(() => seen("commit", "api") && seen("commit", "web"), 90);
-  mark("conflict");
-  await page.goto(`${url}/prs`, { waitUntil: "load" });
-  await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
-  await pause(6);
-  await page.goto(app, { waitUntil: "load" });
-  await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
-  await pause(2);
-
-  // Undo web.
   await click(page.getByRole("button", { name: "Undo", exact: true }).nth(1), "undo");
   await pause(6);
 

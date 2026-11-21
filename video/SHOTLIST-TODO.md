@@ -4,6 +4,7 @@
 - The problem clip, the title and the closing card are generated. The voice is ElevenLabs (Jessica, speed 1.1).
 - Capture waits for the dark-mode UI (branch `web/screens-dark`) to merge and for Dev's go.
 - Before a take: `scripts/demo_reset.sh`, health strip all green. After it: `npm run render`, then check each beat in `out/bullpen-demo.mp4`.
+- `02-conflict` comes from its own take: `node scripts/record.mjs conflict` (fake data, because the merge guard leaves no overlap on the real server).
 - Before the take, set `BUILDING_X` and `BUILDING_Y` to the middle of api's building in the new layout (pixels in the 1920x1080 page, read from a screenshot).
 
 | Done | Slot | What the take must show | Length | Who |
