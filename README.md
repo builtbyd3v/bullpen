@@ -129,7 +129,7 @@ Everything in this repo was built during HackJam '26, starting at 11:00 AM on No
 
 **AI used for the demo video**
 
-- **ElevenLabs** text to speech for the voiceover (stock library voice "Misa", model eleven_multilingual_v2).
+- **ElevenLabs** text to speech for the voiceover (stock library voice "Jessica", model eleven_multilingual_v2).
 - macOS `say` for placeholder voiceover only.
 
 **What Bullpen is not:** it is not a reskin of an AI tool. Claude Code is the agent being controlled. What we built is the layer around it: the hook, the referee and its rules, file leases, approvals, auto-commits, undo and merge, the orchestrator, and the campus view.
