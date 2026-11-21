@@ -4,7 +4,14 @@ import { DEMO, FAKE_STATE, fakeServer, withCommit } from "./fake.ts";
 import { reduce, type Snapshot } from "./reduce.ts";
 import type { Fx } from "./types.ts";
 
-const start: Snapshot = { data: { main: "main", worktrees: [], approvals: [] }, feed: [], merges: [] };
+const start: Snapshot = {
+  data: { main: "main", worktrees: [], approvals: [], leases: [] },
+  feed: [],
+  merges: [],
+  checks: [],
+  plan: null,
+  hooks: [],
+};
 
 test("state replaces data and emits no fx", () => {
   const { snapshot, fx } = reduce(start, { type: "state", data: FAKE_STATE });
@@ -45,10 +52,51 @@ test("a commit already seeded from state is not added twice but still fires fx",
   assert.equal(fx.length, 1);
 });
 
-test("hook envelopes change nothing", () => {
-  const { snapshot, fx } = reduce(start, { type: "hook", data: { agent: "api" } });
-  assert.equal(snapshot, start);
+test("hook envelopes record compact log entries without emitting fx", () => {
+  const { snapshot, fx } = reduce(start, {
+    type: "hook",
+    data: { agent: "api", event: "PreToolUse", tool_name: "Edit", tool_input: { file_path: "api/users.ts" } },
+  });
   assert.deepEqual(fx, []);
+  assert.equal(snapshot.hooks.length, 1);
+  assert.equal(snapshot.hooks[0].agent, "api");
+  assert.equal(snapshot.hooks[0].tool, "Edit");
+  assert.equal(snapshot.hooks[0].target, "api/users.ts");
+});
+
+test("check envelopes prepend to the referee log including offline fail-closed entries", () => {
+  const first = reduce(start, {
+    type: "check",
+    data: {
+      agent: "db",
+      tool: "Edit",
+      file: "db/schema.sql",
+      decision: "deny",
+      rule: "offline",
+      latency_ms: 0,
+      model: "",
+      at: "2026-11-21T18:00:00Z",
+    },
+  }).snapshot;
+  assert.equal(first.checks.length, 1);
+  assert.equal(first.checks[0].decision, "deny");
+  assert.equal(first.checks[0].rule, "offline");
+});
+
+test("plan envelopes store the orchestrator task split", () => {
+  const { snapshot } = reduce(start, {
+    type: "plan",
+    data: {
+      ask: "Add roles",
+      tasks: [
+        { agent: "api", task: "Add role middleware" },
+        { agent: "web", task: "Show role badge" },
+        { agent: "db", task: "Add role column" },
+      ],
+    },
+  });
+  assert.equal(snapshot.plan?.ask, "Add roles");
+  assert.equal(snapshot.plan?.tasks.length, 3);
 });
 
 test("fake undo resets the agent and fires an undo fx", () => {
