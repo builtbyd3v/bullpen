@@ -17,7 +17,6 @@
     <header class="top-bar">
       <div class="brand-group">
         <div class="brand-emblem" aria-hidden="true">
-          <!-- Hand-crafted 12x12 pixel USF Bull Emblem SVG -->
           <svg width="26" height="26" viewBox="0 0 12 12" shape-rendering="crispEdges">
             <rect x="0" y="1" width="2" height="2" fill="#EDEBD1"/>
             <rect x="1" y="3" width="2" height="1" fill="#CFC493"/>
@@ -60,7 +59,7 @@
          ==================================================================== -->
     <main class="workspace">
       <div class="stage-wrap">
-        <!-- Ribbon-Cutting Celebration Banner -->
+        <!-- Ribbon-Cutting & Kick-Out Announcement Banner -->
         <div id="ribbonBanner" class="ribbon-banner hidden" role="status" aria-live="polite"></div>
 
         <!-- View A: Pixel Art USF Tampa Campus Greenway Map -->
@@ -69,13 +68,15 @@
             <canvas id="campusCanvas" width="512" height="350"></canvas>
           </div>
           <div class="map-legend-bar">
-            <span><strong>HOVER</strong> building → folder path</span>
+            <span><strong>HOVER</strong> building → folder</span>
             <span>•</span>
-            <span><strong>CLICK</strong> building → exact changes &amp; summary</span>
+            <span><strong>CLICK</strong> building → diffs &amp; summary</span>
             <span>•</span>
-            <span>🚧 Cones, crane &amp; scaffolding = active edit</span>
+            <span>⏳ Waiting at door = queued</span>
             <span>•</span>
-            <span>✂️ Ribbon-cutting = work complete</span>
+            <span>🥾 Error / timeout = kicked out</span>
+            <span>•</span>
+            <span>✂️ Ribbon-cutting = complete</span>
           </div>
         </section>
 
@@ -94,7 +95,7 @@
     </main>
 
     <!-- ====================================================================
-         BOTTOM DESIGN SHOWCASE CONTROLS (Trigger any visual state live!)
+         BOTTOM DESIGN SHOWCASE CONTROLS
          ==================================================================== -->
     <footer class="demo-bar" aria-label="Design Preview Controls">
       <div class="demo-group">
@@ -105,7 +106,8 @@
         <button id="btnDispatch" class="pixel-btn sm" type="button">🔨 SEND AGENT</button>
       </div>
       <div class="demo-group">
-        <button id="btnTriggerConflict" class="pixel-btn danger sm" type="button">💥 TEST CONFLICT</button>
+        <button id="btnTestQueue" class="pixel-btn sm" type="button">⏳ TEST QUEUE</button>
+        <button id="btnTestKickOut" class="pixel-btn danger sm" type="button">🥾 TEST KICK-OUT</button>
         <button id="btnFinishActive" class="pixel-btn sm" type="button">✂️ CUT RIBBON</button>
         <button id="btnResetCampus" class="pixel-btn sm" type="button">↺ RESET</button>
       </div>
@@ -129,19 +131,7 @@
   </aside>
 
   <!-- ======================================================================
-       CONFLICT RESOLUTION MODAL (Two Bulls crash on the same building!)
-       ====================================================================== -->
-  <div id="conflictModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="conflictTitle">
-    <div class="pixel-modal conflict-modal">
-      <div class="modal-header">
-        <h2 id="conflictTitle">💥 AGENT COLLISION — SELECT AN AGENT TO PROCEED</h2>
-      </div>
-      <div id="conflictModalBody" class="modal-body"></div>
-    </div>
-  </div>
-
-  <!-- ======================================================================
-       OPTIONS MENU MODAL (Folder Path Mapping + Pixel / Traditional Toggle)
+       OPTIONS MENU MODAL (View Toggle, Time Limit, & Folder Path Mapping)
        ====================================================================== -->
   <div id="optionsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="optionsTitle">
     <div class="pixel-modal">
@@ -158,23 +148,25 @@
           <div class="view-mode-cards">
             <button id="optModePixel" class="mode-card active" type="button">
               <div class="mode-card-title">🗺 PIXEL ART USF CAMPUS</div>
-              <div class="mode-card-desc">Live USF Tampa Greenway pixel map with Claude Bull mascots, cranes, scaffolding, crashes &amp; ribbon-cutting.</div>
+              <div class="mode-card-desc">Live USF Tampa Greenway pixel map with Claude Bull mascots, door queues, cranes, kick-outs &amp; ribbon-cutting.</div>
             </button>
             <button id="optModeTrad" class="mode-card" type="button">
               <div class="mode-card-title">📋 TRADITIONAL WORKFLOW</div>
-              <div class="mode-card-desc">Structured folder tree, live Claude agent swimlanes, active lease badges, and commit history table.</div>
+              <div class="mode-card-desc">Structured folder tree, live Claude agent swimlanes, queue badges, lease timers, and commit history table.</div>
             </button>
           </div>
         </div>
 
-        <!-- 2. Main Root Folder -->
+        <!-- 2. Main Root Folder & Lease Time Limit -->
         <div class="opt-section">
           <div class="opt-section-head">
-            <span class="opt-section-title">2. MAIN ROOT FOLDER (ENTIRE MAP)</span>
+            <span class="opt-section-title">2. ROOT FOLDER &amp; AGENT TIME LIMIT</span>
           </div>
           <div class="opt-root-row">
             <label for="optionsRootInput">Root Path:</label>
             <input id="optionsRootInput" class="pixel-input" type="text" value="bullpen-app/" />
+            <label for="optionsTimeLimitInput">Time Limit (s):</label>
+            <input id="optionsTimeLimitInput" class="pixel-input opt-time-input" type="number" min="5" max="60" value="15" />
           </div>
         </div>
 

@@ -280,7 +280,7 @@ window.BullpenMapRenderer = (function () {
       const ctx = this.ctx;
       ctx.save();
 
-      // Subtle micro screen-shake during active conflict crash impact!
+      // Subtle micro screen-shake during dramatic kick-out impact!
       if (state.screenShake > 0) {
         const sx = Math.round((Math.random() - 0.5) * state.screenShake * 3);
         const sy = Math.round((Math.random() - 0.5) * state.screenShake * 3);
@@ -297,10 +297,10 @@ window.BullpenMapRenderer = (function () {
         px(ctx, gx, gy, 4, 1, USF.white);
       });
 
-      // 3. Draw target walk path previews for agents walking to a building
+      // 3. Draw target walk path previews & waiting-line tethers
       state.agents.forEach(agent => {
+        const model = window.BullpenPalette.CLAUDE_MODELS[agent.modelId];
         if (agent.state === 'walking' && agent.path && agent.path.length) {
-          const model = window.BullpenPalette.CLAUDE_MODELS[agent.modelId];
           ctx.save();
           ctx.strokeStyle = model ? model.primary : USF.gold;
           ctx.lineWidth = 1.5;
@@ -310,10 +310,23 @@ window.BullpenMapRenderer = (function () {
           agent.path.forEach(pt => ctx.lineTo(pt.x, pt.y));
           ctx.stroke();
           ctx.restore();
+        } else if (agent.state === 'waiting' && agent.targetBuildingId) {
+          const b = state.getBuilding(agent.targetBuildingId);
+          if (b) {
+            ctx.save();
+            ctx.strokeStyle = USF.lemongrass;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(agent.x, agent.y);
+            ctx.lineTo(b.door.x, b.door.y - 3);
+            ctx.stroke();
+            ctx.restore();
+          }
         }
       });
 
-      // 4. Draw all interactive buildings + active construction sites / ribbon-cutting!
+      // 4. Draw all interactive buildings + active construction sites!
       state.buildings.forEach(b => {
         const status = state.getBuildingStatus(b.id);
         Sprites.drawInteractiveBuilding(ctx, b, {
@@ -329,32 +342,27 @@ window.BullpenMapRenderer = (function () {
         }
       });
 
-      // 5. Draw all Bulls (sorted by Y so foreground Bulls naturally overlap background ones,
-      //    and hovering/working Bulls always float cleanly ABOVE their buildings!)
-      const groundAgents = state.agents.filter(a => a.state !== 'working');
+      // 5. Draw all Bulls (ground -> hovering on roofs -> dramatic airborne kicked-out Bulls!)
+      const groundAgents = state.agents.filter(a => a.state !== 'working' && a.state !== 'kicked');
       const hoveringAgents = state.agents.filter(a => a.state === 'working');
+      const kickedAgents = state.agents.filter(a => a.state === 'kicked');
 
       groundAgents.sort((a, b) => a.y - b.y);
-      groundAgents.forEach(agent => Sprites.drawBull(ctx, agent, time));
-
-      // Conflict Crash Starburst FX right between colliding Bulls!
-      if (state.pendingConflict) {
-        const b = state.getBuilding(state.pendingConflict.buildingId);
-        if (b) {
-          Sprites.drawConflictCrashFX(
-            ctx,
-            b.door.x,
-            b.door.y - 4,
-            time,
-            state.pendingConflict.clashProgress
-          );
-        }
-      }
+      groundAgents.forEach(agent => Sprites.drawBull(ctx, agent, time, state.timeLimitSec));
 
       // Hovering working Bulls drawn on top of roofs & cranes
-      hoveringAgents.forEach(agent => Sprites.drawBull(ctx, agent, time));
+      hoveringAgents.forEach(agent => Sprites.drawBull(ctx, agent, time, state.timeLimitSec));
 
-      // 6. Ribbon-cutting celebrations drawn on top of everything so confetti & scissors pop!
+      // 6. Dramatic Kick-Out FX (Giant pixel boot, smoke trail, THUD!) + Airborne Kicked Bulls!
+      state.kickouts.forEach(k => {
+        const b = state.getBuilding(k.buildingId);
+        if (b) {
+          Sprites.drawKickOutFX(ctx, b, k, time);
+        }
+      });
+      kickedAgents.forEach(agent => Sprites.drawBull(ctx, agent, time, state.timeLimitSec));
+
+      // 7. Ribbon-cutting celebrations drawn on top so confetti & scissors pop!
       state.ribbons.forEach(rib => {
         const b = state.getBuilding(rib.buildingId);
         if (b) {

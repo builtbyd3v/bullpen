@@ -1,11 +1,11 @@
 /* ============================================================================
    BULLPEN — Interactive Design State Store, Pathfinding & Agent FSM
-   Design-only visual simulation (with clean hooks for future integration).
+   Features: Campus Patrol, Waiting Queue at Door, Construction Hovering,
+   Ribbon-Cutting Completion, & Dramatic Kick-Out on Error / Time Limit.
    ============================================================================ */
 
 window.BullpenState = (function () {
   const Data = window.BullpenCampusData;
-  const { CLAUDE_MODELS } = window.BullpenPalette;
 
   const listeners = new Set();
 
@@ -29,13 +29,16 @@ window.BullpenState = (function () {
         modelId: 'claude-opus-4-6',
         x: 270, y: 184,
         facing: 1,
-        state: 'idle', // idle | walking | working | waiting | conflict | celebrating
+        state: 'idle', // idle | walking | waiting | working | kicked | celebrating
         path: [],
         targetBuildingId: null,
         task: 'Patrolling USF Campus',
         reason: 'Awaiting next task assignment.',
         workProgress: 0,
-        workDuration: 11,
+        workElapsed: 0,
+        workDuration: 10,
+        queuePos: 0,
+        spinAngle: 0,
         celebrateTimer: 0,
         idlePause: 0.4,
         phase: 0.0,
@@ -53,7 +56,10 @@ window.BullpenState = (function () {
         task: 'Patrolling USF Campus',
         reason: 'Awaiting next task assignment.',
         workProgress: 0,
-        workDuration: 10,
+        workElapsed: 0,
+        workDuration: 9,
+        queuePos: 0,
+        spinAngle: 0,
         celebrateTimer: 0,
         idlePause: 0.9,
         phase: 2.1,
@@ -71,7 +77,10 @@ window.BullpenState = (function () {
         task: 'Patrolling USF Campus',
         reason: 'Awaiting next task assignment.',
         workProgress: 0,
-        workDuration: 9,
+        workElapsed: 0,
+        workDuration: 8,
+        queuePos: 0,
+        spinAngle: 0,
         celebrateTimer: 0,
         idlePause: 1.4,
         phase: 4.2,
@@ -88,16 +97,19 @@ window.BullpenState = (function () {
     return Math.random().toString(16).substring(2, 9);
   }
 
+  let kickReasonToggle = 0;
+
   const state = {
     rootFolder: 'bullpen-app/',
     viewMode: 'pixel', // 'pixel' | 'traditional'
+    timeLimitSec: 15,  // Configurable time limit before agent gets kicked out!
     buildings: cloneDefaultBuildings(),
     agents: createInitialAgents(),
     hoveredBuildingId: null,
     selectedBuildingId: null,
-    pendingConflict: null, // { buildingId, agentAId, agentBId }
-    ribbons: [],           // { buildingId, progress, folder, agentName }
-    announcement: null,    // { title, subtitle, timer }
+    ribbons: [],       // { buildingId, progress, folder, agentName }
+    kickouts: [],      // { id, buildingId, agentId, reasonType, reasonText, progress, duration, startX, startY, landX, landY, dirX, handoffDone }
+    announcement: null,// { kind: 'ribbon'|'kickout', title, subtitle, buildingId, timer }
     screenShake: 0,
     autoDemoRunning: false,
     autoDemoTimers: [],
@@ -110,7 +122,7 @@ window.BullpenState = (function () {
         agentId: 'agent-3',
         modelId: 'claude-haiku-4-5',
         title: 'Updated /docs/LEASE_PROTOCOL.md',
-        detail: 'Documented folder lease lifecycle & conflict prompts.',
+        detail: 'Documented folder lease queue & automatic timeout eviction.',
         commit: '71d4e9a',
       },
       {
@@ -132,7 +144,7 @@ window.BullpenState = (function () {
         agentId: 'agent-1',
         modelId: 'claude-opus-4-6',
         title: 'Hardened /backend/auth/login.ts token refresh',
-        detail: 'Added atomic lease lock to prevent concurrent token collision.',
+        detail: 'Added atomic lease lock so waiting agents enter cleanly in order.',
         commit: 'a4f91c2',
       },
       {
@@ -166,8 +178,8 @@ window.BullpenState = (function () {
     },
 
     getBuildingStatus(buildingId) {
-      if (state.pendingConflict && state.pendingConflict.buildingId === buildingId) {
-        return 'conflict';
+      if (state.kickouts.some(k => k.buildingId === buildingId && k.progress < 0.72)) {
+        return 'kickout';
       }
       if (state.ribbons.some(r => r.buildingId === buildingId)) {
         return 'ribbon';
@@ -183,7 +195,9 @@ window.BullpenState = (function () {
     },
 
     getWaitingAgentsOnBuilding(buildingId) {
-      return state.agents.filter(a => a.state === 'waiting' && a.targetBuildingId === buildingId);
+      return state.agents
+        .filter(a => a.state === 'waiting' && a.targetBuildingId === buildingId)
+        .sort((a, b) => (a.queuePos || 0) - (b.queuePos || 0));
     },
 
     addOracleEntry(entry) {
@@ -208,6 +222,12 @@ window.BullpenState = (function () {
       state.notify('options');
     },
 
+    setTimeLimit(seconds) {
+      const val = Math.max(5, Math.min(60, Math.round(Number(seconds) || 15)));
+      state.timeLimitSec = val;
+      state.notify('options');
+    },
+
     updateBuildingFolder(buildingId, folderPath) {
       const b = state.getBuilding(buildingId);
       if (!b) return;
@@ -226,6 +246,7 @@ window.BullpenState = (function () {
 
     resetBuildingMappings() {
       state.rootFolder = 'bullpen-app/';
+      state.timeLimitSec = 15;
       state.buildings.forEach(b => {
         b.folder = b.defaultFolder;
         b.guarded = b.id === 'SUN';
@@ -244,7 +265,6 @@ window.BullpenState = (function () {
       state.notify('hover');
     },
 
-    // Pick a realistic task payload for a building
     pickTaskPayload(buildingId, customTask, customReason) {
       const b = state.getBuilding(buildingId);
       const samples = Data.SAMPLE_TASKS[buildingId] || [];
@@ -268,16 +288,12 @@ window.BullpenState = (function () {
       };
     },
 
-    // Dispatch an agent to walk to a building & begin working!
+    // Dispatch an agent to walk to a building (waits in line if occupied!)
     dispatchAgent(agentId, buildingId, opts = {}) {
       const agent = state.getAgent(agentId);
       const b = state.getBuilding(buildingId);
       if (!agent || !b) return;
-
-      // Don't interrupt an unresolved conflict involving this agent unless forced
-      if (state.pendingConflict && (state.pendingConflict.agentAId === agentId || state.pendingConflict.agentBId === agentId)) {
-        return;
-      }
+      if (agent.state === 'kicked') return;
 
       const payload = state.pickTaskPayload(buildingId, opts.task, opts.reason);
       agent.targetBuildingId = buildingId;
@@ -285,7 +301,9 @@ window.BullpenState = (function () {
       agent.reason = payload.reason;
       agent.pendingPayload = payload;
       agent.workProgress = 0;
+      agent.workElapsed = 0;
       agent.workDuration = opts.duration || 10;
+      agent.spinAngle = 0;
       agent.state = 'walking';
 
       const wpId = Data.BUILDING_WAYPOINT[buildingId] || 'lc_maple';
@@ -304,138 +322,109 @@ window.BullpenState = (function () {
       state.notify('agents');
     },
 
-    // Trigger a dramatic 2-agent work conflict crash on a building!
-    triggerConflictDemo(buildingId = 'ENB') {
-      if (state.pendingConflict) return;
+    // Preview Helper 1: Show an active agent working & a second agent waiting politely at the door!
+    testQueueDemo(buildingId = 'ENB') {
       const b = state.getBuilding(buildingId) || state.buildings[0];
+      const active = state.getActiveAgentOnBuilding(b.id);
 
-      // Pick 2 agents (prefer agent-1 & agent-2)
+      if (active) {
+        // Already someone working here -> send another available agent to wait at the door!
+        const waiter = state.agents.find(a => a.id !== active.id && a.state !== 'working' && a.state !== 'kicked')
+          || state.agents.find(a => a.id !== active.id);
+        if (waiter) {
+          state.dispatchAgent(waiter.id, b.id, {
+            duration: 9,
+            task: `Follow-up integration patch in ${b.folder}`,
+            reason: `Waiting for ${active.shortLabel} to release ${b.folder} lease.`,
+          });
+        }
+        return;
+      }
+
+      // Otherwise start Agent 1 immediately working here & send Agent 2 walking up to wait!
+      const a1 = state.agents[0];
+      const a2 = state.agents[1];
+      const p1 = state.pickTaskPayload(b.id);
+      a1.pendingPayload = p1;
+      a1.task = p1.task;
+      a1.reason = p1.reason;
+      a1.workDuration = 10;
+      a1.workElapsed = 0;
+      a1.workProgress = 0.1;
+      startWorkingOnBuilding(a1, b);
+
+      a2.x = Math.max(24, b.door.x - 42);
+      a2.y = b.door.y;
+      state.dispatchAgent(a2.id, b.id, {
+        duration: 9,
+        task: `Queued UI/API follow-up in ${b.folder}`,
+        reason: `Waiting politely for ${a1.shortLabel} to finish at ${b.code}.`,
+      });
+    },
+
+    // Preview Helper 2: Dramatically kick out an active agent (Error or Time Limit) so the waiting agent enters!
+    testKickOutDemo(buildingId = 'ENB', forceType = null) {
+      const reasonType = forceType || (kickReasonToggle++ % 2 === 0 ? 'error' : 'timeout');
+      const reasonText = reasonType === 'error'
+        ? 'Runtime error: TypeScript build failed & hook aborted edit'
+        : `Time limit exceeded (${state.timeLimitSec}s lease cap reached)`;
+
+      // Prefer a building that already has an active working agent (especially one with a waiter!)
+      const activeWithWaiter = state.agents.find(
+        a => a.state === 'working' && state.getWaitingAgentsOnBuilding(a.targetBuildingId).length > 0
+      );
+      const anyActive = activeWithWaiter || state.agents.find(a => a.state === 'working');
+
+      if (anyActive) {
+        // Make sure there is a waiting agent at the door if one is idle so user sees the handoff!
+        const b = state.getBuilding(anyActive.targetBuildingId);
+        const existingWaiters = b ? state.getWaitingAgentsOnBuilding(b.id) : [];
+        if (b && existingWaiters.length === 0) {
+          const idlePeer = state.agents.find(a => a.id !== anyActive.id && a.state === 'idle');
+          if (idlePeer) {
+            placeAgentInQueue(idlePeer, b, {
+              task: `Recovery task in ${b.folder}`,
+              reason: `Queued at ${b.code} door ready to take over.`,
+            });
+          }
+        }
+        kickOutAgent(anyActive, reasonType, reasonText);
+        return;
+      }
+
+      // If no one is working right now, set up Opus working + Sonnet waiting at door, then boot Opus!
+      const b = state.getBuilding(buildingId) || state.buildings[0];
       const a1 = state.agents[0];
       const a2 = state.agents[1];
 
-      // Place them rushing from opposite sides of the building so they visibly walk & CRASH!
-      const p1 = state.pickTaskPayload(
-        b.id,
-        `Rewrite auth session middleware in ${b.folder}`,
-        'Needed to support multi-agent lease validation.'
-      );
-      const p2 = state.pickTaskPayload(
-        b.id,
-        `Add hot-reload metrics hook in ${b.folder}`,
-        'Needed live telemetry for the HackJam campus feed.'
-      );
-
-      a1.targetBuildingId = b.id;
+      const p1 = state.pickTaskPayload(b.id);
+      a1.pendingPayload = p1;
       a1.task = p1.task;
       a1.reason = p1.reason;
-      a1.pendingPayload = p1;
-      a1.workProgress = 0;
-      a1.state = 'walking';
-      a1.x = Math.max(20, b.door.x - 42);
-      a1.y = b.door.y;
-      a1.path = [{ x: b.door.x - 8, y: b.door.y }];
+      a1.workDuration = 12;
+      a1.workElapsed = reasonType === 'timeout' ? state.timeLimitSec - 0.5 : 4;
+      a1.workProgress = 0.45;
+      startWorkingOnBuilding(a1, b);
 
-      a2.targetBuildingId = b.id;
-      a2.task = p2.task;
-      a2.reason = p2.reason;
-      a2.pendingPayload = p2;
-      a2.workProgress = 0;
-      a2.state = 'walking';
-      a2.x = Math.min(Data.WORLD_W - 20, b.door.x + 42);
-      a2.y = b.door.y;
-      a2.path = [{ x: b.door.x + 8, y: b.door.y }];
-
-      state.addOracleEntry({
-        type: 'walk',
-        buildingId: b.id,
-        agentId: a1.id,
-        modelId: a1.modelId,
-        title: `Opus & Sonnet both targeting ${b.code} (${b.folder})!`,
-        detail: 'Collision imminent on shared folder lease...',
+      placeAgentInQueue(a2, b, {
+        task: `Take over ${b.folder} after eviction`,
+        reason: `Waiting at ${b.code} door to enter once lease opens.`,
       });
-      state.notify('agents');
+
+      setTimeout(() => {
+        if (a1.state === 'working' && a1.targetBuildingId === b.id) {
+          kickOutAgent(a1, reasonType, reasonText);
+        }
+      }, 650);
     },
 
-    // Initiate the physical crash animation first; open User Selection Prompt after animation finishes!
-    initiateConflict(buildingId, agentA, agentB) {
-      const b = state.getBuilding(buildingId);
-      if (!b) return;
-
-      agentA.state = 'conflict';
-      agentB.state = 'conflict';
-      agentA.path = [];
-      agentB.path = [];
-      agentA.x = b.door.x - 6;
-      agentA.y = b.door.y;
-      agentA.facing = 1;
-      agentB.x = b.door.x + 6;
-      agentB.y = b.door.y;
-      agentB.facing = -1;
-
-      state.pendingConflict = {
-        buildingId,
-        agentAId: agentA.id,
-        agentBId: agentB.id,
-        clashProgress: 0,
-        clashDuration: 2.3,
-        secondHitShaken: false,
-        modalReady: false,
-      };
-      state.screenShake = 1.5;
-
-      state.addOracleEntry({
-        type: 'conflict',
-        buildingId,
-        agentId: agentA.id,
-        modelId: agentA.modelId,
-        title: `CLASH at ${b.code} (${b.folder})!`,
-        detail: `${agentA.shortLabel} & ${agentB.shortLabel} collided — awaiting user selection.`,
-      });
-      state.notify('conflict');
-    },
-
-    // User chooses which colliding agent gets to work on the building!
-    resolveConflict(winningAgentId) {
-      if (!state.pendingConflict) return;
-      const { buildingId, agentAId, agentBId } = state.pendingConflict;
-      const b = state.getBuilding(buildingId);
-      const winner = state.getAgent(winningAgentId);
-      const loser = state.getAgent(winningAgentId === agentAId ? agentBId : agentAId);
-
-      state.pendingConflict = null;
-
-      if (winner && b) {
-        startWorkingOnBuilding(winner, b);
-      }
-      if (loser && b) {
-        // Losing agent waits politely at the building door until winner finishes!
-        loser.state = 'waiting';
-        loser.x = b.door.x + (loser.x < b.door.x ? -12 : 12);
-        loser.y = b.door.y + 4;
-        loser.facing = loser.x < b.x + b.w / 2 ? 1 : -1;
-      }
-
-      if (winner && loser && b) {
-        state.addOracleEntry({
-          type: 'resolved',
-          buildingId,
-          agentId: winner.id,
-          modelId: winner.modelId,
-          title: `Lease granted to ${winner.shortLabel} at ${b.code}`,
-          detail: `${loser.shortLabel} waiting politely at the door until ${b.folder} completes.`,
-        });
-      }
-      state.notify('conflict');
-    },
-
-    // Finish work immediately on any currently active building (great for testing ribbon-cutting!)
+    // Finish work immediately on any currently active building (triggers ribbon-cutting & lets next waiter enter!)
     finishActiveWork() {
       const working = state.agents.find(a => a.state === 'working');
       if (working) {
         completeWork(working);
         return true;
       }
-      // If none currently working, quickly finish a ribbon-cutting preview on ENB!
       const fallback = state.agents[0];
       const b = state.getBuilding('MSC') || state.buildings[0];
       fallback.targetBuildingId = b.id;
@@ -446,20 +435,19 @@ window.BullpenState = (function () {
       return true;
     },
 
-    // Reset campus cleanly
     resetCampus() {
       stopAutoDemo();
       state.buildings = cloneDefaultBuildings();
       state.agents = createInitialAgents();
-      state.pendingConflict = null;
       state.ribbons = [];
+      state.kickouts = [];
       state.announcement = null;
       state.selectedBuildingId = null;
       state.screenShake = 0;
       state.notify('reset');
     },
 
-    // Scripted Auto-Demo matching the USF HackJam showcase flow!
+    // Scripted Auto-Demo showcasing: Wait-in-line -> Kick-Out on Error/Timeout -> Waiting Agent Enters -> Ribbon-Cutting!
     toggleAutoDemo() {
       if (state.autoDemoRunning) {
         stopAutoDemo();
@@ -469,20 +457,33 @@ window.BullpenState = (function () {
       state.autoDemoRunning = true;
       state.notify('demo');
 
-      // Step 1: Opus walks to MSC (/frontend) & starts construction
-      state.dispatchAgent('agent-1', 'MSC', { duration: 7 });
-      // Step 2: Haiku walks to LIB (/docs) & starts construction
+      // Step 1: Opus walks to ENB (/backend) with a long task; Sonnet walks right behind to WAIT at the door!
+      state.dispatchAgent('agent-1', 'ENB', { duration: 16 });
       const t1 = setTimeout(() => {
         if (!state.autoDemoRunning) return;
-        state.dispatchAgent('agent-3', 'LIB', { duration: 8 });
-      }, 2200);
-      // Step 3: After MSC completes with ribbon-cutting, Opus & Sonnet crash on ENB (/backend)!
+        state.dispatchAgent('agent-2', 'ENB', {
+          duration: 8,
+          task: 'Ship clean token middleware in /backend',
+          reason: 'Queued outside ENB waiting for Opus to finish.',
+        });
+      }, 1400);
+
+      // Step 2: Haiku works cleanly on LIB (/docs) for a ribbon-cutting
       const t2 = setTimeout(() => {
         if (!state.autoDemoRunning) return;
-        state.triggerConflictDemo('ENB');
-      }, 11500);
+        state.dispatchAgent('agent-3', 'LIB', { duration: 7 });
+      }, 2800);
 
-      state.autoDemoTimers.push(t1, t2);
+      // Step 3: Opus runs into an error inside ENB -> dramatic KICK-OUT -> Sonnet immediately enters ENB!
+      const t3 = setTimeout(() => {
+        if (!state.autoDemoRunning) return;
+        const opus = state.getAgent('agent-1');
+        if (opus && opus.state === 'working') {
+          kickOutAgent(opus, 'error', 'Build error in /backend/auth/login.ts — evicted from building!');
+        }
+      }, 8200);
+
+      state.autoDemoTimers.push(t1, t2, t3);
     },
   };
 
@@ -492,15 +493,163 @@ window.BullpenState = (function () {
     state.autoDemoTimers = [];
   }
 
+  function getQueueSlotPosition(b, index) {
+    // Line up waiting Bulls cleanly outside the building's door
+    const spacing = 16;
+    const offset = (index % 2 === 0 ? -1 : 1) * (10 + Math.floor(index / 2) * spacing);
+    return {
+      x: Math.max(18, Math.min(Data.WORLD_W - 18, b.door.x + offset)),
+      y: Math.min(Data.WORLD_H - 18, b.door.y + 4),
+    };
+  }
+
+  function placeAgentInQueue(agent, b, customOpts = null) {
+    if (customOpts) {
+      const payload = state.pickTaskPayload(b.id, customOpts.task, customOpts.reason);
+      agent.task = payload.task;
+      agent.reason = payload.reason;
+      agent.pendingPayload = payload;
+    }
+    const existing = state.getWaitingAgentsOnBuilding(b.id).filter(a => a.id !== agent.id);
+    const slotIdx = existing.length;
+    const pos = getQueueSlotPosition(b, slotIdx);
+
+    agent.state = 'waiting';
+    agent.targetBuildingId = b.id;
+    agent.path = [];
+    agent.queuePos = slotIdx + 1;
+    agent.x = pos.x;
+    agent.y = pos.y;
+    agent.facing = pos.x <= b.x + b.w / 2 ? 1 : -1;
+
+    state.addOracleEntry({
+      type: 'wait',
+      buildingId: b.id,
+      agentId: agent.id,
+      modelId: agent.modelId,
+      title: `${agent.shortLabel} waiting outside ${b.code} (${b.folder})`,
+      detail: `Queue #${agent.queuePos} — waiting for active agent to finish.`,
+    });
+    state.notify('agents');
+  }
+
+  function reflowQueuePositions(buildingId) {
+    const b = state.getBuilding(buildingId);
+    if (!b) return;
+    const waiters = state.getWaitingAgentsOnBuilding(buildingId);
+    waiters.forEach((w, idx) => {
+      w.queuePos = idx + 1;
+      const pos = getQueueSlotPosition(b, idx);
+      w.x = pos.x;
+      w.y = pos.y;
+    });
+  }
+
+  function admitNextWaitingAgent(buildingId) {
+    const b = state.getBuilding(buildingId);
+    if (!b) return false;
+    // Don't admit if someone is already working on this building
+    if (state.getActiveAgentOnBuilding(buildingId)) return false;
+
+    const waiters = state.getWaitingAgentsOnBuilding(buildingId);
+    if (!waiters.length) return false;
+
+    const next = waiters[0];
+    next.queuePos = 0;
+    next.workProgress = 0;
+    next.workElapsed = 0;
+    startWorkingOnBuilding(next, b);
+    reflowQueuePositions(buildingId);
+
+    state.addOracleEntry({
+      type: 'enter',
+      buildingId: b.id,
+      agentId: next.id,
+      modelId: next.modelId,
+      title: `${next.shortLabel} entered ${b.code} (${b.folder})!`,
+      detail: `Lease acquired from queue: ${next.task}`,
+    });
+    state.notify('agents');
+    return true;
+  }
+
   function startWorkingOnBuilding(agent, b) {
     agent.state = 'working';
     agent.targetBuildingId = b.id;
     agent.path = [];
+    agent.queuePos = 0;
+    agent.spinAngle = 0;
     // Hover centered over the building!
     agent.x = b.x + b.w / 2;
     agent.y = b.y + b.h * 0.42;
     agent.workProgress = Math.max(0.02, agent.workProgress || 0);
     state.notify('agents');
+  }
+
+  // ==========================================================================
+  // DRAMATIC KICK-OUT (on Error or Time Limit Exceeded!)
+  // ==========================================================================
+  function kickOutAgent(agent, reasonType = 'error', reasonText = 'Agent encountered an error') {
+    const b = state.getBuilding(agent.targetBuildingId);
+    if (!b) return;
+
+    const startX = b.door.x;
+    const startY = b.door.y - 4;
+    // Kick away from nearest horizontal screen edge so the flight arc is always fully visible!
+    const dirX = startX > Data.WORLD_W * 0.62 ? -1 : 1;
+    const landX = Math.max(28, Math.min(Data.WORLD_W - 28, startX + dirX * 56));
+    const landY = Math.max(28, Math.min(Data.WORLD_H - 28, startY + 14));
+
+    agent.state = 'kicked';
+    agent.path = [];
+    agent.workProgress = 0;
+    agent.workElapsed = 0;
+    agent.targetBuildingId = null;
+    agent.pendingPayload = null;
+    agent.x = startX;
+    agent.y = startY;
+    agent.facing = dirX;
+    agent.spinAngle = 0;
+    agent.task = reasonType === 'timeout' ? 'Kicked out (Time Limit Exceeded)' : 'Kicked out (Error Encountered)';
+    agent.reason = reasonText;
+
+    state.kickouts.push({
+      id: 'kick-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5),
+      buildingId: b.id,
+      agentId: agent.id,
+      reasonType, // 'error' | 'timeout'
+      reasonText,
+      progress: 0,
+      duration: 2.35,
+      startX,
+      startY,
+      landX,
+      landY,
+      dirX,
+      handoffDone: false,
+    });
+
+    state.screenShake = 1.7;
+
+    const label = reasonType === 'timeout' ? 'TIME LIMIT EXCEEDED' : 'ERROR EVICTION';
+    state.announcement = {
+      kind: 'kickout',
+      title: `KICKED OUT — ${agent.shortLabel} BOOTED FROM ${b.code} (${b.folder})!`,
+      subtitle: `${label}: ${reasonText}`,
+      buildingId: b.id,
+      timer: 4.2,
+    };
+
+    state.addOracleEntry({
+      type: 'kickout',
+      buildingId: b.id,
+      agentId: agent.id,
+      modelId: agent.modelId,
+      title: `${agent.shortLabel} kicked out of ${b.code} (${label})!`,
+      detail: reasonText,
+    });
+
+    state.notify('kickout');
   }
 
   function completeWork(agent) {
@@ -534,7 +683,6 @@ window.BullpenState = (function () {
     b.changes.unshift(changeEntry);
     b.summary = payload.summary;
 
-    // Trigger Ribbon-Cutting Transition on this building!
     state.ribbons.push({
       buildingId: b.id,
       progress: 0,
@@ -542,8 +690,8 @@ window.BullpenState = (function () {
       agentName: agent.shortLabel,
     });
 
-    // Top Ribbon-Cutting Banner Announcement!
     state.announcement = {
+      kind: 'ribbon',
       title: `RIBBON CUTTING — ${b.code} (${b.folder}) COMPLETE!`,
       subtitle: `${agent.name} finished: ${payload.summary}`,
       buildingId: b.id,
@@ -560,12 +708,12 @@ window.BullpenState = (function () {
       commit: commitHash,
     });
 
-    // Agent lands at door and hops happily
     agent.state = 'celebrating';
-    agent.celebrateTimer = 2.2;
+    agent.celebrateTimer = 2.1;
     agent.workProgress = 0;
-    agent.x = b.door.x;
-    agent.y = b.door.y;
+    agent.workElapsed = 0;
+    agent.x = b.door.x + 12;
+    agent.y = b.door.y - 2;
     agent.targetBuildingId = null;
     agent.pendingPayload = null;
 
@@ -579,7 +727,7 @@ window.BullpenState = (function () {
   }
 
   // ==========================================================================
-  // SIMULATION TICK (called at 60 FPS from main loop)
+  // SIMULATION TICK (called at 60 FPS)
   // ==========================================================================
   function tick(dt) {
     const safeDt = Math.min(dt, 0.08);
@@ -587,63 +735,10 @@ window.BullpenState = (function () {
 
     // Decay screen shake
     if (state.screenShake > 0) {
-      state.screenShake = Math.max(0, state.screenShake - safeDt * 2.4);
+      state.screenShake = Math.max(0, state.screenShake - safeDt * 2.5);
     }
 
-    // Animate 3-beat Bull Clash BEFORE opening the user selection prompt!
-    if (state.pendingConflict && !state.pendingConflict.modalReady) {
-      const conf = state.pendingConflict;
-      conf.clashProgress = Math.min(1, conf.clashProgress + safeDt / conf.clashDuration);
-      const p = conf.clashProgress;
-      const b = state.getBuilding(conf.buildingId);
-      const agentA = state.getAgent(conf.agentAId);
-      const agentB = state.getAgent(conf.agentBId);
-
-      if (b && agentA && agentB) {
-        let sep = 12;
-        let hopY = 0;
-
-        if (p < 0.22) {
-          // Beat 1: Head-to-head horn lock impact!
-          const t = p / 0.22;
-          sep = 5 + Math.sin(t * Math.PI) * 2;
-          hopY = -Math.sin(t * Math.PI) * 3;
-        } else if (p < 0.44) {
-          // Recoil back to wind up for second clash!
-          const t = (p - 0.22) / 0.22;
-          sep = 5 + Math.sin(t * Math.PI * 0.5) * 12;
-          hopY = -Math.sin(t * Math.PI) * 4;
-        } else if (p < 0.66) {
-          // Beat 2: Second fierce headbutt slam!
-          const t = (p - 0.44) / 0.22;
-          sep = 17 - Math.sin(t * Math.PI) * 12;
-          hopY = -Math.sin(t * Math.PI) * 5;
-          if (t > 0.45 && !conf.secondHitShaken) {
-            conf.secondHitShaken = true;
-            state.screenShake = 1.3;
-          }
-        } else {
-          // Beat 3: Staggered recoil into dizzy standoff before prompt opens
-          const t = (p - 0.66) / 0.34;
-          sep = 10 + Math.sin(t * Math.PI * 0.5) * 4;
-          hopY = 0;
-        }
-
-        agentA.x = b.door.x - sep;
-        agentA.y = b.door.y + hopY;
-        agentA.facing = 1;
-        agentB.x = b.door.x + sep;
-        agentB.y = b.door.y + hopY;
-        agentB.facing = -1;
-      }
-
-      if (conf.clashProgress >= 1) {
-        conf.modalReady = true;
-        state.notify('conflict');
-      }
-    }
-
-    // Update banner announcement timer
+    // Update top announcement banner timer
     if (state.announcement) {
       state.announcement.timer -= safeDt;
       if (state.announcement.timer <= 0) {
@@ -652,29 +747,64 @@ window.BullpenState = (function () {
       }
     }
 
-    // Update Ribbon-Cutting transitions
+    // Update Dramatic Kick-Out Animations
+    for (let i = state.kickouts.length - 1; i >= 0; i--) {
+      const k = state.kickouts[i];
+      k.progress += safeDt / k.duration;
+      const p = Math.min(1, k.progress);
+      const evicted = state.getAgent(k.agentId);
+
+      if (evicted && evicted.state === 'kicked') {
+        if (p < 0.16) {
+          // Beat 1: Moment of boot impact right at the doorway
+          evicted.x = k.startX + k.dirX * (p / 0.16) * 4;
+          evicted.y = k.startY - (p / 0.16) * 4;
+          evicted.spinAngle = k.dirX * (p / 0.16) * 0.5;
+        } else if (p < 0.72) {
+          // Beat 2: High parabolic airborne tumble!
+          const t = (p - 0.16) / 0.56; // 0..1
+          const arcY = Math.sin(t * Math.PI) * 38;
+          evicted.x = k.startX + (k.landX - k.startX) * t;
+          evicted.y = k.startY + (k.landY - k.startY) * t - arcY;
+          evicted.spinAngle = k.dirX * (0.5 + t * Math.PI * 4.5);
+        } else {
+          // Beat 3: Ground bounce + dizzy sit!
+          const t = (p - 0.72) / 0.28; // 0..1
+          const bounce = t < 0.45 ? Math.sin((t / 0.45) * Math.PI) * 7 : 0;
+          evicted.x = k.landX + k.dirX * t * 5;
+          evicted.y = k.landY - bounce;
+          evicted.spinAngle = 0;
+        }
+      }
+
+      // As soon as the evicted Bull is launched clear of the doorway, admit the waiting Bull!
+      if (p >= 0.58 && !k.handoffDone) {
+        k.handoffDone = true;
+        admitNextWaitingAgent(k.buildingId);
+      }
+
+      if (k.progress >= 1) {
+        state.kickouts.splice(i, 1);
+        if (evicted && evicted.state === 'kicked') {
+          evicted.state = 'idle';
+          evicted.spinAngle = 0;
+          evicted.task = 'Recovering — Patrolling USF Campus';
+          evicted.reason = 'Ready for next assignment.';
+          pickNextIdleWaypoint(evicted);
+        }
+        uiNeedsSync = true;
+      }
+    }
+
+    // Update Ribbon-Cutting Transitions -> admit waiting agent once finished!
     for (let i = state.ribbons.length - 1; i >= 0; i--) {
       const rib = state.ribbons[i];
-      rib.progress += safeDt / 3.6; // 3.6 second ceremonial snip + confetti!
+      rib.progress += safeDt / 3.6;
       if (rib.progress >= 1) {
         const finishedBuildingId = rib.buildingId;
         state.ribbons.splice(i, 1);
+        admitNextWaitingAgent(finishedBuildingId);
         uiNeedsSync = true;
-
-        // If an agent was waiting at this building's door, grant them the lease next!
-        const waiter = state.agents.find(a => a.state === 'waiting' && a.targetBuildingId === finishedBuildingId);
-        const b = state.getBuilding(finishedBuildingId);
-        if (waiter && b && !state.pendingConflict) {
-          startWorkingOnBuilding(waiter, b);
-          state.addOracleEntry({
-            type: 'walk',
-            buildingId: b.id,
-            agentId: waiter.id,
-            modelId: waiter.modelId,
-            title: `${waiter.shortLabel} entered ${b.code} (${b.folder})`,
-            detail: `Queued work started: ${waiter.task}`,
-          });
-        }
       }
     }
 
@@ -694,36 +824,30 @@ window.BullpenState = (function () {
         const arrived = moveAlongPath(agent, 48, safeDt);
         const b = state.getBuilding(agent.targetBuildingId);
 
-        // Check if another walking agent targeting the SAME building is right next to us!
-        if (b && !state.pendingConflict) {
-          const otherWalker = state.agents.find(o =>
-            o.id !== agent.id &&
-            o.state === 'walking' &&
-            o.targetBuildingId === b.id &&
-            Math.hypot(o.x - agent.x, o.y - agent.y) < 20 &&
-            Math.hypot(agent.x - b.door.x, agent.y - b.door.y) < 28
-          );
-          if (otherWalker) {
-            state.initiateConflict(b.id, agent, otherWalker);
-            return;
-          }
-        }
-
         if (arrived && b) {
-          // Check if someone is ALREADY working on this building -> CRASH CONFLICT!
+          const status = state.getBuildingStatus(b.id);
           const activeWorker = state.getActiveAgentOnBuilding(b.id);
-          if (activeWorker && activeWorker.id !== agent.id && !state.pendingConflict) {
-            state.initiateConflict(b.id, activeWorker, agent);
-          } else if (state.pendingConflict && state.pendingConflict.buildingId === b.id) {
-            agent.state = 'waiting';
-            agent.x = b.door.x;
-            agent.y = b.door.y + 10;
+          // If the building is currently occupied (working, ribbon-cutting, or mid kick-out), WAIT IN LINE!
+          if ((activeWorker && activeWorker.id !== agent.id) || status === 'ribbon' || status === 'kickout') {
+            placeAgentInQueue(agent, b);
           } else {
             startWorkingOnBuilding(agent, b);
           }
         }
       } else if (agent.state === 'working') {
+        agent.workElapsed += safeDt;
         agent.workProgress += safeDt / (agent.workDuration || 10);
+
+        // Automatic dramatic kick-out if agent exceeds the configured time limit!
+        if (agent.workElapsed >= state.timeLimitSec) {
+          kickOutAgent(
+            agent,
+            'timeout',
+            `Exceeded configured ${state.timeLimitSec}s building lease time limit.`
+          );
+          return;
+        }
+
         if (agent.workProgress >= 1) {
           completeWork(agent);
         }
@@ -766,21 +890,22 @@ window.BullpenState = (function () {
     }
   }
 
-  // Kick off an immediate lively initial showcase so the user sees Bulls walking & building right away!
   function startOpeningScene() {
     setTimeout(() => {
       if (state.agents[0].state === 'idle') {
-        state.dispatchAgent('agent-1', 'ENB', { duration: 12 });
+        state.dispatchAgent('agent-1', 'ENB', { duration: 11 });
       }
-    }, 800);
+    }, 700);
   }
 
-  // Expose a clean design hook API for future team integration (Dev / Monisha)
+  // Clean design hook API for future integration
   window.BullpenDesignAPI = {
     dispatchAgent: (agentId, buildingId, opts) => state.dispatchAgent(agentId, buildingId, opts),
-    triggerConflict: (buildingId) => state.triggerConflictDemo(buildingId),
+    testQueue: (buildingId) => state.testQueueDemo(buildingId),
+    triggerKickOut: (buildingId, type) => state.testKickOutDemo(buildingId, type),
     finishActive: () => state.finishActiveWork(),
     setViewMode: (mode) => state.setViewMode(mode),
+    setTimeLimit: (sec) => state.setTimeLimit(sec),
     setBuildingFolder: (buildingId, path) => state.updateBuildingFolder(buildingId, path),
     getState: () => state,
   };

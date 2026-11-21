@@ -264,7 +264,7 @@ window.BullpenCampusData = (function () {
       primary: true,
       guarded: false,
       description: 'Architecture specs, API reference docs, onboarding guides, and ADRs.',
-      summary: 'Updated LEASE_PROTOCOL.md with conflict-resolution state transitions.',
+      summary: 'Updated LEASE_PROTOCOL.md with waiting-queue and timeout eviction rules.',
       changes: [
         {
           id: 'chg-lib-1',
@@ -272,17 +272,17 @@ window.BullpenCampusData = (function () {
           agentId: 'agent-3',
           modelId: 'claude-haiku-4-5',
           time: '11:23 AM',
-          task: 'Document folder lease lifecycle',
-          reason: 'Keep contributor docs aligned with the new conflict prompt flow.',
-          summary: 'Added state diagram and examples for guarded folder approvals.',
+          task: 'Document folder lease queue & timeout eviction',
+          reason: 'Keep contributor docs aligned with waiting-at-door and kick-out handoff.',
+          summary: 'Added state diagram and examples for queued agents and lease timeouts.',
           files: [
             {
               path: '/docs/LEASE_PROTOCOL.md',
               added: 42, removed: 5,
               diff: [
-                { type: 'ctx', text: '## Conflict Resolution' },
-                { type: 'add', text: 'When two Claude agents target the same folder simultaneously,' },
-                { type: 'add', text: 'Bullpen pauses both edits and prompts the engineer to pick priority.' },
+                { type: 'ctx', text: '## Lease Queue & Eviction' },
+                { type: 'add', text: 'When a building already has an active Claude agent, arriving agents' },
+                { type: 'add', text: 'wait in line outside the door and enter on completion or eviction.' },
               ]
             }
           ]
@@ -669,12 +669,12 @@ window.BullpenCampusData = (function () {
     ],
     ISA: [
       {
-        task: 'Add conflict crash simulation test suite',
-        reason: 'Verify two agents colliding on /backend trigger user selection modal.',
-        summary: 'Added 6 deterministic collision & queue handoff tests.',
-        file: '/tests/conflict.spec.ts',
+        task: 'Add lease queue & timeout kick-out test suite',
+        reason: 'Verify waiting agents enter /backend cleanly after completion or eviction.',
+        summary: 'Added 6 deterministic waiting-queue and timeout handoff tests.',
+        file: '/tests/queue.spec.ts',
         diff: [
-          { type: 'add', text: 'expect(state.pendingConflict.buildingId).toBe("ENB");' },
+          { type: 'add', text: 'expect(state.getWaitingAgentsOnBuilding("ENB").length).toBe(1);' },
         ]
       }
     ],

@@ -58,6 +58,7 @@ window.BullpenSprites = (function () {
     ' ': ['000','000','000','000','000'],
     '_': ['000','000','000','000','111'],
     '+': ['000','010','111','010','000'],
+    '#': ['101','111','101','111','101'],
   };
 
   function drawPixelText(ctx, text, x, y, color, align = 'left', shadowColor = null) {
@@ -133,8 +134,8 @@ window.BullpenSprites = (function () {
     const h = Math.round(b.h);
 
     // 1. Highlight glow / status perimeter
-    if (status === 'conflict') {
-      const pulse = Math.floor(time * 8) % 2 === 0;
+    if (status === 'kickout') {
+      const pulse = Math.floor(time * 12) % 2 === 0;
       px(ctx, x - 3, y - 3, w + 6, h + 6, pulse ? USF.alertRed : USF.lemongrass);
     } else if (hovered || selected) {
       px(ctx, x - 2, y - 2, w + 4, h + 4, hovered ? USF.lemongrass : USF.gold);
@@ -254,10 +255,10 @@ window.BullpenSprites = (function () {
     }
 
     // 5. Building code plaque + primary gold accent
-    const pillBg = status === 'conflict'
+    const pillBg = status === 'kickout'
       ? USF.alertRed
       : (status === 'working' ? USF.evergreen : (b.primary ? USF.green : USF.slate));
-    const pillFg = status === 'conflict' ? USF.white : (b.primary ? USF.gold : USF.sand);
+    const pillFg = status === 'kickout' ? USF.white : (b.primary ? USF.gold : USF.sand);
     drawPixelPill(ctx, b.code, x + w / 2, y + h - 2, pillBg, pillFg);
   }
 
@@ -475,10 +476,10 @@ window.BullpenSprites = (function () {
   // ==========================================================================
   // PIXEL BULL MASCOT (Rocky-style USF Bull with Claude Model Color!)
   // ==========================================================================
-  function drawBull(ctx, agent, time) {
+  function drawBull(ctx, agent, time, timeLimitSec = 15) {
     const model = CLAUDE_MODELS[agent.modelId] || CLAUDE_MODELS['claude-opus-4-6'];
     const facingLeft = agent.facing < 0;
-    const state = agent.state; // 'idle' | 'walking' | 'working' | 'waiting' | 'conflict' | 'celebrating'
+    const state = agent.state; // 'idle' | 'walking' | 'waiting' | 'working' | 'kicked' | 'celebrating'
 
     let bx = Math.round(agent.x);
     let by = Math.round(agent.y);
@@ -486,27 +487,29 @@ window.BullpenSprites = (function () {
     // Motion offsets per state
     let hoverOffset = 0;
     let legStep = 0;
+    let tapFoot = false;
     if (state === 'working') {
       // Hovering over the building!
       hoverOffset = -6 + Math.round(Math.sin(time * 5.2 + agent.phase) * 2.5);
     } else if (state === 'walking' || state === 'idle') {
       legStep = Math.floor(time * 8 + agent.phase) % 2;
       hoverOffset = legStep ? -1 : 0;
-    } else if (state === 'conflict') {
-      // Rapid bumping recoil!
-      const bump = Math.round(Math.sin(time * 20 + agent.phase) * 2);
-      bx += bump;
-      hoverOffset = -Math.abs(bump);
+    } else if (state === 'waiting') {
+      // Impatiently tapping foot while waiting outside the building!
+      tapFoot = Math.floor(time * 5 + agent.phase) % 2 === 1;
+      hoverOffset = Math.floor(time * 2.5 + agent.phase) % 4 === 0 ? -1 : 0;
     } else if (state === 'celebrating') {
       hoverOffset = -Math.abs(Math.round(Math.sin(time * 12) * 5));
     }
 
-    // 1. Ground / Roof Shadow (shows levitation cleanly when hovering!)
+    // 1. Ground / Roof Shadow (shrinks dynamically while airborne!)
     if (state === 'working') {
-      // Glowing USF gold hover aura ring on roof beneath the hovering Bull!
       const pulseW = 14 + (Math.floor(time * 6) % 2) * 2;
       px(ctx, bx - Math.floor(pulseW / 2), by + 4, pulseW, 4, 'rgba(219, 228, 66, 0.35)');
       px(ctx, bx - 5, by + 5, 10, 2, 'rgba(0, 56, 34, 0.55)');
+    } else if (state === 'kicked' && Math.abs(agent.spinAngle || 0) > 0.05) {
+      // Small shadow beneath airborne kicked Bull
+      px(ctx, bx - 3, by + 10, 6, 2, 'rgba(0, 56, 34, 0.25)');
     } else {
       px(ctx, bx - 5, by + 4, 10, 3, 'rgba(0, 56, 34, 0.40)');
     }
@@ -521,16 +524,18 @@ window.BullpenSprites = (function () {
 
     ctx.save();
     ctx.translate(bx, sy);
-    if (facingLeft) ctx.scale(-1, 1);
+    if (state === 'kicked' && agent.spinAngle) {
+      ctx.rotate(agent.spinAngle);
+    } else if (facingLeft) {
+      ctx.scale(-1, 1);
+    }
 
     // --- BODY & MODEL-COLORED JERSEY (origin = center of Bull) ---
-    // Outline
     px(ctx, -6, -6, 12, 11, USF.ink);
-    // Bull head / fur top
     px(ctx, -5, -5, 10, 5, model.bullFur);
     px(ctx, -4, -5, 8, 2, model.bullFurLight);
 
-    // Curved USF Bull Horns (iconic Rocky silhouette!)
+    // Curved USF Bull Horns
     px(ctx, -8, -8, 3, 2, USF.ink);
     px(ctx, -7, -7, 2, 2, model.horns);
     px(ctx, -6, -6, 2, 1, USF.gold);
@@ -544,18 +549,22 @@ window.BullpenSprites = (function () {
     px(ctx, 5, -4, 2, 2, model.bullFur);
 
     // Eyes (expression changes by state!)
-    if (state === 'conflict') {
-      // Dizzy / angry eyes
+    if (state === 'kicked') {
+      // Shocked / Dizzy X_X eyes!
       px(ctx, -3, -4, 2, 2, USF.alertRed);
       px(ctx, 1, -4, 2, 2, USF.alertRed);
-      px(ctx, -2, -4, 1, 1, USF.white);
+      px(ctx, -3, -4, 1, 1, USF.white);
       px(ctx, 2, -4, 1, 1, USF.white);
     } else if (state === 'celebrating') {
-      // Happy eyes ^ ^
       px(ctx, -3, -3, 2, 1, USF.white);
       px(ctx, 1, -3, 2, 1, USF.white);
+    } else if (state === 'waiting') {
+      // Looking up expectantly at the building!
+      px(ctx, -3, -4, 2, 2, USF.white);
+      px(ctx, -2, -4, 1, 1, USF.ink);
+      px(ctx, 1, -4, 2, 2, USF.white);
+      px(ctx, 2, -4, 1, 1, USF.ink);
     } else {
-      // Expressive eyes facing forward-right
       px(ctx, -3, -4, 2, 2, USF.white);
       px(ctx, -2, -3, 1, 1, USF.ink);
       px(ctx, 1, -4, 2, 2, USF.white);
@@ -567,33 +576,38 @@ window.BullpenSprites = (function () {
     px(ctx, -2, -1, 1, 1, USF.ink);
     px(ctx, 1, -1, 1, 1, USF.ink);
 
-    // Claude Model-Colored Jersey / Vest!
+    // Claude Model-Colored Jersey / Vest
     px(ctx, -5, 1, 10, 4, model.primary);
     px(ctx, -5, 3, 10, 1, model.secondary);
-    // Tiny USF center stripe on jersey
     px(ctx, -1, 1, 2, 3, USF.white);
 
     // Arms / Hooves
     if (state === 'working') {
-      // Raised animated working arms + little wrench/sparkle!
       const armBob = Math.floor(time * 10) % 2;
       px(ctx, -7, 0 - armBob, 2, 3, model.bullFur);
       px(ctx, 5, -1 + armBob, 2, 3, model.bullFur);
-      // Golden pixel wrench / hammer in right hand!
+      // Golden pixel wrench in right hand
       px(ctx, 6, -4 + armBob, 2, 4, USF.silver);
       px(ctx, 5, -5 + armBob, 4, 2, USF.craneGold);
+    } else if (state === 'kicked') {
+      // Flailing arms while flying!
+      px(ctx, -8, -3, 3, 2, model.bullFur);
+      px(ctx, 5, -3, 3, 2, model.bullFur);
     } else if (state === 'celebrating') {
-      // Arms raised in celebration!
       px(ctx, -7, -2, 2, 3, model.bullFur);
       px(ctx, 5, -2, 2, 3, model.bullFur);
+    } else if (state === 'waiting') {
+      // Arms crossed / checking watch
+      px(ctx, -6, 2, 2, 2, model.bullFur);
+      px(ctx, 4, 2, 2, 2, model.bullFur);
     } else {
       px(ctx, -6, 1, 1, 3, model.bullFur);
       px(ctx, 5, 1, 1, 3, model.bullFur);
     }
 
-    // Legs / Hooves (animated walk stride!)
-    const leftLegY  = legStep === 0 ? 5 : 4;
-    const rightLegY = legStep === 0 ? 4 : 5;
+    // Legs / Hooves
+    const leftLegY  = state === 'waiting' ? 5 : (legStep === 0 ? 5 : 4);
+    const rightLegY = state === 'waiting' ? (tapFoot ? 4 : 5) : (legStep === 0 ? 4 : 5);
     px(ctx, -4, leftLegY, 3, 2, USF.ink);
     px(ctx, 1, rightLegY, 3, 2, USF.ink);
 
@@ -606,101 +620,150 @@ window.BullpenSprites = (function () {
 
     ctx.restore();
 
-    // 3. Orbiting state indicators (above the Bull)
+    // 3. State indicators above/beside the Bull
     if (state === 'working') {
-      // Animated working sparkles & mini pixel progress bar!
       const prog = Math.max(0, Math.min(1, agent.workProgress || 0));
-      const barW = 20;
-      const barX = bx - 10;
+      const remaining = Math.max(0, timeLimitSec - (agent.workElapsed || 0));
+      const nearTimeout = remaining <= 3.5;
+      const barW = 22;
+      const barX = bx - 11;
       const barY = sy - 15;
-      px(ctx, barX, barY, barW, 5, USF.ink);
+      const borderCol = (nearTimeout && Math.floor(time * 8) % 2 === 0) ? USF.alertRed : USF.ink;
+      px(ctx, barX, barY, barW, 5, borderCol);
       px(ctx, barX + 1, barY + 1, barW - 2, 3, USF.deepForest);
-      px(ctx, barX + 1, barY + 1, Math.round((barW - 2) * prog), 3, model.primary);
+      px(ctx, barX + 1, barY + 1, Math.round((barW - 2) * prog), 3, nearTimeout ? USF.coneOrange : model.primary);
       // Tiny code sparks
       const sp = Math.floor(time * 6) % 4;
       px(ctx, bx - 10 + sp * 6, sy - 18, 2, 2, USF.lemongrass);
     } else if (state === 'waiting') {
-      drawPixelPill(ctx, 'WAIT', bx, sy - 17, USF.slate, USF.gold);
-    } else if (state === 'conflict') {
+      // Animated pixel hourglass right next to the waiting Bull!
+      drawPixelHourglass(ctx, bx + 9, sy - 6, time);
+      const qLabel = `WAIT #${agent.queuePos || 1}`;
+      drawPixelPill(ctx, qLabel, bx, sy - 18, USF.evergreen, USF.lemongrass, USF.gold);
+    } else if (state === 'kicked') {
       // Orbiting dizzy pixel stars!
       for (let i = 0; i < 3; i++) {
-        const a = time * 6 + (i * Math.PI * 2) / 3;
-        const sx = bx + Math.round(Math.cos(a) * 8);
-        const starY = sy - 12 + Math.round(Math.sin(a) * 3);
+        const a = time * 8 + (i * Math.PI * 2) / 3;
+        const sx = bx + Math.round(Math.cos(a) * 9);
+        const starY = sy - 11 + Math.round(Math.sin(a) * 3);
         px(ctx, sx, starY, 2, 2, i % 2 === 0 ? USF.lemongrass : USF.alertRed);
       }
     }
 
-    // 4. Crisp Agent Tag below/above Bull (model color dot + short label)
+    // 4. Crisp Agent Tag below/above Bull
     const labelY = state === 'working' ? sy - 23 : sy + 8;
     drawPixelPill(ctx, agent.shortLabel, bx, labelY, model.badgeBg, model.badgeText, model.primary);
   }
 
+  // Animated 5x7 Pixel Hourglass beside Waiting Bulls
+  function drawPixelHourglass(ctx, x, y, time) {
+    const ix = Math.round(x);
+    const iy = Math.round(y);
+    const phase = Math.floor(time * 4) % 4;
+    // Gold caps
+    px(ctx, ix, iy, 5, 1, USF.gold);
+    px(ctx, ix, iy + 6, 5, 1, USF.gold);
+    // Glass body
+    px(ctx, ix + 1, iy + 1, 3, 2, USF.sky);
+    px(ctx, ix + 2, iy + 3, 1, 1, USF.white);
+    px(ctx, ix + 1, iy + 4, 3, 2, USF.sky);
+    // Animated falling USF gold sand!
+    if (phase < 3) px(ctx, ix + 1, iy + 1, 3, phase === 0 ? 2 : 1, USF.lemongrass);
+    if (phase >= 1) px(ctx, ix + 2, iy + 3, 1, 2, USF.lemongrass);
+    if (phase >= 2) px(ctx, ix + 1, iy + 5, 3, 1, USF.lemongrass);
+    if (phase === 3) px(ctx, ix + 1, iy + 4, 3, 2, USF.lemongrass);
+  }
+
   // ==========================================================================
-  // CONFLICT CRASH FX (3-beat pixel clash animation between colliding Bulls!)
+  // DRAMATIC KICK-OUT FX (Giant Pixel Boot, Smoke Trail, Ground THUD!)
   // ==========================================================================
-  function drawConflictCrashFX(ctx, x, y, time, clashProgress = 1) {
-    const cx = Math.round(x);
-    const cy = Math.round(y);
-    const p = Math.max(0, Math.min(1, clashProgress));
-    const pulse = Math.floor(time * 12) % 2;
+  function drawKickOutFX(ctx, b, kickout, time) {
+    const p = Math.max(0, Math.min(1, kickout.progress));
+    const doorX = Math.round(kickout.startX);
+    const doorY = Math.round(kickout.startY);
+    const dir = kickout.dirX; // +1 right or -1 left
+    const pulse = Math.floor(time * 14) % 2;
 
-    // 1. Expanding pixel shockwave ring on Beat 1 (0..0.30) and Beat 2 (0.48..0.78)
-    const drawShockwave = (localT) => {
-      const r = Math.round(4 + localT * 18);
-      const col = localT < 0.45 ? USF.white : (localT < 0.75 ? USF.lemongrass : USF.alertRed);
-      for (let i = 0; i < 16; i++) {
-        const a = (i / 16) * Math.PI * 2;
-        const sx = cx + Math.round(Math.cos(a) * r);
-        const sy = cy + Math.round(Math.sin(a) * r * 0.7);
-        px(ctx, sx, sy, 2, 2, col);
+    // 1. Beat 1 (0..0.38): Red alert burst + GIANT PIXEL BOOT kicking out of doorway!
+    if (p < 0.40) {
+      const bt = p / 0.40;
+      const extend = Math.sin(Math.min(1, bt * 1.4) * Math.PI * 0.5) * 14;
+      const bootX = Math.round(doorX + dir * (extend - 4));
+      const bootY = doorY - 4;
+
+      // Doorway impact shockwave flash
+      if (p < 0.24) {
+        const r = Math.round(4 + (p / 0.24) * 14);
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2;
+          px(ctx, doorX + Math.round(Math.cos(a) * r), doorY + Math.round(Math.sin(a) * r * 0.7), 2, 2, i % 2 === 0 ? USF.alertRed : USF.lemongrass);
+        }
       }
-    };
 
-    if (p < 0.30) {
-      drawShockwave(p / 0.30);
-    } else if (p >= 0.48 && p < 0.78) {
-      drawShockwave((p - 0.48) / 0.30);
-    }
+      // Giant Comic Pixel Boot!
+      ctx.save();
+      ctx.translate(bootX, bootY);
+      if (dir < 0) ctx.scale(-1, 1);
+      // Motion speed-lines behind boot
+      px(ctx, -14, -2, 8, 1, USF.white);
+      px(ctx, -12, 1, 6, 1, USF.lemongrass);
+      px(ctx, -13, 4, 7, 1, USF.white);
+      // Boot leg & heel (USF Evergreen + Gold trim!)
+      px(ctx, -6, -6, 7, 11, USF.ink);
+      px(ctx, -5, -5, 5, 9, USF.evergreen);
+      px(ctx, -5, -5, 5, 2, USF.gold);
+      // Boot toe cap kicking forward!
+      px(ctx, 0, -1, 8, 6, USF.ink);
+      px(ctx, 0, 0, 7, 4, USF.green);
+      px(ctx, 4, 0, 3, 3, USF.gold); // gold toe cap!
+      // Thick sole
+      px(ctx, -6, 4, 14, 2, USF.ink);
+      ctx.restore();
 
-    // 2. Scuffle pixel dust cloud billowing around the Bulls during active clash
-    if (p < 0.85) {
-      for (let d = 0; d < 6; d++) {
-        const angle = (d / 6) * Math.PI * 2 + time * 4;
-        const dist = 5 + ((d * 3 + Math.floor(time * 10)) % 9);
-        const dx = cx + Math.round(Math.cos(angle) * dist);
-        const dy = cy + 3 + Math.round(Math.sin(angle) * (dist * 0.45));
-        px(ctx, dx - 1, dy - 1, 4, 3, d % 2 === 0 ? USF.sand : USF.gold);
+      // Comic impact starburst right at toe!
+      if (p < 0.28) {
+        const tag = kickout.reasonType === 'timeout' ? 'TIME UP!' : 'ERROR!';
+        drawPixelPill(ctx, tag, doorX, Math.round(b.y) - 13, pulse ? USF.alertRed : USF.ink, USF.white, USF.lemongrass);
       }
     }
 
-    // 3. Comic pixel starburst rays + flying sparks
-    const rayR = p < 0.75 ? (pulse ? 13 : 9) : (pulse ? 9 : 7);
-    const dirs = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]];
-    dirs.forEach(([dx, dy], idx) => {
-      const col = idx % 2 === 0 ? USF.lemongrass : USF.alertRed;
-      px(ctx, cx + dx * rayR - 1, cy + dy * rayR - 1, 2, 2, col);
-      px(ctx, cx + dx * Math.max(2, rayR - 4) - 1, cy + dy * Math.max(2, rayR - 4) - 1, 2, 2, USF.white);
-    });
-
-    // Central flash core on impact beats
-    if ((p < 0.24 || (p > 0.48 && p < 0.64)) && pulse === 0) {
-      px(ctx, cx - 3, cy - 3, 6, 6, USF.white);
-      px(ctx, cx - 2, cy - 2, 4, 4, USF.lemongrass);
+    // 2. Beat 2 (0.16..0.78): Smoke puffs & sparks trailing the airborne Bull!
+    if (p >= 0.16 && p < 0.78) {
+      const flightT = (p - 0.16) / 0.56;
+      for (let s = 1; s <= 4; s++) {
+        const st = Math.max(0, flightT - s * 0.12);
+        const sx = kickout.startX + (kickout.landX - kickout.startX) * st;
+        const sy = kickout.startY + (kickout.landY - kickout.startY) * st - Math.sin(st * Math.PI) * 38;
+        const size = Math.max(2, 5 - s);
+        px(ctx, sx - 1, sy - 1, size, size, s % 2 === 0 ? USF.sand : USF.gold);
+      }
+      if (p >= 0.28) {
+        drawPixelPill(
+          ctx,
+          'KICKED OUT!',
+          Math.round(b.x + b.w / 2),
+          Math.round(b.y) - 14 - (pulse ? 2 : 0),
+          USF.alertRed,
+          USF.lemongrass,
+          USF.white
+        );
+      }
     }
 
-    // 4. Dynamic comic pixel callout rising above the clash
-    const callout = p < 0.35 ? 'BAM!' : (p < 0.75 ? 'CLASH!' : 'CONFLICT!');
-    const bounceY = p < 0.75 ? (pulse ? -23 : -20) : -21;
-    drawPixelPill(
-      ctx,
-      callout,
-      cx,
-      cy + bounceY,
-      pulse ? USF.alertRed : USF.ink,
-      pulse ? USF.white : USF.lemongrass,
-      USF.gold
-    );
+    // 3. Beat 3 (0.70..0.98): Ground landing THUD dust-cloud poof!
+    if (p >= 0.70 && p < 0.98) {
+      const lt = (p - 0.70) / 0.28;
+      const spread = Math.round(4 + lt * 12);
+      const lx = Math.round(kickout.landX);
+      const ly = Math.round(kickout.landY) + 4;
+      px(ctx, lx - spread - 2, ly - 2, 4, 3, USF.sand);
+      px(ctx, lx + spread - 2, ly - 2, 4, 3, USF.sand);
+      px(ctx, lx - Math.round(spread * 0.5), ly - 4, 3, 3, USF.gold);
+      px(ctx, lx + Math.round(spread * 0.5), ly - 4, 3, 3, USF.gold);
+      if (lt < 0.55) {
+        drawPixelPill(ctx, 'THUD!', lx, ly - 18, USF.ink, USF.lemongrass, USF.alertRed);
+      }
+    }
   }
 
   return {
@@ -711,7 +774,7 @@ window.BullpenSprites = (function () {
     drawInteractiveBuilding,
     drawConstructionSite,
     drawRibbonCutting,
+    drawKickOutFX,
     drawBull,
-    drawConflictCrashFX,
   };
 })();

@@ -1,7 +1,7 @@
 /* ============================================================================
    BULLPEN — Interactive Pixel-Art UI Controller
-   Handles Hover Tooltips, Building Change Inspector, Conflict Resolution Modal,
-   Options Menu (View Toggle + Folder Mapping), The Oracle Feed, & Main Loop.
+   Handles Hover Tooltips, Building Change Inspector, Options Menu (View Toggle,
+   Time Limit, & Folder Mapping), The Oracle Feed, Announcements, & Main Loop.
    ============================================================================ */
 
 (function () {
@@ -28,13 +28,12 @@
   const legendEl = document.getElementById('modelLegend');
   const rootChipEl = document.getElementById('headerRootFolder');
 
-  // Drawer & Modals
+  // Drawer & Options Modal
   const buildingDrawerEl = document.getElementById('buildingDrawer');
   const buildingDrawerBody = document.getElementById('buildingDrawerBody');
-  const conflictModalEl = document.getElementById('conflictModal');
-  const conflictModalBody = document.getElementById('conflictModalBody');
   const optionsModalEl = document.getElementById('optionsModal');
   const optionsRootInput = document.getElementById('optionsRootInput');
+  const optionsTimeLimitInput = document.getElementById('optionsTimeLimitInput');
   const optionsMappingsList = document.getElementById('optionsMappingsList');
 
   // Buttons & Controls
@@ -47,12 +46,13 @@
   const optModePixel = document.getElementById('optModePixel');
   const optModeTrad = document.getElementById('optModeTrad');
 
-  // Demo controls
+  // Preview controls
   const btnAutoDemo = document.getElementById('btnAutoDemo');
   const demoAgentSelect = document.getElementById('demoAgentSelect');
   const demoBuildingSelect = document.getElementById('demoBuildingSelect');
   const btnDispatch = document.getElementById('btnDispatch');
-  const btnTriggerConflict = document.getElementById('btnTriggerConflict');
+  const btnTestQueue = document.getElementById('btnTestQueue');
+  const btnTestKickOut = document.getElementById('btnTestKickOut');
   const btnFinishActive = document.getElementById('btnFinishActive');
   const btnResetCampus = document.getElementById('btnResetCampus');
 
@@ -65,11 +65,14 @@
     legendEl.innerHTML = state.agents.map(agent => {
       const m = CLAUDE_MODELS[agent.modelId];
       const dotPulse = agent.state === 'working' ? 'pulsing' : '';
+      const stateLabel = agent.state === 'waiting'
+        ? `WAIT #${agent.queuePos || 1}`
+        : agent.state.toUpperCase();
       return `
         <div class="legend-pill" title="${escapeHtml(m.displayName)} — ${escapeHtml(agent.task)}">
           <span class="legend-swatch ${dotPulse}" style="background:${m.primary};border-color:${m.secondary}"></span>
           <span class="legend-name">${escapeHtml(m.shortName)}</span>
-          <span class="legend-state">${escapeHtml(agent.state.toUpperCase())}</span>
+          <span class="legend-state state-txt-${agent.state}">${escapeHtml(stateLabel)}</span>
         </div>
       `;
     }).join('');
@@ -105,13 +108,7 @@
     const world = renderer.clientToWorld(e.clientX, e.clientY);
     const hit = renderer.hitTestBuilding(state.buildings, world.x, world.y);
     if (hit) {
-      // If clicking a building that currently has an unresolved conflict ready for decision, bring up the conflict prompt!
-      if (state.pendingConflict && state.pendingConflict.buildingId === hit.id && state.pendingConflict.modalReady) {
-        renderConflictModal();
-        conflictModalEl.classList.remove('hidden');
-      } else {
-        state.selectBuilding(hit.id);
-      }
+      state.selectBuilding(hit.id);
     }
   });
 
@@ -121,24 +118,27 @@
     const waiters = state.getWaitingAgentsOnBuilding(b.id);
 
     const statusText = {
-      idle:     'IDLE — READY',
-      working:  '🚧 UNDER CONSTRUCTION',
-      conflict: '💥 WORK CONFLICT!',
-      ribbon:   '✂️ RIBBON CUTTING!',
+      idle:    'IDLE — READY',
+      working: '🚧 UNDER CONSTRUCTION',
+      kickout: '🥾 AGENT KICKED OUT!',
+      ribbon:  '✂️ RIBBON CUTTING!',
     }[status];
 
     let activeHtml = '';
     if (active) {
       const m = CLAUDE_MODELS[active.modelId];
       const pct = Math.round(active.workProgress * 100);
-      activeHtml = `
+      const rem = Math.max(0, Math.ceil(state.timeLimitSec - (active.workElapsed || 0)));
+      activeHtml += `
         <div class="tt-agent">
           <span class="model-swatch" style="background:${m.primary}"></span>
-          <span>${escapeHtml(m.shortName)} working (${pct}%)</span>
+          <span>${escapeHtml(m.shortName)} working (${pct}% • ${rem}s left)</span>
         </div>
       `;
-    } else if (waiters.length) {
-      activeHtml = `<div class="tt-agent">⏳ ${waiters.length} agent waiting at door</div>`;
+    }
+    if (waiters.length) {
+      const names = waiters.map(w => w.shortLabel).join(', ');
+      activeHtml += `<div class="tt-agent">⏳ Waiting at door: ${escapeHtml(names)}</div>`;
     }
 
     tooltipEl.innerHTML = `
@@ -158,7 +158,6 @@
 
     tooltipEl.classList.remove('hidden');
 
-    // Position nicely inside viewport bounds
     const pad = 16;
     const tw = tooltipEl.offsetWidth || 260;
     const th = tooltipEl.offsetHeight || 110;
@@ -171,7 +170,7 @@
   }
 
   // ==========================================================================
-  // 3. BUILDING INSPECTOR DRAWER (Exact Agent Changes + Summary)
+  // 3. BUILDING INSPECTOR DRAWER (Exact Agent Changes + Summary + Queue)
   // ==========================================================================
   function renderBuildingDrawer() {
     if (!state.selectedBuildingId) {
@@ -184,24 +183,44 @@
       return;
     }
 
-    const status = state.getBuildingStatus(b.id);
     const active = state.getActiveAgentOnBuilding(b.id);
+    const waiters = state.getWaitingAgentsOnBuilding(b.id);
 
     let activeBlock = '';
     if (active) {
       const m = CLAUDE_MODELS[active.modelId];
       const pct = Math.round(active.workProgress * 100);
+      const rem = Math.max(0, Math.ceil(state.timeLimitSec - (active.workElapsed || 0)));
       activeBlock = `
         <div class="drawer-active-card" style="border-color:${m.primary}">
           <div class="drawer-active-top">
             <span class="model-swatch" style="background:${m.primary}"></span>
             <strong>${escapeHtml(active.name)} IS BUILDING HERE</strong>
-            <span>${pct}%</span>
+            <span>${pct}% • ⏱ ${rem}s</span>
           </div>
           <div class="drawer-active-task">${escapeHtml(active.task)}</div>
           <div class="drawer-progress-track">
             <div class="drawer-progress-bar" style="width:${pct}%;background:${m.primary}"></div>
           </div>
+        </div>
+      `;
+    }
+
+    let queueBlock = '';
+    if (waiters.length) {
+      queueBlock = `
+        <div class="drawer-queue-box">
+          <div class="drawer-section-label">⏳ WAITING OUTSIDE DOOR (${waiters.length})</div>
+          ${waiters.map(w => {
+            const m = CLAUDE_MODELS[w.modelId];
+            return `
+              <div class="drawer-queue-item">
+                <span class="model-swatch" style="background:${m.primary}"></span>
+                <strong>#${w.queuePos} ${escapeHtml(w.name)}</strong>
+                <span class="muted">— ${escapeHtml(w.task)}</span>
+              </div>
+            `;
+          }).join('')}
         </div>
       `;
     }
@@ -267,6 +286,7 @@
       </div>
 
       ${activeBlock}
+      ${queueBlock}
 
       <div class="drawer-section-label">EXACT AGENT CHANGES (${b.changes.length})</div>
       <div class="drawer-changes-list">${changesHtml}</div>
@@ -290,75 +310,11 @@
   btnCloseDrawer.addEventListener('click', () => state.selectBuilding(null));
 
   // ==========================================================================
-  // 4. CONFLICT RESOLUTION MODAL (When two Bulls CRASH on the same building!)
-  // ==========================================================================
-  function renderConflictModal() {
-    if (!state.pendingConflict || !state.pendingConflict.modalReady) {
-      conflictModalEl.classList.add('hidden');
-      return;
-    }
-
-    const { buildingId, agentAId, agentBId } = state.pendingConflict;
-    const b = state.getBuilding(buildingId);
-    const agentA = state.getAgent(agentAId);
-    const agentB = state.getAgent(agentBId);
-    if (!b || !agentA || !agentB) return;
-
-    const cardFor = (agent) => {
-      const m = CLAUDE_MODELS[agent.modelId];
-      return `
-        <div class="conflict-agent-card" style="border-color:${m.primary}">
-          <div class="conflict-agent-top">
-            <div class="conflict-bull-badge" style="background:${m.primary};color:${m.accent}">🐂</div>
-            <div>
-              <div class="conflict-agent-name">${escapeHtml(agent.name)}</div>
-              <span class="trad-model-tag" style="background:${m.badgeBg};color:${m.badgeText}">${escapeHtml(m.displayName)}</span>
-            </div>
-          </div>
-          <div class="conflict-detail">
-            <strong>PROPOSED TASK:</strong>
-            <p>${escapeHtml(agent.task)}</p>
-          </div>
-          <div class="conflict-detail">
-            <strong>REASON (WHY):</strong>
-            <p class="muted">${escapeHtml(agent.reason)}</p>
-          </div>
-          <button class="pixel-btn primary full" data-choose-agent="${agent.id}">
-            ✔ LET ${escapeHtml(agent.shortLabel)} WORK FIRST
-          </button>
-        </div>
-      `;
-    };
-
-    conflictModalBody.innerHTML = `
-      <div class="conflict-alert-strip">
-        <span class="conflict-boom">💥</span>
-        <div>
-          <h3>WORK CONFLICT AT ${escapeHtml(b.code)} — ${escapeHtml(b.name)}</h3>
-          <p>Both Claude agents crashed trying to edit <code>${escapeHtml(b.folder)}</code> simultaneously. Choose which agent should work on this folder first (the other will wait at the door).</p>
-        </div>
-      </div>
-      <div class="conflict-cards-grid">
-        ${cardFor(agentA)}
-        <div class="conflict-vs">VS</div>
-        ${cardFor(agentB)}
-      </div>
-    `;
-
-    conflictModalEl.classList.remove('hidden');
-
-    conflictModalBody.querySelectorAll('[data-choose-agent]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        state.resolveConflict(btn.dataset.chooseAgent);
-      });
-    });
-  }
-
-  // ==========================================================================
-  // 5. OPTIONS MENU (Building -> Folder Mapping + View Toggle)
+  // 4. OPTIONS MENU (View Toggle, Time Limit, & Building -> Folder Mapping)
   // ==========================================================================
   function renderOptionsModal() {
     optionsRootInput.value = state.rootFolder;
+    optionsTimeLimitInput.value = String(state.timeLimitSec);
 
     optModePixel.classList.toggle('active', state.viewMode === 'pixel');
     optModeTrad.classList.toggle('active', state.viewMode === 'traditional');
@@ -408,6 +364,10 @@
   });
 
   optionsRootInput.addEventListener('change', (e) => state.setRootFolder(e.target.value));
+  optionsTimeLimitInput.addEventListener('change', (e) => {
+    state.setTimeLimit(e.target.value);
+    optionsTimeLimitInput.value = String(state.timeLimitSec);
+  });
   btnResetMappings.addEventListener('click', () => {
     state.resetBuildingMappings();
     renderOptionsModal();
@@ -419,16 +379,17 @@
   btnViewTrad.addEventListener('click', () => state.setViewMode('traditional'));
 
   // ==========================================================================
-  // 6. THE ORACLE FEED PANEL
+  // 5. THE ORACLE FEED PANEL
   // ==========================================================================
   function renderOracleFeed() {
     const iconFor = {
-      commit:   '📝',
-      walk:     '🐂',
-      conflict: '💥',
-      resolved: '🤝',
-      ribbon:   '✂️',
-      guarded:  '🛡️',
+      commit:  '📝',
+      walk:    '🐂',
+      wait:    '⏳',
+      enter:   '🚪',
+      kickout: '🥾',
+      ribbon:  '✂️',
+      guarded: '🛡️',
     };
 
     oracleListEl.innerHTML = state.oracleFeed.map(item => {
@@ -456,28 +417,31 @@
   }
 
   // ==========================================================================
-  // 7. RIBBON-CUTTING ANNOUNCEMENT BANNER
+  // 6. ANNOUNCEMENT BANNER (Ribbon-Cutting & Dramatic Kick-Out!)
   // ==========================================================================
   function renderAnnouncement() {
     if (!state.announcement) {
       ribbonBannerEl.classList.add('hidden');
+      ribbonBannerEl.classList.remove('kickout-banner');
       return;
     }
+    const isKick = state.announcement.kind === 'kickout';
+    ribbonBannerEl.classList.toggle('kickout-banner', isKick);
     ribbonBannerEl.innerHTML = `
       <div class="ribbon-banner-inner">
-        <span class="ribbon-scissors">✂️</span>
+        <span class="ribbon-scissors">${isKick ? '🥾' : '✂️'}</span>
         <div>
           <div class="ribbon-title">${escapeHtml(state.announcement.title)}</div>
           <div class="ribbon-sub">${escapeHtml(state.announcement.subtitle)}</div>
         </div>
-        <span class="ribbon-trophy">🎉</span>
+        <span class="ribbon-trophy">${isKick ? '⚠️' : '🎉'}</span>
       </div>
     `;
     ribbonBannerEl.classList.remove('hidden');
   }
 
   // ==========================================================================
-  // 8. DEMO CONTROLS BAR (Design Showcase Triggers)
+  // 7. PREVIEW CONTROLS BAR
   // ==========================================================================
   function populateDemoSelectors() {
     demoAgentSelect.innerHTML = state.agents.map(a => {
@@ -485,7 +449,7 @@
       return `<option value="${a.id}">${escapeHtml(a.shortLabel)} (${escapeHtml(m.shortName)})</option>`;
     }).join('');
 
-    const prevB = demoBuildingSelect.value || 'MSC';
+    const prevB = demoBuildingSelect.value || 'ENB';
     demoBuildingSelect.innerHTML = state.buildings.map(b =>
       `<option value="${b.id}">${escapeHtml(b.code)} — ${escapeHtml(b.folder)}</option>`
     ).join('');
@@ -494,21 +458,23 @@
 
   btnAutoDemo.addEventListener('click', () => state.toggleAutoDemo());
   btnDispatch.addEventListener('click', () => {
-    state.dispatchAgent(demoAgentSelect.value, demoBuildingSelect.value, { duration: 9 });
+    state.dispatchAgent(demoAgentSelect.value, demoBuildingSelect.value, { duration: 10 });
   });
-  btnTriggerConflict.addEventListener('click', () => {
-    state.triggerConflictDemo(demoBuildingSelect.value || 'ENB');
+  btnTestQueue.addEventListener('click', () => {
+    state.testQueueDemo(demoBuildingSelect.value || 'ENB');
+  });
+  btnTestKickOut.addEventListener('click', () => {
+    state.testKickOutDemo(demoBuildingSelect.value || 'ENB');
   });
   btnFinishActive.addEventListener('click', () => state.finishActiveWork());
   btnResetCampus.addEventListener('click', () => state.resetCampus());
 
   // ==========================================================================
-  // 9. VIEW MODE & FULL UI SYNC
+  // 8. VIEW MODE & FULL UI SYNC
   // ==========================================================================
   function syncUI(reason) {
     rootChipEl.textContent = state.rootFolder;
 
-    // Toggle Pixel Art Campus vs Traditional Workflow Representation
     const isPixel = state.viewMode === 'pixel';
     mapStage.classList.toggle('hidden', !isPixel);
     tradViewEl.classList.toggle('hidden', isPixel);
@@ -527,11 +493,8 @@
     if (reason === 'options' || reason === 'reset') {
       populateDemoSelectors();
     }
-    if (reason === 'selection' || reason === 'ribbon' || reason === 'options' || state.selectedBuildingId) {
+    if (reason === 'selection' || reason === 'ribbon' || reason === 'kickout' || reason === 'options' || state.selectedBuildingId) {
       renderBuildingDrawer();
-    }
-    if (reason === 'conflict' || reason === 'reset') {
-      renderConflictModal();
     }
     if (!isPixel) {
       TraditionalView.render(tradViewEl, state);
@@ -540,11 +503,10 @@
 
   state.subscribe((_, reason) => syncUI(reason));
 
-  // Periodic light refresh for Traditional View progress bars & hovered tooltip
   let lastSlowSync = 0;
 
   // ==========================================================================
-  // 10. MAIN 60 FPS ANIMATION LOOP
+  // 9. MAIN 60 FPS ANIMATION LOOP
   // ==========================================================================
   let lastTs = performance.now();
   function frame(ts) {
@@ -570,7 +532,8 @@
       }
       if (state.selectedBuildingId) {
         const active = state.getActiveAgentOnBuilding(state.selectedBuildingId);
-        if (active) renderBuildingDrawer();
+        const waiters = state.getWaitingAgentsOnBuilding(state.selectedBuildingId);
+        if (active || waiters.length) renderBuildingDrawer();
       }
     }
 

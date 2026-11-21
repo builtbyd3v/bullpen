@@ -1,7 +1,7 @@
 /* ============================================================================
    BULLPEN — Traditional Workflow Representation
-   Live-synced alternative view (Folder Tree, Agent Swimlanes, Lease Table)
-   toggled from Options Menu or quick View Switcher.
+   Live-synced alternative view (Folder Tree, Agent Swimlanes, Queue & Timeout
+   Status, Commit History) toggled from Options Menu or Header Switcher.
    ============================================================================ */
 
 window.BullpenTraditionalView = (function () {
@@ -17,10 +17,10 @@ window.BullpenTraditionalView = (function () {
 
   function statusBadgeHtml(status) {
     const map = {
-      idle:     { cls: 'badge-idle',     label: 'IDLE' },
-      working:  { cls: 'badge-working',  label: 'LEASE ACTIVE' },
-      conflict: { cls: 'badge-conflict', label: 'CONFLICT!' },
-      ribbon:   { cls: 'badge-complete', label: 'COMPLETE' },
+      idle:    { cls: 'badge-idle',     label: 'IDLE' },
+      working: { cls: 'badge-working',  label: 'LEASE ACTIVE' },
+      kickout: { cls: 'badge-kickout',  label: 'KICKED OUT!' },
+      ribbon:  { cls: 'badge-complete', label: 'COMPLETE' },
     };
     const info = map[status] || map.idle;
     return `<span class="trad-badge ${info.cls}">${info.label}</span>`;
@@ -29,10 +29,13 @@ window.BullpenTraditionalView = (function () {
   function agentStateLabel(agent, state) {
     const b = agent.targetBuildingId ? state.getBuilding(agent.targetBuildingId) : null;
     switch (agent.state) {
-      case 'working':     return `Editing ${b ? b.folder : ''} (${b ? b.code : ''})`;
-      case 'walking':     return `Acquiring lease on ${b ? b.folder : ''}`;
-      case 'waiting':     return `Queued at door: ${b ? b.folder : ''}`;
-      case 'conflict':    return `Collision on ${b ? b.folder : ''} — Needs Decision`;
+      case 'working': {
+        const rem = Math.max(0, Math.ceil(state.timeLimitSec - (agent.workElapsed || 0)));
+        return `Editing ${b ? b.folder : ''} (${b ? b.code : ''}) — ${rem}s left`;
+      }
+      case 'walking':     return `Heading to ${b ? b.folder : ''} (${b ? b.code : ''})`;
+      case 'waiting':     return `Waiting in queue #${agent.queuePos || 1} outside ${b ? b.folder : ''} (${b ? b.code : ''})`;
+      case 'kicked':      return `Evicted from building — Error or Time Limit Exceeded!`;
       case 'celebrating': return `Completed task — Releasing lease`;
       default:            return 'Idle — Monitoring workspace';
     }
@@ -41,19 +44,22 @@ window.BullpenTraditionalView = (function () {
   function render(container, state) {
     if (!container) return;
 
-    // 1. Folder Tree (maps 1:1 with Campus Buildings)
+    // 1. Folder Tree (maps 1:1 with Campus Buildings + live Queue count!)
     const folderItemsHtml = state.buildings.map(b => {
       const status = state.getBuildingStatus(b.id);
       const activeAgent = state.getActiveAgentOnBuilding(b.id);
+      const waiters = state.getWaitingAgentsOnBuilding(b.id);
       const isSelected = state.selectedBuildingId === b.id;
+      const icon = status === 'working' ? '🚧' : (status === 'kickout' ? '🥾' : (b.guarded ? '🛡️' : '📁'));
       return `
         <button class="trad-folder-row ${isSelected ? 'selected' : ''} status-${status}" data-building-id="${b.id}">
           <div class="trad-folder-main">
-            <span class="trad-folder-icon">${status === 'working' ? '🚧' : (status === 'conflict' ? '💥' : (b.guarded ? '🛡️' : '📁'))}</span>
+            <span class="trad-folder-icon">${icon}</span>
             <span class="trad-folder-path">${escapeHtml(b.folder)}</span>
             <span class="trad-bldg-chip">${escapeHtml(b.code)}</span>
           </div>
           <div class="trad-folder-meta">
+            ${waiters.length ? `<span class="trad-queue-pill">⏳ ${waiters.length} WAIT</span>` : ''}
             ${statusBadgeHtml(status)}
             ${activeAgent ? `<span class="trad-owner-dot" style="background:${CLAUDE_MODELS[activeAgent.modelId].primary}"></span>` : ''}
           </div>
@@ -99,7 +105,7 @@ window.BullpenTraditionalView = (function () {
       `;
     }).join('');
 
-    // 3. Recent Commits & Changes Table across all folders
+    // 3. Recent Commits & Changes Table
     const allChanges = [];
     state.buildings.forEach(b => {
       b.changes.forEach(c => allChanges.push({ ...c, building: b }));
@@ -118,31 +124,15 @@ window.BullpenTraditionalView = (function () {
       `;
     }).join('');
 
-    // Conflict alert bar inside Traditional View
-    let conflictBannerHtml = '';
-    if (state.pendingConflict) {
-      const cb = state.getBuilding(state.pendingConflict.buildingId);
-      conflictBannerHtml = `
-        <div class="trad-conflict-banner">
-          <div>
-            <strong>💥 LEASE CONFLICT ON ${escapeHtml(cb ? cb.folder : '')} (${escapeHtml(cb ? cb.code : '')})</strong>
-            <span>Two Claude agents collided trying to edit the same folder.</span>
-          </div>
-          <button class="pixel-btn danger" data-open-conflict="1">Resolve Conflict</button>
-        </div>
-      `;
-    }
-
     container.innerHTML = `
       <div class="trad-shell">
         <div class="trad-top-meta">
-          <div class="trad-root-pill">📂 ROOT REPO: <strong>${escapeHtml(state.rootFolder)}</strong></div>
-          <div class="trad-hint">Click any folder or commit row to inspect exact agent diffs & summaries.</div>
+          <div class="trad-root-pill">📂 ROOT REPO: <strong>${escapeHtml(state.rootFolder)}</strong> • ⏱ TIME LIMIT: <strong>${state.timeLimitSec}s</strong></div>
+          <div class="trad-hint">Click any folder or commit row to inspect exact agent diffs &amp; summaries.</div>
         </div>
-        ${conflictBannerHtml}
         <div class="trad-grid">
           <section class="trad-panel trad-tree-panel">
-            <div class="trad-panel-title">WORKSPACE FOLDERS (LEASE MAP)</div>
+            <div class="trad-panel-title">WORKSPACE FOLDERS (LEASE &amp; QUEUE MAP)</div>
             <div class="trad-folder-list">${folderItemsHtml}</div>
           </section>
           <section class="trad-panel trad-lanes-panel">
@@ -172,20 +162,12 @@ window.BullpenTraditionalView = (function () {
       </div>
     `;
 
-    // Bind clicks inside Traditional View
     container.querySelectorAll('[data-building-id]').forEach(el => {
       el.addEventListener('click', () => state.selectBuilding(el.dataset.buildingId));
     });
     container.querySelectorAll('[data-inspect-bldg]').forEach(el => {
       el.addEventListener('click', () => state.selectBuilding(el.dataset.inspectBldg));
     });
-    const openConf = container.querySelector('[data-open-conflict]');
-    if (openConf) {
-      openConf.addEventListener('click', () => {
-        const modal = document.getElementById('conflictModal');
-        if (modal) modal.classList.remove('hidden');
-      });
-    }
   }
 
   return { render };
