@@ -1,16 +1,79 @@
-# HackJam '26 project: environment notes
+Keep CLAUDE.md and AGENTS.md identical.
 
-Hackathon: HackJam '26, USF Tampa, Sat Nov 21, 2026. Hacking 11:00 AM to 6:00 PM ET (submission closes 6:00 PM sharp). Judging is a live ~3 min showcase plus ~1 min Q&A.
+# Bullpen
 
-## Rules that affect code
-- No code written before 11:00 AM on Nov 21. Build everything in this repo fresh.
-- All AI use must be credited in the submission (list models and tools). No reskins of existing AI tools.
-- README and the MLH submission must list every framework and all AI usage in detail.
-- One prize per team. Tracks: Best Overall, Home Turf, Off the Grid, Gemini API.
-- Judging weights: Technical 25, Innovation 20, Track relevance 20, Execution 20, Presentation 15.
-- Keep the scope to 2-3 core features that work end to end. Freeze features around 5:00 PM and leave the last hour for demo polish.
+Git was built for humans. Bullpen is version control for agents. Several Claude Code agents work in parallel, each in its own git worktree and branch. A hook asks a referee before every edit. The referee leases files so two agents never edit the same one, asks a human before guarded edits, commits every edit, and lets the human merge or undo a whole branch. The web app shows it live as the USF campus: each folder is a building, `main` is the campus, each agent's branch is a colored layer.
 
-## Machines
+HackJam '26, USF Tampa, Sat Nov 21, 2026. Hacking 11:00 AM to 6:00 PM ET, submission closes 6:00 PM sharp. Judging: about 3 min showcase plus 1 min Q&A at the table.
+
+Mode: hackathon
+
+## Rules
+- Only edit your own folder (table below). Need a change elsewhere? Ask the owner.
+- Contract changes go through `shared/events.md` first, plus a heads-up in the group chat.
+- Pull `main` before you start. Small PRs to `main`. `main` is protected: CI (`ci-ok`) must pass.
+- No code from before 11:00 AM on Nov 21. Everything is built fresh in this repo.
+- Credit all AI use (models and tools) and list every framework in the README and the MLH submission. Missing credit means disqualification.
+- No reskin of an existing AI tool. Do not name mascots or UI after AI models or products.
+- Scope: 3 core features end to end (referee, live layers, merge and undo). MVP freeze 3:30 PM, stop coding 5:00 PM.
+- One prize per team. We enter Best Overall. Weights: Technical 25, Innovation 20, Track relevance 20, Execution 20, Presentation 15.
+
+## Ownership
+
+| Folder | Owner | GitHub |
+|---|---|---|
+| `hooks/`, `jetson/`, `scripts/`, `demo-seed/` | Dev | builtbyd3v |
+| `server/` | Monisha | Monisha-Repos |
+| `web/`, `design/` | Caua | caua-fm234 |
+| `shared/`, `campus/`, `CLAUDE.md`, `AGENTS.md` | shared: change through the contract rule | |
+
+## Ports and URLs
+
+| Service | Port | URL |
+|---|---|---|
+| web (Next.js 16 + Phaser 3) | 5173 | http://localhost:5173 (`?fake` runs without a server) |
+| server (FastAPI) | 8600 | `SERVER_URL=http://localhost:8600`; the web reads `NEXT_PUBLIC_SERVER_URL` from `web/.env.local` |
+| Jetson (FastAPI + Ollama) | 8700 | `JETSON_URL=http://192.168.55.1:8700` (USB cable). Fallback: `http://dev.local:8700` |
+
+## The flow
+```
+agent wants to edit a file
+  -> hook (PreToolUse)  POST server /checkout
+       -> server        POST Jetson /check   -> allow | ask | deny   (rules first; db/** = ask)
+       -> server applies the lease {file, agent, expires_at}
+            free or held by this agent -> allow (TTL 90 s, renewed by the holder)
+            held by another agent      -> wait
+            ask -> approval shown in the web; no answer in 60 s = deny
+  <- answer to the hook: allow | wait | ask | deny, with a reason
+agent edits -> hook (PostToolUse) POST server /hook -> server auto-commits the edit
+               (trailers Bullpen-Agent, Bullpen-Task) and broadcasts commit + state
+agent stops -> hook (Stop) POST server /hook -> server releases that agent's leases
+```
+- The Jetson is policy only. It holds no lease state.
+- Fail closed: server down, Jetson down, or a bad reply means deny.
+- Leases are released on commit, on Stop, and when they expire.
+
+## Contract
+`shared/events.md` is the source of truth for every request, response and WebSocket event. `campus/campus.json` maps folders to buildings.
+
+## API per service
+**server (8600)**: `GET /health`, `POST /checkout`, `POST /hook`, `GET /state`, `WS /ws`, `POST /undo/{agent}`, `POST /merge/{agent}`, `POST /approve/{id}`, `GET /history?file=`, `GET /replay`.
+**Jetson (8700)**: `GET /health`, `POST /check`, `POST /commit_msg`, `POST /ask`, `POST /summarize`, `POST /reset`.
+**hook**: `python3 hooks/bullpen_hook.py <Event>` reads Claude Code hook JSON on stdin. Env: `SERVER_URL`, `BULLPEN_AGENT`.
+
+## Done and to do
+Open work is tracked as GitHub issues, titled with a checkpoint time and labeled by area.
+
+| Area | Done | To do |
+|---|---|---|
+| `hooks/` | Posts every event to `/hook`; PreToolUse fails closed | Call `/checkout`; handle allow, wait, ask, deny; timeout over 60 s |
+| `jetson/` | Deployed on the device; `/health`, `/check` (always allow), `/commit_msg`, `/ask` | `/check` rules (`db/**` = ask), `/reset`, pre-warm, `/summarize`, voice (stretch) |
+| `scripts/` | `make_demo.sh`: demo repo, 3 worktrees, hook settings | `demo-seed/`, 3 prompts, `demo_start.sh`, `demo_reset.sh`, baseline without Bullpen |
+| `server/` | Stub: `/health`, `/hook` (always allow), `/state` (event list), `/ws` (bare bodies), CORS | Everything in the flow: `/checkout` with leases, real git `/state`, WS envelope, undo, merge, approvals, auto-commit, history, replay |
+| `web/` | Next.js app; campus scene with agents, flags, scaffolding, conflict flag, branch tabs, animations; side panel; fake mode and scripted demo; real-mode client with reconnect | Verify against the real server; intent card on merge; health strip; replay label; sprites and polish |
+| `design/` | Caua's prototype lives in PR #1 for reference only. It is not merged. | |
+
+## Machine notes (Dev's Mac and Jetson)
 ### Mac (dev machine, runs Claude Code)
 - MacBook Pro, M5 Pro, 48 GB unified memory.
 - Stable Ollama on the Mac: http://localhost:11434 with qwen2.5-coder:32b (backup model, 12 to 13 tok/s), qwen3-embedding:8b (4096 dims), nomic-embed-text (768 dims), and phonon TTS (`POST /v1/audio/speech` with `{"model":"phonon","input":"..."}`, returns 24 kHz WAV).
@@ -36,26 +99,8 @@ Hackathon: HackJam '26, USF Tampa, Sat Nov 21, 2026. Hacking 11:00 AM to 6:00 PM
 - Power mode: MAXN SUPER, headless (multi-user.target), 16 GB swap on NVMe.
 - Live power and GPU: `jtop`, or `sudo tegrastats` (VDD_IN is total board power in mW).
 
-## How to work across the two machines
+### Working across the two machines
 - Deploy code to the Jetson with `rsync -av --exclude .venv --exclude __pycache__ ./jetson/ dev@192.168.55.1:~/app/`, then restart it per `jetson/README.md`.
 - Only this Mac deploys to the Jetson. Teammates push to git, and this Mac pulls and deploys.
 - Call both models through the Ollama HTTP API (`/api/generate` or the OpenAI-compatible `/v1/chat/completions`).
 - Before the demo, confirm with `curl http://dev.local:11434/api/tags` and `ollama list` that every model is loaded.
-
-## Project
-Bullpen: version control built for AI agents. Git was built for humans.
-Several Claude Code agents work in parallel git worktrees. A hook on every tool call reports to a referee server, which can deny edits (for example in guarded folders). The web app shows the repo as the USF campus: each folder is a building, and agents move between them live.
-
-Owners:
-- `server/` Monisha: FastAPI referee and event hub, port 8600.
-- `web/` Caua: Next.js + React + Phaser campus view, port 5173.
-- `jetson/`, `hooks/` Dev: local-model service on the Jetson (port 8700) and the Claude Code hook.
-
-Shared files:
-- Event contract (source of truth): `shared/events.md`. Change it there first.
-- Folder to building map: `campus/campus.json`.
-- Demo repo and agent worktrees: `scripts/make_demo.sh`.
-
-main is protected: open a PR, CI must pass.
-
-Mode: hackathon
