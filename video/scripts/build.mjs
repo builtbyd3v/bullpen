@@ -63,6 +63,7 @@ for (const slot of timeline.slots) {
   const silent = !take && !slot.vo;
   slot.voFile = silent ? null : `vo/${slot.id}.wav`;
   const voDur = silent ? 0 : seconds(p(voOut));
+  slot.voDur = voDur;
   if (voDur > slot.dur - VO_MARGIN) {
     problems.push(`${slot.id}: voiceover is ${voDur.toFixed(1)} s, the slot is ${slot.dur} s. Cut words or raise "dur".`);
   }
@@ -90,7 +91,11 @@ for (const slot of timeline.slots) {
 const stamp = (s) => new Date(Math.round(s * 1000)).toISOString().slice(11, 23).replace(".", ",");
 writeFileSync(p("subtitles.srt"), cues.map((c, i) => `${i + 1}\n${stamp(c.from)} --> ${stamp(c.to)}\n${c.text}\n`).join("\n"));
 // Title cards already show their line on screen, so those cues stay in the .srt only.
-writeFileSync(p("out/props.json"), JSON.stringify({ slots: timeline.slots, cues: cues.filter((c) => c.burn) }));
+// Optional music bed: raw/music.mp3 (or .wav, .m4a). It loops for the whole film and sits under the voice.
+const bed = find("raw", "music");
+if (bed) ffmpeg(["-i", p("raw", bed), "-ar", "48000", "-ac", "2", p("public/music.wav")]);
+console.log(`music: ${bed ? "raw/" + bed : "none"}`);
+writeFileSync(p("out/props.json"), JSON.stringify({ slots: timeline.slots, cues: cues.filter((c) => c.burn), mix: timeline.mix, music: bed ? "music.wav" : null }));
 console.log(`total ${at} s, ${cues.length} captions -> subtitles.srt`);
 
 if (problems.length) {

@@ -3,6 +3,7 @@
 - 13 slots, 120 s, 1080p30. Slots, lines and timings live in `timeline.json`; change them there, then update this file.
 - Voiceover: 255 words. "say" is the placeholder voice's time at 150 words per minute, a natural speaking pace. A take may run up to the slot length minus 0.3 s.
 - Captions are the voiceover text, burned in at the bottom. Labels sit top left.
+- Sound: voice on top, the app's sound effects from each clip lowered under it, optional music bed lowest.
 - The spoken line names no model. The three model names are on screen in slot 12.
 - Slot 13 names Scion, Anthropic's in-house source control system. Source for Q&A: https://www.anthropic.com/engineering/redesigning-source-control
 
@@ -18,7 +19,7 @@
 
 | Time | Slot | Picture | Label on screen | Voiceover | say |
 |---|---|---|---|---|---|
-| 0:10-0:15 | `02-title` | Generated: the pixel bull loads in, "BULLPEN", tagline "Source control for AI agents" | none | This is Bullpen. Source control for AI agents. | 3.6 s |
+| 0:10-0:15 | `02-title` | Generated: the pixel bull charges in from the left with dust, "BULLPEN" lifts in, tagline "Source control for AI agents" | none | This is Bullpen. Source control for AI agents. | 3.6 s |
 
 ### Live demo, 0:15 to 1:15
 

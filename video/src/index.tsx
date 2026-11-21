@@ -17,7 +17,7 @@ function Root() {
         height={1080}
         fps={fps}
         durationInFrames={1}
-        defaultProps={{ slots, cues: [] } satisfies FilmProps}
+        defaultProps={{ slots, cues: [], mix: timeline.mix, music: null } satisfies FilmProps}
         calculateMetadata={({ props }) => ({
           durationInFrames: props.slots.reduce((sum, s) => sum + Math.round(s.dur * fps), 0),
         })}

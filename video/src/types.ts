@@ -6,7 +6,9 @@ export type Slot = {
   dur: number;
   start?: number;
   rate?: number;
-  keepAudio?: boolean;
+  // false mutes the clip's own sound (app sound effects, room sound).
+  audio?: boolean;
+  still?: boolean;
   label?: string;
   shot?: string;
   tagline?: string;
@@ -14,9 +16,13 @@ export type Slot = {
   // Filled in by scripts/build.mjs: paths under public/, null when missing.
   clip?: string | null;
   voFile?: string | null;
+  voDur?: number;
 };
 
-export type FilmProps = { slots: Slot[]; cues: Cue[] };
+// Volumes from 0 to 1. The "UnderVoice" values apply while a voiceover take plays.
+export type Mix = { voice: number; app: number; appUnderVoice: number; music: number; musicUnderVoice: number };
+
+export type FilmProps = { slots: Slot[]; cues: Cue[]; mix: Mix; music: string | null };
 
 // USF brand colors, from design/js/palette.js.
 export const C = {
