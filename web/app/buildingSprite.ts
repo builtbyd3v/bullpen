@@ -48,6 +48,19 @@ function rect(
   g.fillStyle(color, alpha).fillRect(snap(x), snap(y), snap(w), snap(h));
 }
 
+// Caua's terrain bakes in district labels; "CENTRAL CAMPUS" sits here at 2x.
+const RESERVED = [{ x: 200, y: 156, w: 150, h: 36 }];
+const LABEL_W = 170;
+const LABEL_H = 30;
+
+// True when the name plate above `b` would cover another building or a baked-in map label.
+export function labelBelow(b: Building, all: Building[]) {
+  const box = { x: b.x + b.w / 2 - LABEL_W / 2, y: b.y - LABEL_H, w: LABEL_W, h: LABEL_H };
+  const hit = (o: { x: number; y: number; w: number; h: number }) =>
+    box.x < o.x + o.w && box.x + box.w > o.x && box.y < o.y + o.h && box.y + box.h > o.y;
+  return all.some((o) => o !== b && hit(o)) || RESERVED.some(hit);
+}
+
 /**
  * Caua's USF campus terrain (design/js/mapRenderer.js, rendered once to public/sprites/campus-ground.png at 580x364)
  * drawn at 2x under everything, plus the MLK Plaza sprite with the Bull statue and fountain.
@@ -141,6 +154,7 @@ export function makeBuilding(
   b: Building,
   onSelect: () => void,
   onHover: (over: boolean) => void = () => {},
+  all: Building[] = [],
 ): {
   body: Phaser.GameObjects.Graphics;
   door: Phaser.GameObjects.Graphics;
@@ -185,15 +199,17 @@ export function makeBuilding(
     .on("pointerout", () => (hover.setVisible(false), onHover(false)))
     .on("pointerdown", onSelect);
 
-  // Name plate above the roof, folder small under the name.
+  // Name plate above the roof, folder small under the name; below the building when the space above is taken.
   const folder = b.folder === null ? "unmapped" : b.folder || "/";
   const cx = b.x + b.w / 2;
+  const below = labelBelow(b, all);
+  const nameY = below ? b.y + b.h + 16 : b.y - 14;
   scene.add
-    .text(cx, b.y - 14, b.name, { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#ffffff", backgroundColor: "#005432", padding: { x: 4, y: 1 } })
+    .text(cx, nameY, b.name, { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#ffffff", backgroundColor: "#005432", padding: { x: 4, y: 1 } })
     .setOrigin(0.5, 1)
     .setDepth(2);
   scene.add
-    .text(cx, b.y - 1, b.guarded ? `${folder} · guarded` : folder, { fontFamily: "monospace", fontSize: "11px", fontStyle: "bold", color: b.guarded ? "#ffd0d0" : "#cfc493", backgroundColor: b.guarded ? "#7a1f24" : "#0d231b", padding: { x: 3, y: 0 } })
+    .text(cx, nameY + 13, b.guarded ? `${folder} · guarded` : folder, { fontFamily: "monospace", fontSize: "11px", fontStyle: "bold", color: b.guarded ? "#ffd0d0" : "#cfc493", backgroundColor: b.guarded ? "#7a1f24" : "#0d231b", padding: { x: 3, y: 0 } })
     .setOrigin(0.5, 1)
     .setDepth(2);
 
