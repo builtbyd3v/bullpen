@@ -1,6 +1,6 @@
 # Recording the demo (one page)
 
-- 10 screen clips and 13 voice lines. Nothing is filmed with a camera. The problem clip, the title and the closing card are generated.
+- 10 app clips and 13 voice lines. Nothing is filmed with a camera. The list is in `SHOTLIST-TODO.md`.
 - Automated: `node scripts/record.mjs live` records every clip in one take and needs none of the screen steps below. They are the manual fallback.
 - Tool: OBS, because it records the app's sound with the picture. Output 1920x1080, 30 fps.
 - One clip per beat, in the order below. Two takes of each, keep the better one.
@@ -17,22 +17,7 @@
 
 ## Screen: the takes
 
-Run `scripts/demo_reset.sh` before each run of the demo. The health strip must be all green. Do not talk during a take. Pause one second before and after each click.
-
-| Order | Save as, in `video/raw/` | Slot | Do this |
-|---|---|---|---|
-| 1 | `03-ask` | 10 s | Type the ask in the Orchestrator box, press Enter. Three bulls walk on. |
-| 2 | `04-lock` | 10 s | api holds `shared/auth.ts`, web waits at the door. Show the lease countdown. |
-| 3 | `05-deny` | 11 s | db reaches for the schema. Show the deny row in the referee log. |
-| 4 | `06-undo` | 9 s | Click Undo on web. Its commits leave the timeline. |
-| 5 | `07-merge` | 10 s | Click api's building, show the diff, click Merge, the intent card. |
-| 6 | `08-unplug` | 10 s | The referee OFFLINE. Pull the Jetson's cable if you are at the desk, then plug it back in. Otherwise show the OFFLINE rows in the Referee panel. |
-| 7 | `09-evidence` | 9 s | Zoom 150% on the lease panel while a countdown runs. |
-| 8 | `10-campus` | 8 s | Campus built from a second repo, then the commit timeline. |
-| 9 | `11-interior` | 6 s | Inside a building: agent at its file, branch sign, diff. |
-| 10 | `12-referee` | 10 s | Zoom 150% on the referee log: rule, latency, model. |
-
-Beats 1 to 6 can be one continuous run cut into six files, or one long file: set `start` (the second where the beat begins) per slot in `timeline.json`. A slow beat: set `rate` to 2 and `"audio": false`.
+The slots, their lengths and what each must show are in `SHOTLIST-TODO.md`. Save a manual clip as `raw/<slot id>.mp4` and remove `src` and `from` from that slot in `timeline.json`.
 
 ## Voice (ElevenLabs)
 
