@@ -48,15 +48,15 @@ def test_check_other_file_allows(path):
 @pytest.mark.parametrize(
     "cmd",
     [
-        "cat db/schema.sql",
+        "touch db/x.sql",
         "echo x >> ./db/seed.sql",
         "echo x > db/x",
         "echo x >db/x",
         "rm -rf db",
-        "ls ./db",
-        "cd db && ls",
-        "cat /Users/dev/wt/api/db/schema.sql",
-        "git diff main...agent/db -- db/schema.sql",
+        "mv ./db old",
+        "cd db && rm -f x",
+        "rm /Users/dev/wt/api/db/schema.sql",
+        "git checkout main...agent/db -- db/schema.sql",
     ],
 )
 def test_check_bash_touching_guarded_asks(cmd):
@@ -79,6 +79,60 @@ def test_check_bash_touching_guarded_asks(cmd):
 )
 def test_check_bash_not_touching_guarded_allows(cmd):
     assert check(tool_name="Bash", command=cmd)["decision"] == "allow"
+
+
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        "cat db/schema.sql",
+        "cat a.ts db/schema.sql | head -5",
+        "grep -rn role db/",
+        "ls db; cat db/seed.sql",
+        "git diff db/schema.sql",
+        "cat shared/roles.ts config/roles.json api/users.ts db/schema.sql",
+        "cat db/schema.sql 2>/dev/null",
+        "grep -n role db/schema.sql 2>&1 | head",
+        "find db -name '*.sql'",
+        "git log --oneline -- db/",
+        "git branch -a",
+        "cd db && ls",
+    ],
+)
+def test_check_bash_read_only_on_guarded_allows(cmd):
+    assert check(tool_name="Bash", command=cmd)["decision"] == "allow"
+
+
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        "echo x >> db/schema.sql",
+        "cat db/schema.sql > /tmp/x",
+        "cat db/schema.sql | tee db/copy.sql",
+        "sed -i s/a/b/ db/schema.sql",
+        "cat db/schema.sql && rm db/seed.sql",
+        "python3 -c \"open('db/schema.sql','w')\"",
+        "find db -delete",
+        "find db -exec rm {} +",
+        "cat $(echo db/schema.sql)",
+        "cat `echo db/schema.sql`",
+        "cp x db/y",
+        "git checkout -- db/schema.sql",
+        "git diff --output=db/x",
+        "sort -o db/schema.sql db/schema.sql",
+        "uniq db/a.sql db/b.sql",
+        "FOO=1 cat db/schema.sql",
+        "sqlite3 db/app.db",
+        "cat db/schema.sql & rm db/seed.sql",
+    ],
+)
+def test_check_bash_write_on_guarded_asks(cmd):
+    out = check(tool_name="Bash", command=cmd)
+    assert out["decision"] == "ask"
+    assert out["rule"] == "db/**"
+
+
+def test_check_edit_guarded_still_asks():
+    assert check(tool_name="Edit", file="db/schema.sql", command="cat db/schema.sql")["decision"] == "ask"
 
 
 def test_check_missing_file_allows():

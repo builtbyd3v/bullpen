@@ -32,7 +32,12 @@ Endpoints:
 - `POST /reset` -> `{"ok": true, "warmed": [models]}`. Pre-warms each model (120 s timeout per warm call; real calls keep 20 s). A warm failure still returns `ok: true`.
 - Model failure or timeout (20 s) -> 503 `{"error"}`.
 - Tests: `uv run --with pytest pytest -q` (Ollama is mocked).
-- Bash rule: `cd db`, `./db/x`, `> db/x` and absolute paths match. A ref like `agent/db` does not.
+- Bash rule: a command that names a guarded path (`db/x`, `./db/x`, `cd db`, absolute paths; not a ref like `agent/db`) returns `ask` unless it is provably read-only. Read-only means:
+  - no `>`, `>>`, `tee`, `$(...)` or backticks; `2>&1` and `2>/dev/null` are fine
+  - every part split on `;`, `&&`, `||`, `|`, `&` and newlines starts with `cat`, `ls`, `head`, `tail`, `grep`, `rg`, `wc`, `pwd`, `cd`, `echo`, `stat`, `file`, `tree`, `sort`, `uniq`, `cut`, `diff`, `which`, `true`, `test`, `find`, or `git log|diff|status|show|ls-files|branch|rev-parse|blame`
+  - no write flags: `find -delete/-exec/-ok/-fprint/-fls`, `sort -o`, `tree -o`, `rg --pre`, `git --output`, `uniq IN OUT`, `git branch` with anything but list flags
+
+  Anything else (`sed`, `python`, `cp`, `rm`, `sqlite3`, `npm`, `env`, `FOO=1 cmd`, unknown commands) stays `ask`.
 
 Memory and latency (measured on the Jetson, `NUM_CTX` 4096):
 - All three models stay loaded together: qwen2.5-coder:3b 2.2 GB, llama3.2:3b 2.6 GB, nomic-embed-text 414 MB. At 8192 they do not fit, and each switch reloads a model.

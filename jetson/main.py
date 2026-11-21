@@ -1,6 +1,7 @@
 import math
 import os
 import re
+import shlex
 import threading
 from contextlib import asynccontextmanager
 
@@ -134,17 +135,66 @@ CMD_START = r"[\s'\"=<>|;&(`]"
 CMD_END = r"[\s'\";&|)`]"
 
 
+READ_ONLY = {
+    "cat", "ls", "head", "tail", "grep", "rg", "wc", "pwd", "cd", "echo", "stat", "file", "tree",
+    "sort", "uniq", "cut", "diff", "which", "true", "test", "find", "git",
+}  # fmt: skip
+READ_ONLY_GIT = {"log", "diff", "status", "show", "ls-files", "branch", "rev-parse", "blame"}
+GIT_BRANCH_READ_FLAGS = {"-a", "-r", "-v", "-vv", "-l", "--list", "--all", "--remotes", "--show-current", "--verbose"}
+# Flags that make an allowlisted command write files or run other commands.
+WRITE_FLAGS = {
+    "find": ("-delete", "-exec", "-execdir", "-ok", "-fprint", "-fls"),
+    "sort": ("-o", "--output"),
+    "tree": ("-o",),
+    "rg": ("--pre",),
+    "git": ("--output",),
+}
+
+
+def read_only(command: str) -> bool:
+    """True only when every part of the command is a known read. Anything unsure is False."""
+    if re.search(r"`|\$\(|<\(", command):
+        return False
+    # stderr to stdout or to /dev/null writes nothing.
+    command = re.sub(r"\d?>&\d|\d?>\s*/dev/null", " ", command)
+    if ">" in command:
+        return False
+    for segment in re.split(r"&&|\|\||[;|&\n]", command):
+        try:
+            words = shlex.split(segment)
+        except ValueError:
+            return False
+        if not words:
+            continue
+        cmd, args = words[0], words[1:]
+        if cmd not in READ_ONLY or any(a.startswith(WRITE_FLAGS.get(cmd, ())) for a in args):
+            return False
+        if cmd == "uniq" and len([a for a in args if not a.startswith("-")]) > 1:
+            return False  # uniq IN OUT writes OUT
+        if cmd == "git":
+            if not args or args[0] not in READ_ONLY_GIT:
+                return False
+            if args[0] == "branch" and not set(args[1:]) <= GIT_BRANCH_READ_FLAGS:
+                return False
+    return True
+
+
+def names_folder(command: str, g: str) -> bool:
+    # A path token under the folder, or the bare folder itself.
+    # A bare name after a relative prefix (agent/db) is a git ref, not the folder.
+    return bool(
+        re.search(rf"(?:^|{CMD_START})(?:\S*/)?{re.escape(g)}/", command)
+        or re.search(rf"(?:^|{CMD_START})(?:\./|/\S*/)?{re.escape(g)}(?={CMD_END}|$)", command)
+    )
+
+
 def guarded_folder(file: str | None, command: str | None) -> str | None:
     path = "/" + (file or "").strip().replace("\\", "/").removeprefix("./")
     for g in GUARDED:
         if f"/{g}/" in path:
             return g
-        # A path token in the command under the folder, or the bare folder itself.
-        # A bare name after a relative prefix (agent/db) is a git ref, not the folder.
-        if command and (
-            re.search(rf"(?:^|{CMD_START})(?:\S*/)?{re.escape(g)}/", command)
-            or re.search(rf"(?:^|{CMD_START})(?:\./|/\S*/)?{re.escape(g)}(?={CMD_END}|$)", command)
-        ):
+        # Bash that only reads guarded files needs no approval.
+        if command and names_folder(command, g) and not read_only(command):
             return g
     return None
 
