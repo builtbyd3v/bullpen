@@ -65,6 +65,7 @@ Every message is an envelope: `{"type": <type>, "data": <object>}`.
 | `approval_needed` | `{id, agent, tool, target, reason, expires_at}` | policy said `ask` |
 | `approved` | `{id, agent}` | a human approved |
 | `denied` | `{id, agent, text}` | `text` is `"human"` or `"timeout"` |
+| `check` | `{agent, tool, file, decision, rule, latency_ms, model, at}` | after every Jetson `/check`. `decision` is `allow`, `ask` or `deny`. Jetson unreachable: `decision: "deny"`, `rule: "offline"`, `model: ""`. `latency_ms` is measured by the server. Feeds the referee log |
 | `commit` | `{agent, sha, message, files, task}` | the server auto-commits an edit |
 | `undo` | `{agent}` | after `POST /undo/{agent}` |
 | `plan` | `{ask, tasks: [{agent, task}]}` | the server got a `Plan` event on `/hook` from the orchestrator |
@@ -94,13 +95,14 @@ Clients must ignore types they do not know. Server TODO: `server/main.py` still 
 - `claims`: building ids from `campus/campus.json`. `building`: where the agent is now.
 - `status`: `working` | `waiting` | `blocked` | `done`. `commits`: `main..<branch>`, newest first; `message` is the reason.
 - Colors: api `#e5484d`, web `#3e63dd`, db `#f5b400`.
-- Optional, additive: top-level `leases: [{file, agent, expires_at}]`. `claims` stays the list of building ids that hold at least one lease of that agent.
+- Evidence panel fields, all additive: top-level `leases: [{file, agent, expires_at, waiters: [agent]}]` (`waiters` is the wait queue, oldest first); `at` (ISO time) and `task` on each commit; `expires_at` on each approval. `claims` stays the list of building ids that hold at least one lease of that agent.
 
 ## 6. Actions (web -> server)
 The server must send CORS headers (allow all origins): the web app runs on another port.
 - `POST /undo/{agent}`: `git reset --hard main` in that worktree, release its claims, broadcast `undo` then `state`. In that `state`, the agent's `building` is `"bullrunner"` (the Bull walks to the hub).
 - `POST /merge/{agent}`: merge the branch into main, broadcast `merge` then `state`. In that `state`, the agent's `building` is `"bullrunner"` and `status` is `"done"`.
 - `POST /approve/{id}` body `{"decision": "allow" | "deny"}`: resolve a pending approval, answer the held `/checkout`, broadcast `approved` or `denied`, then `state`. No answer in 60 s = `denied` with text `"timeout"`.
+- `GET /diff?agent=<agent>&file=<path>` -> `{"diff": str}`: `git diff main...<branch> -- <path>`. `file` may be a folder (for example `api/`). Feeds the building click.
 - `GET /history?file=<path>`: commits that touched the file, newest first: `[{sha, agent, task, message, at}]`.
 - `GET /replay`: re-broadcast `events.log` in order. Every replayed envelope carries `"replay": true` so the web can label it.
 
@@ -117,7 +119,7 @@ Runs Claude Code through the `claude` CLI on the user's subscription. No API key
 
 ## 7. Jetson: `{JETSON_URL}` (port 8700), policy and local model only
 `JETSON_URL=http://192.168.55.1:8700` (USB). Fallback `http://dev.local:8700`. No lease state lives here.
-- `POST /check` body `{"agent": str, "tool_name": str, "file": str?, "command": str?}` -> `{"decision": "allow" | "ask" | "deny", "reason": str, "rule": str}`. Rules run first, with no model call: `db/**` = `ask`. `rule` names the rule that matched, or `"default"`.
+- `POST /check` body `{"agent": str, "tool_name": str, "file": str?, "command": str?}` -> `{"decision": "allow" | "ask" | "deny", "reason": str, "rule": str, "model": str}`. `model` is `"rules"` when no model ran. Rules run first, with no model call: `db/**` = `ask`. `rule` names the rule that matched, or `"default"`.
 - `POST /commit_msg` body `{"diff": str, "agent": str?}` -> `{"message": str}`. One imperative line, max 72 chars.
 - `POST /summarize` body `{"agent": str, "branch": str, "diff": str, "commits": [str]}` -> `{"intent": str}`. One or two sentences on what the branch set out to do.
 - `POST /ask` body `{"question": str, "context": str?}` -> `{"answer": str}`. Max 2 sentences. `context` is free text (state, recent events).
