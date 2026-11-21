@@ -1142,7 +1142,7 @@ function SideColumn() {
 }
 
 // ?fake&autoplay: plays the fake story on a loop for the table. Manual clicks pause it for 10 s; Restart jumps to beat 1.
-const BEAT_MS = 4500;
+const BEAT_MS = 3000;
 const PAUSE_MS = 10000;
 
 function Autoplay() {
