@@ -342,6 +342,15 @@ class GitopsTests(unittest.TestCase):
     def test_log_of_empty_range_is_empty(self):
         self.assertEqual(asyncio.run(gitops.log(self.repo, "main..main")), [])
 
+    def test_touches_is_per_file_and_per_direction(self):
+        wt = self.wt["web"]
+        (wt / "web" / "touch.ts").write_text("1\n")
+        asyncio.run(gitops.stage(wt, "web/touch.ts"))
+        asyncio.run(gitops.commit(wt, "web/touch.ts", "msg", "web", "t"))
+        self.assertTrue(asyncio.run(gitops.touches(self.repo, "main", "agent/web", "web/touch.ts")))
+        self.assertFalse(asyncio.run(gitops.touches(self.repo, "main", "agent/web", "web/README.md")))
+        self.assertFalse(asyncio.run(gitops.touches(self.repo, "agent/web", "main", "web/touch.ts")))  # main did not
+
     def test_merge_refuses_when_main_is_not_checked_out(self):
         with self.assertRaises(gitops.GitError):
             asyncio.run(gitops.merge(self.wt["api"], "main", "agent/web", "msg"))

@@ -35,6 +35,8 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8600
 - `POST /undo/{agent}` (`git reset --hard main` in its worktree), `POST /merge/{agent}` (`--no-ff` merge with the Jetson `/summarize` intent; a conflict aborts and returns 409), `POST /approve/{id}` body `{"decision": "allow" | "deny", "reason"?: str}`. An optional `reason` on deny is passed to the agent ("add a migration instead").
 
 Behaviour worth knowing:
+- **Merge guard** (`BULLPEN_BLOCK_UNMERGED`, on by default): when a file's lease is free, the server also refuses it if another agent's unmerged branch already changed it (`wait`). With leases, no two branches change the same file before one is merged, so merges never conflict on a file.
+- **Branches stay current**: after every merge the server brings `main` into each agent's branch (a `sync` event), so an agent that was waiting on a file gets the new version on its next try and keeps all its own work. If an agent still has a stale copy when it asks, the server updates it then. It never touches uncommitted work and aborts cleanly on a conflict; only then is the edit denied.
 - One git write lock per worktree, so commits never collide on `index.lock`. The hook gets its reply at once; commits run in the background.
 - A human "allow" holds for that agent and file until the agent is undone, so its retries go straight through.
 - Jetson `/scan` or `/commit_msg` down: the commit still happens, with the message `Edit <file>`. Only `/check` fails closed.

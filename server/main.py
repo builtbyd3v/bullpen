@@ -11,8 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import gitops
 import jetson
-from config import (APPROVAL_TIMEOUT, COLORS, EDIT_TOOLS, EVENTS_LOG, EXTRA_COLORS, HUB, JETSON_URL,
-                    MAIN, RELEASE_ON_COMMIT, REPO)
+from config import (APPROVAL_TIMEOUT, BLOCK_UNMERGED, COLORS, EDIT_TOOLS, EVENTS_LOG, EXTRA_COLORS, HUB,
+                    JETSON_URL, MAIN, RELEASE_ON_COMMIT, REPO)
 from gitops import GitError
 from referee import Referee, building_for, iso
 
@@ -92,10 +92,56 @@ def repo_file(body: dict, worktree: Path | None) -> str | None:
         return None
 
 
-def reply(decision: str, reason: str = "", file: str | None = None, lease=None) -> dict:
+def reply(decision: str, reason: str = "", file: str | None = None, lease=None, holder: str | None = None) -> dict:
     return {"decision": decision, "reason": reason, "file": file,
-            "holder": lease.agent if lease else None,
+            "holder": lease.agent if lease else holder,
             "expires_at": iso(lease.expires) if lease else None}
+
+
+async def sync_agent(agent: str, worktree: Path, why: str) -> bool:
+    """Bring main into one agent's branch so its copies are current. True if it is now up to date.
+
+    Skips (False) when the worktree has uncommitted changes or the update would conflict; the branch
+    is then left untouched. With the merge guard on, branches never share a changed file, so the
+    update is normally conflict-free.
+    """
+    async with lock_for(worktree):
+        try:
+            if not await gitops.is_clean(worktree):
+                return False
+            sha = await gitops.sync_from_main(worktree, MAIN, f"agent/{agent}")
+        except GitError as e:
+            print(f"[bullpen] sync of {agent} from {MAIN} failed: {e}")
+            return False
+    if sha:
+        await send("sync", {"agent": agent, "sha": sha, "text": why})
+    return True
+
+
+async def merge_guard(agent: str, file: str) -> tuple[str, str | None] | None:
+    """Would editing this file now cause a conflict at merge time?
+
+    ("unmerged", other): another agent's branch changed it and is not merged or undone yet.
+    ("stale", None): main changed it after this agent's branch started, so this copy is out of date.
+    None: safe. Git errors count as safe here: the lease and the policy check still apply.
+    """
+    try:
+        trees = await gitops.worktrees(REPO)
+    except (GitError, OSError):
+        return None
+    others = sorted(a for a in trees if a != agent)
+    found = await asyncio.gather(*(gitops.touches(REPO, MAIN, f"agent/{a}", file) for a in others),
+                                 return_exceptions=True)
+    for other, changed in zip(others, found):
+        if changed is True:
+            return "unmerged", other
+    if agent in trees:
+        try:
+            if await gitops.touches(REPO, f"agent/{agent}", MAIN, file):
+                return "stale", None
+        except GitError:
+            pass
+    return None
 
 
 # ---- /state (events.md section 5) ----
@@ -246,8 +292,30 @@ async def run_checkout(body: dict) -> dict:
     if not file:  # Bash, or a path outside the worktree: policy only, no lease
         return reply("allow")
 
-    granted, lease = ref.claim(file, agent)
     building = building_for(file)
+    current = ref.leases.get(file)
+    lease_free = current is None or current.expires <= time.time()
+    if BLOCK_UNMERGED and lease_free:  # a held lease is answered by the lease below
+        blocked = await merge_guard(agent, file)
+        if blocked and blocked[0] == "stale" and worktree is not None:
+            # Backup for the update after merge: refresh this agent's branch now, then check again.
+            if await sync_agent(agent, worktree, "stale"):
+                await push_state()
+                blocked = await merge_guard(agent, file)
+        if blocked and blocked[0] == "unmerged":
+            other = blocked[1]
+            ref.waiters.setdefault(file, {}).setdefault(agent, time.time())  # shows as waiting
+            await send("claim_wait", {"agent": agent, "file": file, "building": building, "holder": other})
+            await push_state()
+            return reply("wait", f"{file} has unmerged changes on agent/{other}. Two branches must not change "
+                                 f"the same file. Work on something else and retry after {other} is merged "
+                                 "or undone.", file, holder=other)
+        if blocked:
+            return reply("deny", f"{file} changed on {MAIN} after your branch started, and your branch could not "
+                                 f"be updated from {MAIN} automatically (uncommitted changes or a conflict). Work "
+                                 "on other files and retry; a human may need to resolve it.", file)
+
+    granted, lease = ref.claim(file, agent)
     if granted:
         ref.agent(agent).done = False
         await send("claim_granted", {"agent": agent, "file": file, "building": building,
@@ -374,8 +442,14 @@ async def merge(agent: str):
     info = ref.agent(agent)
     info.building, info.done = HUB, True
     await send("merge", {"agent": agent, "sha": sha, "intent": intent})
+    # Keep every branch current, so agents waiting on this agent's files get the new version, not a stale copy.
+    try:
+        trees = await gitops.worktrees(REPO)
+    except (GitError, OSError):
+        trees = {}  # the merge already succeeded; a failed update is retried at the agent's next checkout
+    synced = [a for a, path in sorted(trees.items()) if await sync_agent(a, path, f"merge {agent}")]
     await push_state()
-    return {"ok": True, "sha": sha, "intent": intent}
+    return {"ok": True, "sha": sha, "intent": intent, "synced": sorted(synced)}
 
 
 @app.post("/approve/{approval_id}")

@@ -29,14 +29,15 @@ Response:
 | decision | meaning | what the hook does |
 |---|---|---|
 | `allow` | policy passed and this agent holds the lease | allow |
-| `wait` | another agent holds the lease (`holder`, `expires_at`) | deny with the reason, so the agent works elsewhere and retries |
+| `wait` | another agent holds the lease (`holder`, `expires_at`), or another agent's unmerged branch already changed the file (`holder`, `expires_at: null`) | deny with the reason, so the agent works elsewhere and retries |
 | `ask` | a human must approve and has not answered yet | deny with reason "approval pending" (see below) |
-| `deny` | policy said no, a human said no, or the approval timed out | deny with the reason |
+| `deny` | policy said no, a human said no, the approval timed out, or the agent's copy of the file is stale and its branch could not be updated from `main` automatically | deny with the reason |
 
 Server steps, in order:
 1. `POST {JETSON_URL}/check` (section 7) -> `allow` | `ask` | `deny`. Jetson down or bad reply -> `deny`, reason `"Bullpen policy offline"`.
 2. `ask`: create an approval, broadcast `approval_needed`, and hold this HTTP request open until a human answers through `POST /approve/{id}` or 60 s pass. Timeout = `deny`. The server normally answers the hook with the final `allow` or `deny`; it returns a literal `ask` only if it cannot hold the request.
-3. Lease `{file, agent, expires_at}`: free, expired, or held by this agent -> grant or renew for 90 s (`claim_granted`). Held by another agent -> `wait` (`claim_wait`).
+3. Merge guard, only when the lease is free or expired: another agent's branch changed the file and is not merged or undone (`git diff main...agent/<other> -- <file>`) -> `wait` with `holder` = that agent (`claim_wait`). `main` changed the file after this agent's branch started (`git diff agent/<agent>...main -- <file>`) -> the server first brings `main` into the agent's branch (`sync`) and checks again; only if that update is impossible (uncommitted changes or a conflict) -> `deny`. So no two branches change the same file before one is merged. `BULLPEN_BLOCK_UNMERGED=0` turns it off.
+4. Lease `{file, agent, expires_at}`: free, expired, or held by this agent -> grant or renew for 90 s (`claim_granted`). Held by another agent -> `wait` (`claim_wait`).
 
 Leases: TTL 90 s. Renewed by each `/checkout` and each `PostToolUse` from the holder for that file. Released on commit, on `Stop`, on undo, and on expiry (`claim_released`). The Jetson holds no lease state. The demo runs the server with `BULLPEN_RELEASE_ON_COMMIT=0`: a lease is then kept past its commit and released only on `Stop`, undo or expiry, so a second agent visibly waits.
 
@@ -71,6 +72,7 @@ Every message is an envelope: `{"type": <type>, "data": <object>}`.
 | `plan` | `{ask, tasks: [{agent, task}]}` | the server got a `Plan` event on `/hook` from the orchestrator |
 | `secret_blocked` | `{agent, file, kind}` | the secret guard stopped a diff |
 | `merge` | `{agent, sha, intent}` | after `POST /merge/{agent}`; `intent` is the Jetson `/summarize` text, or `""` |
+| `sync` | `{agent, sha, text}` | the server brought `main` into that agent's branch; `text` is `"merge <agent>"` (right after a merge) or `"stale"` (at a checkout) |
 
 Clients must ignore types they do not know. Server TODO: `server/main.py` still sends bare hook bodies.
 
@@ -100,7 +102,7 @@ Clients must ignore types they do not know. Server TODO: `server/main.py` still 
 ## 6. Actions (web -> server)
 The server must send CORS headers (allow all origins): the web app runs on another port.
 - `POST /undo/{agent}`: `git reset --hard main` in that worktree, release its claims, broadcast `undo` then `state`. In that `state`, the agent's `building` is `"bullrunner"` (the Bull walks to the hub).
-- `POST /merge/{agent}`: merge the branch into main, broadcast `merge` then `state`. In that `state`, the agent's `building` is `"bullrunner"` and `status` is `"done"`.
+- `POST /merge/{agent}`: merge the branch into main, broadcast `merge`, bring `main` into every agent branch whose worktree has no uncommitted changes (`sync` for each one that changed; a fast-forward when the branch has no commits of its own, otherwise a merge commit `Sync main into agent/<name>`), then `state`. In that `state`, the agent's `building` is `"bullrunner"` and `status` is `"done"`. The reply adds `synced: [agent]`.
 - `POST /approve/{id}` body `{"decision": "allow" | "deny"}`: resolve a pending approval, answer the held `/checkout`, broadcast `approved` or `denied`, then `state`. No answer in 60 s = `denied` with text `"timeout"`.
 - `GET /diff?agent=<agent>&file=<path>` -> `{"diff": str}`: `git diff main...<branch> -- <path>`. `file` may be a folder (for example `api/`). Feeds the building click.
 - `GET /history?file=<path>`: commits that touched the file, newest first: `[{sha, agent, task, message, at}]`.

@@ -124,9 +124,15 @@ class KeepLeaseAfterCommitTests(ServerCase):
 
     def test_lease_survives_the_commit_until_stop(self):
         self.edit_and_commit("api", "api/kept.py", "x = 1\n")
-        self.assertEqual(self.checkout("web", "api/kept.py")["decision"], "wait")
+        held = self.checkout("web", "api/kept.py")
+        self.assertEqual(held["decision"], "wait")
+        self.assertIn("leased by agent api", held["reason"])
         self.hook("api", "Stop")
-        self.assertEqual(self.checkout("web", "api/kept.py")["decision"], "allow")
+        self.assertIsNone(self.lease("api/kept.py"))
+        # The lease is gone, but api's change is still unmerged, so the merge guard keeps web out.
+        guarded = self.checkout("web", "api/kept.py")
+        self.assertEqual(guarded["decision"], "wait")
+        self.assertIn("unmerged changes on agent/api", guarded["reason"])
 
 
 class PolicyTests(ServerCase):
@@ -290,7 +296,7 @@ class CommitTests(ServerCase):
         self.edit_and_commit("api", "api/release.py", "1\n")
         self.events.wait("claim_released", lambda d: d["file"] == "api/release.py" and d["text"] == "commit", since=mark)
         self.assertIsNone(self.lease("api/release.py"))
-        self.assertEqual(self.checkout("web", "api/release.py")["decision"], "allow")
+        self.assertEqual(self.checkout("api", "api/release.py")["decision"], "allow")  # its own file again
 
     def test_commit_message_falls_back_when_the_jetson_is_down(self):
         self.jetson.modes["/commit_msg"] = "down"
@@ -399,19 +405,6 @@ class UndoMergeTests(ServerCase):
     def test_merge_with_nothing_to_merge_is_409(self):
         self.assertEqual(self.server.call("POST", "/merge/db")[0], 409)
 
-    def test_merge_conflict_aborts_cleanly(self):
-        self.edit_and_commit("api", "shared/conflict.txt", "api version\n")
-        self.edit_and_commit("web", "shared/conflict.txt", "web version\n")  # lease was released on commit
-        self.assertEqual(self.server.call("POST", "/merge/api")[0], 200)
-        main_before = git(self.repo, "rev-parse", "main")
-        status, reply = self.server.call("POST", "/merge/web")
-        self.assertEqual(status, 409)
-        self.assertIn("aborted", reply["detail"])
-        self.assertEqual(git(self.repo, "rev-parse", "main"), main_before)
-        self.assertEqual(git(self.repo, "status", "--porcelain").strip(), "")
-        self.assertFalse((self.repo / ".git" / "MERGE_HEAD").exists())
-        self.server.call("POST", "/undo/web")
-
     def test_merge_without_summary_still_merges(self):
         self.jetson.modes["/summarize"] = "down"
         self.edit_and_commit("db", "docs/nosummary.md", "1\n")
@@ -441,6 +434,122 @@ class UndoMergeTests(ServerCase):
         self.assertEqual(self.server.call("POST", "/merge/ghost")[0], 404)
 
 
+class MergeGuardTests(ServerCase):
+    """No two branches change the same file before one of them is merged."""
+
+    def test_unmerged_change_makes_other_agents_wait(self):
+        self.edit_and_commit("api", "shared/g1.ts", "api\n")  # lease released on commit, change still unmerged
+        mark = self.events.mark()
+        reply = self.checkout("web", "shared/g1.ts")
+        self.assertEqual((reply["decision"], reply["holder"]), ("wait", "api"))
+        self.assertIn("unmerged changes on agent/api", reply["reason"])
+        self.assertEqual(self.events.wait("claim_wait", lambda d: d["agent"] == "web", since=mark)["data"]["holder"], "api")
+        self.assertEqual(self.worktree("web")["status"], "waiting")
+        self.assertIsNone(self.lease("shared/g1.ts"))  # nobody got a lease
+        self.assertEqual(self.checkout("api", "shared/g1.ts")["decision"], "allow")  # api keeps working on it
+
+    def test_file_is_free_again_after_the_other_branch_is_undone(self):
+        self.edit_and_commit("api", "shared/g2.ts", "api\n")
+        self.assertEqual(self.checkout("web", "shared/g2.ts")["decision"], "wait")
+        self.server.call("POST", "/undo/api")
+        self.assertEqual(self.checkout("web", "shared/g2.ts")["decision"], "allow")
+
+    def test_after_a_merge_other_branches_are_updated_keep_their_work_and_merge_cleanly(self):
+        self.edit_and_commit("api", "shared/g3.ts", "api version\n")
+        self.edit_and_commit("web", "web/w3.ts", "web's own work\n")
+        self.assertEqual(self.checkout("web", "shared/g3.ts")["decision"], "wait")  # unmerged on api
+        mark = self.events.mark()
+        status, reply = self.server.call("POST", "/merge/api")
+        self.assertEqual(status, 200, reply)
+        self.assertIn("web", reply["synced"])
+        self.events.wait("sync", lambda d: d["agent"] == "web" and d["text"] == "merge api", since=mark)
+        # web now has api's version, and still has its own work: nothing was thrown away.
+        self.assertEqual((self.wt["web"] / "shared/g3.ts").read_text(), "api version\n")
+        self.assertEqual((self.wt["web"] / "web/w3.ts").read_text(), "web's own work\n")
+        self.assertTrue(self.worktree("web")["commits"][0]["message"].startswith("Sync main into agent/web"))
+        # db had no commits of its own: a plain fast-forward to main, no extra commit.
+        self.assertEqual(git(self.wt["db"], "rev-parse", "HEAD"), git(self.repo, "rev-parse", "main"))
+        # web's retry now simply succeeds, and its later merge has no conflict.
+        self.edit_and_commit("web", "shared/g3.ts", "api version\nweb addition\n")
+        status, reply = self.server.call("POST", "/merge/web")
+        self.assertEqual(status, 200, reply)
+        self.assertEqual(git(self.repo, "show", "main:shared/g3.ts"), "api version\nweb addition\n")
+        self.assertEqual(git(self.repo, "show", "main:web/w3.ts"), "web's own work\n")
+
+    def test_branch_with_unsaved_changes_is_updated_at_its_next_checkout(self):
+        self.edit_and_commit("api", "shared/g7.ts", "api\n")
+        (self.wt["web"] / "web" / "README.md").write_text("edit in progress\n")  # not committed yet
+        status, reply = self.server.call("POST", "/merge/api")
+        self.assertEqual(status, 200)
+        self.assertNotIn("web", reply["synced"])  # skipped: never touch uncommitted work
+        denied = self.checkout("web", "shared/g7.ts")
+        self.assertEqual(denied["decision"], "deny")
+        self.assertIn("could not be updated", denied["reason"])
+        git(self.wt["web"], "checkout", "--", "web/README.md")  # the edit is committed or dropped
+        mark = self.events.mark()
+        self.assertEqual(self.checkout("web", "shared/g7.ts")["decision"], "allow")
+        self.events.wait("sync", lambda d: d["agent"] == "web" and d["text"] == "stale", since=mark)
+        self.assertEqual((self.wt["web"] / "shared/g7.ts").read_text(), "api\n")
+
+    def test_a_conflicting_update_is_aborted_and_the_branch_is_untouched(self):
+        self.edit_and_commit("api", "shared/g8.ts", "api version\n")
+        # web changes the same file behind Bullpen's back (as a shell command could), so they really conflict.
+        (self.wt["web"] / "shared" / "g8.ts").write_text("web version\n")
+        git(self.wt["web"], "add", "shared/g8.ts")
+        git(self.wt["web"], "commit", "-q", "-m", "edit outside Bullpen")
+        web_before = git(self.wt["web"], "rev-parse", "HEAD")
+        status, reply = self.server.call("POST", "/merge/api")
+        self.assertEqual(status, 200)  # api's merge itself is fine
+        self.assertNotIn("web", reply["synced"])
+        self.assertEqual(git(self.wt["web"], "rev-parse", "HEAD"), web_before)
+        self.assertEqual(git(self.wt["web"], "status", "--porcelain").strip(), "")  # no half-done merge
+        self.assertEqual((self.wt["web"] / "shared/g8.ts").read_text(), "web version\n")
+        self.assertEqual(self.checkout("web", "shared/g8.ts")["decision"], "deny")
+        self.server.call("POST", "/undo/web")  # clean up for the other tests in this class
+
+    def test_unrelated_files_are_not_blocked(self):
+        self.edit_and_commit("api", "shared/g4.ts", "api\n")
+        self.assertEqual(self.checkout("web", "shared/g4-other.ts")["decision"], "allow")
+        self.assertEqual(self.checkout("web", "shared/g4.ts.bak")["decision"], "allow")  # not a prefix match
+
+    def test_paths_are_literal_not_globs(self):
+        self.edit_and_commit("api", "shared/x.ts", "api\n")
+        # "[x].ts" as a git glob would match x.ts; it is a different file and must be allowed.
+        self.assertEqual(self.checkout("web", "shared/[x].ts")["decision"], "allow")
+
+    def test_a_held_lease_still_answers_first(self):
+        self.checkout("api", "shared/g5.ts")  # lease held, nothing committed yet
+        reply = self.checkout("web", "shared/g5.ts")
+        self.assertEqual((reply["decision"], reply["holder"]), ("wait", "api"))
+        self.assertIn("leased by agent api", reply["reason"])
+        self.assertTrue(reply["expires_at"])
+
+    def test_old_hook_path_maps_the_guard_wait_to_deny(self):
+        self.edit_and_commit("db", "docs/g6.md", "db\n")
+        body = self.body("web", "docs/g6.md", event="PreToolUse")
+        status, reply = self.server.call("POST", "/hook", body)
+        self.assertEqual((status, reply["decision"]), (200, "deny"))
+        self.assertIn("unmerged changes on agent/db", reply["reason"])
+
+
+class GuardOffTests(ServerCase):
+    """BULLPEN_BLOCK_UNMERGED=0: the old behaviour, where a conflict can only show up at merge time."""
+
+    env = {"BULLPEN_BLOCK_UNMERGED": "0"}
+
+    def test_merge_conflict_aborts_cleanly(self):
+        self.edit_and_commit("api", "shared/conflict.txt", "api version\n")
+        self.edit_and_commit("web", "shared/conflict.txt", "web version\n")  # allowed with the guard off
+        self.assertEqual(self.server.call("POST", "/merge/api")[0], 200)
+        main_before = git(self.repo, "rev-parse", "main")
+        status, reply = self.server.call("POST", "/merge/web")
+        self.assertEqual(status, 409)
+        self.assertIn("aborted", reply["detail"])
+        self.assertEqual(git(self.repo, "rev-parse", "main"), main_before)
+        self.assertEqual(git(self.repo, "status", "--porcelain").strip(), "")
+        self.assertFalse((self.repo / ".git" / "MERGE_HEAD").exists())
+
+
 class ReadTests(ServerCase):
     agents = ("api", "web", "db", "qa")
 
@@ -453,6 +562,7 @@ class ReadTests(ServerCase):
 
     def test_history_spans_agents_newest_first(self):
         self.edit_and_commit("api", "shared/hist.txt", "a\n")
+        self.assertEqual(self.server.call("POST", "/merge/api")[0], 200)  # also brings main into web's branch
         time.sleep(1.1)  # git orders by commit time in whole seconds
         self.edit_and_commit("web", "shared/hist.txt", "b\n")
         history = self.server.call("GET", "/history?file=shared/hist.txt")[1]
