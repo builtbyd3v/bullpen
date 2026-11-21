@@ -556,10 +556,12 @@ function CommitTimeline() {
             <span className={`rounded px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[w.status]}`}>{w.status}</span>
             <span className="ml-auto font-mono text-xs text-white/60">+{w.ahead}</span>
           </div>
-          <details className="mt-1 text-sm text-white/90">
-            <summary className="cursor-pointer truncate">{w.task}</summary>
-            <p className="mt-1 text-white/75">{w.task}</p>
-          </details>
+          {w.task && (
+            <details className="mt-1 text-sm text-white/90">
+              <summary className="cursor-pointer truncate">{w.task}</summary>
+              <p className="mt-1 text-white/75">{w.task}</p>
+            </details>
+          )}
           <p className="font-mono text-xs text-white/50">{w.branch}</p>
           {w.claims.length > 0 && <p className="mt-0.5 text-xs text-white/65">Claims: {w.claims.map(name).join(", ")}</p>}
 
