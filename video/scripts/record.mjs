@@ -2,6 +2,7 @@
 // Records the web app in Chrome at 1920x1080 and writes a sidecar log next to the take.
 // Usage: node scripts/record.mjs fake    scripted demo in ?fake mode, no server needed
 //        node scripts/record.mjs live    real mode: types one ask and drives the demo beats on the running stack
+//        node scripts/record.mjs conflict    the cross-PR conflict view, from ?fake data, no server needed
 //        UNPLUG=1 node scripts/record.mjs live    the same, then waits 14 s for a person to pull the Jetson's cable
 // Output: raw/take-<mode>.webm, and raw/take-<mode>.json with
 //   marks: [{ t, label }]   beat times, set by this script
@@ -28,20 +29,21 @@ const browser = await chromium.launch({ channel: "chrome", headless: false });
 const context = await browser.newContext({ viewport: size, deviceScaleFactor: 1, recordVideo: { dir: tmp, size } });
 // Log each oscillator the app starts: one oscillator is one note of a sound effect.
 await context.addInitScript(() => {
-  window.__notes = [];
   const start = OscillatorNode.prototype.start;
   OscillatorNode.prototype.start = function (when = 0) {
     const now = this.context.currentTime;
     this.__note = { at: Date.now() + Math.max(0, when - now) * 1000, when: Math.max(when, now), freq: this.frequency.value, wave: this.type };
-    window.__notes.push(this.__note);
     return start.call(this, when);
   };
   const stop = OscillatorNode.prototype.stop;
   OscillatorNode.prototype.stop = function (when = 0) {
-    if (this.__note) this.__note.len = Math.max(0.02, when - this.__note.when);
+    if (this.__note) window.__note({ at: this.__note.at, freq: this.__note.freq, wave: this.__note.wave, len: Math.max(0.02, when - this.__note.when) });
     return stop.call(this, when);
   };
 });
+// Notes are sent to this process as they play, so a reload or a route change cannot lose them.
+const played = [];
+await context.exposeFunction("__note", (n) => played.push(n));
 const page = await context.newPage();
 const opened = Date.now();
 const now = () => (Date.now() - opened) / 1000;
@@ -80,11 +82,19 @@ const click = async (locator, label) => {
 
 // The app lives at /campus once the landing page takes over /. Use it when it exists.
 const app = (await fetch(`${url}/campus`).then((r) => r.ok, () => false)) ? `${url}/campus` : url;
-await page.goto(mode === "fake" ? `${app}?fake` : app, { waitUntil: "load" });
+await page.goto(mode === "live" ? app : `${app}?fake`, { waitUntil: "load" });
 await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
 await pause(2);
 
-if (mode === "fake") {
+if (mode === "conflict") {
+  // The cross-PR conflict view, from fake data: on the real server the merge guard keeps two agent
+  // branches from changing the same file, so a live run has no overlap to show.
+  await page.goto(`${url}/prs?fake`, { waitUntil: "load" });
+  await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+  await pause(1);
+  mark("conflict");
+  await pause(7);
+} else if (mode === "fake") {
   await click(page.getByRole("button", { name: "Play demo" }), "play");
   await pause(23);
 } else {
@@ -114,6 +124,8 @@ if (mode === "fake") {
   await page.getByLabel("Ask why").pressSequentially("Why is db blocked?", { delay: 30 });
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await pause(14);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  await pause(1);
 
   // 5. Undo web, once both agents have commits to show.
   await until(() => seen("commit", "api") && seen("commit", "web"), 90);
@@ -122,7 +134,9 @@ if (mode === "fake") {
 
   // 6. Merge api: inside its building first, then back out and merge.
   mark("interior");
-  await page.mouse.click(Number(process.env.BUILDING_X ?? 975), Number(process.env.BUILDING_Y ?? 330));
+  // The campus is a canvas, so the building is clicked by position. Set BUILDING_X and BUILDING_Y (pixels in the
+  // 1920x1080 page) to the middle of api's building, read from a screenshot of the current layout.
+  await page.mouse.click(Number(process.env.BUILDING_X ?? 257), Number(process.env.BUILDING_Y ?? 605));
   await pause(7);
   await click(page.getByRole("button", { name: /back to campus/i }), "back");
   await pause(1.5);
@@ -130,12 +144,11 @@ if (mode === "fake") {
   await pause(9);
 
   // 7. Evidence panels for the technical section.
-  mark("locks");
-  await page.getByRole("heading", { name: /locks/i }).scrollIntoViewIfNeeded();
-  await pause(7);
+  // The Referee panel sits below the fold, so the page scrolls down to it. (File locks are cut from
+  // the collision earlier in the take: by now no file is locked.)
   mark("referee");
-  await page.getByRole("heading", { name: /referee/i }).scrollIntoViewIfNeeded();
-  await pause(9);
+  await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }));
+  await pause(10);
   // 8. Optional: UNPLUG=1 waits for a person to pull the Jetson's cable, with the Referee panel and the health strip on screen.
   if (process.env.UNPLUG) {
     mark("unplug");
@@ -147,7 +160,7 @@ if (mode === "fake") {
   mark("end");
 }
 
-const notes = await page.evaluate((o) => window.__notes.map((n) => ({ t: (n.at - o) / 1000, freq: n.freq, len: n.len ?? 0.1, wave: n.wave })), opened);
+const notes = played.map((n) => ({ t: (n.at - opened) / 1000, freq: n.freq, len: n.len, wave: n.wave }));
 const video = page.video();
 ws?.close();
 await context.close();
