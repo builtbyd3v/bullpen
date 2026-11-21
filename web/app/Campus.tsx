@@ -20,6 +20,7 @@ export default function Campus({ store }: CampusProps) {
       width: campus.width,
       height: campus.height,
       backgroundColor: "#0d1b14",
+      pixelArt: true,
       scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
       scene: [],
     });

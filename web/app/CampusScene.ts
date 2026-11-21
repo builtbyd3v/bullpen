@@ -27,8 +27,7 @@ const hitsBuilding = (b: Building, x: number, y: number) =>
 const bullY = (b: Building) => {
   const cx = b.x + b.w / 2;
   if (!hitsBuilding(b, cx, b.y + b.h + 44)) return b.y + b.h + 44;
-  if (b.y > 56 && !hitsBuilding(b, cx, b.y - 30)) return b.y - 30;
-  if (b.y >= 50) return b.y - 24;
+  if (b.y > 80 && !hitsBuilding(b, cx, b.y - 52)) return b.y - 52;
   return b.y + b.h - 20;
 };
 // The door sits at the middle of the building's bottom edge. The line forms to its right, past the agent slots.
@@ -85,12 +84,17 @@ export class CampusScene extends Phaser.Scene {
     super("campus");
   }
 
+  preload() {
+    this.load.image("ground", "/sprites/campus-ground.png");
+    for (const id of [...buildings.map((b) => b.id), "mlk-plaza"]) this.load.image(id, `/sprites/${id}.png`);
+  }
+
   init(data: { store: Store }) {
     this.store = data.store;
   }
 
   create() {
-    drawCampusGround(this, campus.width, campus.height, buildings);
+    drawCampusGround(this, campus.width, campus.height);
     for (const b of buildings) {
       makeBuilding(
         this,
