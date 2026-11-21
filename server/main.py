@@ -429,7 +429,7 @@ async def merge(agent: str):
     worktree = await agent_worktree(agent)
     branch = f"agent/{agent}"
     async with lock_for(REPO), lock_for(worktree):
-        _, ahead, commits = await gitops.branch_summary(REPO, MAIN, branch)
+        changed, ahead, commits = await gitops.branch_summary(REPO, MAIN, branch)
         if ahead == 0:
             raise HTTPException(409, f"{branch} has nothing to merge")
         branch_diff = await gitops.diff(REPO, MAIN, branch)
@@ -448,6 +448,7 @@ async def merge(agent: str):
     except (GitError, OSError):
         trees = {}  # the merge already succeeded; a failed update is retried at the agent's next checkout
     synced = [a for a, path in sorted(trees.items()) if await sync_agent(a, path, f"merge {agent}")]
+    ref.drop_waiters(changed)  # agents that waited on this branch's files can go now; no stale "waiting"
     await push_state()
     return {"ok": True, "sha": sha, "intent": intent, "synced": sorted(synced)}
 
