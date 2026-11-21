@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BULLPEN — USF Pixel Campus Version Control for AI Agents</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ====================================================================
+         TOP PIXEL HEADER (Official USF Green #006747 & Gold #CFC493)
+         ==================================================================== -->
+    <header class="top-bar">
+      <div class="brand-group">
+        <div class="brand-emblem" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 12 12" shape-rendering="crispEdges">
+            <rect x="0" y="1" width="2" height="2" fill="#EDEBD1"/>
+            <rect x="1" y="3" width="2" height="1" fill="#CFC493"/>
+            <rect x="10" y="1" width="2" height="2" fill="#EDEBD1"/>
+            <rect x="9" y="3" width="2" height="1" fill="#CFC493"/>
+            <rect x="2" y="3" width="8" height="6" fill="#006747"/>
+            <rect x="3" y="4" width="6" height="4" fill="#CFC493"/>
+            <rect x="3" y="5" width="2" height="1" fill="#0D231B"/>
+            <rect x="7" y="5" width="2" height="1" fill="#0D231B"/>
+            <rect x="4" y="7" width="4" height="3" fill="#EDEBD1"/>
+            <rect x="5" y="8" width="1" height="1" fill="#0D231B"/>
+            <rect x="6" y="8" width="1" height="1" fill="#0D231B"/>
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <h1>BULLPEN</h1>
+          <div class="brand-sub">
+            <span>ROOT: <strong id="headerRootFolder" class="root-chip">bullpen/</strong></span>
+            <span id="headerCropChip" class="crop-chip">8 FOLDERS • CENTRAL + ATHLETICS CROP</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Mascot Color Legend -->
+      <div class="model-legend" id="modelLegend" aria-label="Agent Mascot Colors"></div>
+
+      <!-- View Switcher, Repo Analyzer & Options Menu Trigger -->
+      <div class="header-actions">
+        <div class="view-toggle-group" role="group" aria-label="Workspace Representation">
+          <button id="btnViewPixel" class="view-toggle-btn active" type="button">🗺 PIXEL CAMPUS</button>
+          <button id="btnViewTrad" class="view-toggle-btn" type="button">📋 TRADITIONAL</button>
+        </div>
+        <button id="btnOpenAnalyzer" class="pixel-btn sm" type="button">📂 ANALYZE REPO</button>
+        <button id="btnOpenOptions" class="pixel-btn primary sm" type="button">⚙ OPTIONS</button>
+      </div>
+    </header>
+
+    <!-- ====================================================================
+         MAIN WORKSPACE (Pixel Art Campus / Traditional View + The Oracle)
+         ==================================================================== -->
+    <main class="workspace">
+      <div class="stage-wrap">
+        <!-- Ribbon-Cutting & Kick-Out Announcement Banner -->
+        <div id="ribbonBanner" class="ribbon-banner hidden" role="status" aria-live="polite"></div>
+
+        <!-- View A: Dynamically Cropped Pixel Art USF Tampa Campus Map -->
+        <section id="mapStage" class="map-stage hidden" aria-label="USF Tampa Campus Pixel Art Map">
+          <div class="campus-frame">
+            <canvas id="campusCanvas" width="500" height="312"></canvas>
+          </div>
+        </section>
+
+        <!-- View B: Traditional Workflow Representation -->
+        <section id="traditionalView" class="traditional-view hidden" aria-label="Traditional Workflow Representation"></section>
+      </div>
+
+      <!-- Right Docked Panel: THE ORACLE (Live USF Campus Commit & Lease Feed) -->
+      <aside class="oracle-panel" aria-label="The Oracle Activity Feed">
+        <div class="oracle-masthead">
+          <h2>THE ORACLE</h2>
+          <p>LIVE CAMPUS LEASE &amp; COMMIT FEED</p>
+        </div>
+        <div id="oracleList" class="oracle-list"></div>
+      </aside>
+    </main>
+
+    <!-- ====================================================================
+         BOTTOM DESIGN SHOWCASE CONTROLS
+         ==================================================================== -->
+    <footer class="demo-bar" aria-label="Design Preview Controls">
+      <div class="demo-group">
+        <span class="demo-label">PREVIEW:</span>
+        <button id="btnAutoDemo" class="pixel-btn primary sm" type="button">▶ AUTO DEMO</button>
+        <select id="demoAgentSelect" class="pixel-select" aria-label="Select Agent"></select>
+        <select id="demoBuildingSelect" class="pixel-select" aria-label="Select Campus Building"></select>
+        <button id="btnDispatch" class="pixel-btn sm" type="button">🔨 SEND AGENT</button>
+      </div>
+      <div class="demo-group">
+        <button id="btnTestQueue" class="pixel-btn sm" type="button">⏳ TEST QUEUE</button>
+        <button id="btnTestKickOut" class="pixel-btn danger sm" type="button">🥾 TEST KICK-OUT</button>
+        <button id="btnFinishActive" class="pixel-btn sm" type="button">✂️ CUT RIBBON</button>
+        <button id="btnResetCampus" class="pixel-btn sm" type="button">↺ RESET</button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ======================================================================
+       PRE-MAP REPOSITORY ANALYZER OVERLAY (Shown BEFORE displaying the map!)
+       ====================================================================== -->
+  <div id="repoAnalyzerOverlay" class="analyzer-backdrop" role="dialog" aria-modal="true" aria-labelledby="analyzerTitle">
+    <div class="pixel-modal analyzer-modal">
+      <div class="modal-header">
+        <h2 id="analyzerTitle">🔍 STEP 1 — ANALYZE REPOSITORY BEFORE OPENING MAP</h2>
+      </div>
+      <div class="modal-body">
+        <p class="analyzer-intro">
+          Bullpen counts your repository's top-level folders first, then dynamically crops the
+          <strong>USF Tampa Campus</strong> and adjusts the building count so <strong>every folder is visible</strong>.
+        </p>
+
+        <!-- Local Folder Scanner -->
+        <div class="opt-section analyzer-local-box">
+          <div class="opt-section-head">
+            <span class="opt-section-title">SCAN A LOCAL REPOSITORY FOLDER</span>
+            <input id="localRepoInput" type="file" webkitdirectory directory multiple class="hidden" />
+            <button id="btnPickLocalRepo" class="pixel-btn primary sm" type="button">📁 CHOOSE LOCAL FOLDER</button>
+          </div>
+          <div id="localScanStatus" class="analyzer-scan-note">
+            Pick any repo directory on your computer (ignores .git, node_modules, .venv, dist) — or choose a preset below.
+          </div>
+        </div>
+
+        <!-- Quick Presets to Test Different Folder Counts & Map Crops -->
+        <div class="opt-section">
+          <div class="opt-section-head">
+            <span class="opt-section-title">OR SELECT A REPOSITORY SIZE PRESET</span>
+          </div>
+          <div id="analyzerPresets" class="analyzer-presets-grid"></div>
+        </div>
+
+        <!-- Editable Root & Detected Folders + Live Crop Preview -->
+        <div class="opt-section">
+          <div class="opt-section-head">
+            <span class="opt-section-title">DETECTED FOLDERS &amp; CAMPUS CROP PREVIEW</span>
+            <span id="analyzerCountBadge" class="analyzer-count-badge">8 FOLDERS</span>
+          </div>
+          <div class="analyzer-inputs-grid">
+            <label class="analyzer-field">
+              <span>Root Repo Name:</span>
+              <input id="analyzerRootInput" class="pixel-input" type="text" value="bullpen/" />
+            </label>
+            <label class="analyzer-field analyzer-field-wide">
+              <span>Top-Level Folders (comma-separated, 1–14):</span>
+              <input id="analyzerFoldersInput" class="pixel-input" type="text" value="/server, /web, /campus, /jetson, /shared, /hooks, /scripts, /assets" />
+            </label>
+          </div>
+          <div id="analyzerFolderChips" class="analyzer-folder-chips"></div>
+          <div id="analyzerCropSummary" class="analyzer-crop-summary"></div>
+        </div>
+
+        <!-- Pixel Scan Progress (shown briefly during analysis) -->
+        <div id="analyzerScanBarWrap" class="analyzer-scan-progress hidden">
+          <div id="analyzerScanMsg" class="analyzer-scan-msg">Scanning folder hierarchy...</div>
+          <div class="drawer-progress-track">
+            <div id="analyzerScanFill" class="drawer-progress-bar" style="width:0%;background:#DBE442"></div>
+          </div>
+        </div>
+
+        <button id="btnLaunchCampus" class="pixel-btn primary full analyzer-launch-btn" type="button">
+          🔍 ANALYZE REPO &amp; GENERATE CROPPED USF CAMPUS
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       FLOATING PIXEL HOVER TOOLTIP
+       ====================================================================== -->
+  <div id="mapTooltip" class="map-tooltip hidden" role="tooltip"></div>
+
+  <!-- ======================================================================
+       BUILDING INSPECTOR DRAWER (Click any building to view exact changes)
+       ====================================================================== -->
+  <aside id="buildingDrawer" class="building-drawer hidden" aria-label="Building Changes Inspector">
+    <div class="drawer-header">
+      <h2>📂 FOLDER CHANGE INSPECTOR</h2>
+      <button id="btnCloseDrawer" class="pixel-btn sm" type="button">✕</button>
+    </div>
+    <div id="buildingDrawerBody" class="drawer-body"></div>
+  </aside>
+
+  <!-- ======================================================================
+       OPTIONS MENU MODAL (View Toggle, Time Limit, & Dynamic Folder Mapping)
+       ====================================================================== -->
+  <div id="optionsModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="optionsTitle">
+    <div class="pixel-modal">
+      <div class="modal-header">
+        <h2 id="optionsTitle">⚙ BULLPEN DESIGN OPTIONS</h2>
+        <button id="btnCloseOptions" class="pixel-btn sm" type="button">✕ CLOSE</button>
+      </div>
+      <div class="modal-body">
+        <div class="opt-section">
+          <div class="opt-section-head">
+            <span class="opt-section-title">1. WORKFLOW REPRESENTATION</span>
+          </div>
+          <div class="view-mode-cards">
+            <button id="optModePixel" class="mode-card active" type="button">
+              <div class="mode-card-title">🗺 PIXEL ART USF CAMPUS</div>
+              <div class="mode-card-desc">Dynamically cropped USF Tampa Campus pixel map sized to fit all repository folders.</div>
+            </button>
+            <button id="optModeTrad" class="mode-card" type="button">
+              <div class="mode-card-title">📋 TRADITIONAL WORKFLOW</div>
+              <div class="mode-card-desc">Structured folder tree, live agent swimlanes, queue badges, lease timers, and commit table.</div>
+            </button>
+          </div>
+        </div>
+
+        <div class="opt-section">
+          <div class="opt-section-head">
+            <span class="opt-section-title">2. ROOT FOLDER &amp; AGENT TIME LIMIT</span>
+          </div>
+          <div class="opt-root-row">
+            <label for="optionsRootInput">Root Path:</label>
+            <input id="optionsRootInput" class="pixel-input" type="text" value="bullpen/" />
+            <label for="optionsTimeLimitInput">Time Limit (s):</label>
+            <input id="optionsTimeLimitInput" class="pixel-input opt-time-input" type="number" min="5" max="60" value="15" />
+          </div>
+        </div>
+
+        <div class="opt-section">
+          <div class="opt-section-head">
+            <span class="opt-section-title">3. ACTIVE BUILDINGS &amp; FOLDER MAPPINGS (AUTO-CROPS MAP)</span>
+            <button id="btnResetMappings" class="pixel-btn sm" type="button">↺ RESET</button>
+          </div>
+          <div class="opt-add-row">
+            <input id="optionsAddFolderInput" class="pixel-input" type="text" placeholder="/new-folder (adds a building &amp; expands crop)" />
+            <button id="btnAddFolder" class="pixel-btn primary sm" type="button">+ ADD FOLDER</button>
+          </div>
+          <div id="optionsMappingsList" class="opt-mappings-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clean modular scripts (works seamlessly via file:// or localhost!) -->
+  <script src="js/palette.js"></script>
+  <script src="js/campusData.js"></script>
+  <script src="js/sprites.js"></script>
+  <script src="js/mapRenderer.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/traditionalView.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
