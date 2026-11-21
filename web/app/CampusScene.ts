@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import campus from "../../campus/campus.json" with { type: "json" };
-import { layersByBuilding } from "@/lib/campus.ts";
+import { layersByBuilding, waitQueue } from "@/lib/campus.ts";
 import type { Store, StoreState } from "@/lib/store.ts";
 import type { Building, Fx, Status } from "@/lib/types.ts";
 import { makeBull } from "./bullSprite";
@@ -10,7 +10,8 @@ const byId = new Map(buildings.map((b) => [b.id, b]));
 const bullrunner = byId.get("bullrunner")!;
 
 type Placed = { color: number; x: number; y: number };
-type BullSpec = Placed & { agent: string; status: Status };
+// `wait`: 1-based place in the line at a building door, 0 when not queued.
+type BullSpec = Placed & { agent: string; status: Status; wait: number; door: { x: number; y: number } | null };
 type ScaffoldSpec = { color: number; b: Building; offset: number };
 type ConflictSpec = { colors: number[]; b: Building };
 type Obj = Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Transform & Phaser.GameObjects.Components.AlphaSingle;
@@ -20,6 +21,22 @@ const tint = (hex: string) => Phaser.Display.Color.HexStringToColor(hex).color;
 const slotX = (b: Building, i: number, n: number) => b.x + b.w / 2 + 10 + (i - (n - 1) / 2) * 44;
 const flagX = (b: Building, i: number) => b.x + 10 + i * 12;
 const bullY = (b: Building) => b.y + b.h + 44;
+// The door sits at the middle of the building's bottom edge. The line forms to its right, past the agent slots.
+const door = (b: Building) => ({ x: b.x + b.w / 2, y: b.y + b.h });
+const queueX = (b: Building, pos: number) => b.x + b.w / 2 + 96 + (pos - 1) * 40;
+// 5x7 pixel hourglass (2px cells), one frame per quarter turn of the sand: caps, glass, sand.
+const HOURGLASS_FRAMES = [0, 1, 2, 3].map((phase) => {
+  const rows = ["ccccc", ".gGg.", ".gGg.", "..g..", ".ggg.", ".ggg.", "ccccc"].map((r) => [...r]);
+  const sand = (y: number, x0: number, x1: number) => {
+    for (let x = x0; x <= x1; x++) rows[y][x] = "s";
+  };
+  if (phase === 0) (sand(1, 1, 3), sand(2, 1, 3));
+  if (phase === 1) (sand(2, 1, 3), sand(3, 2, 2), sand(5, 2, 2));
+  if (phase === 2) (sand(2, 2, 2), sand(3, 2, 2), sand(5, 1, 3));
+  if (phase === 3) (sand(4, 1, 3), sand(5, 1, 3));
+  return rows;
+});
+const HOURGLASS_FILLS: Record<string, number> = { c: 0xcfc493, g: 0x9fd3e8, G: 0xffffff, s: 0xdbe442 };
 // Night navy with a third of the agent's color, so even yellow reads as evening.
 const dusk = (hex: string) => {
   const { r, g, b } = Phaser.Display.Color.Interpolate.ColorWithColor(
@@ -46,6 +63,7 @@ export class CampusScene extends Phaser.Scene {
   private conflicts = new Map<string, Phaser.GameObjects.Container>();
   private dusk!: Phaser.GameObjects.Rectangle;
   private selection!: Phaser.GameObjects.Graphics;
+  private tethers!: Phaser.GameObjects.Graphics;
   // Agent -> how its layers leave on the next reconcile. Set by an undo or merge fx, which the server sends just before `state`.
   private exiting = new Map<string, "collapse" | "fade">();
 
@@ -71,6 +89,8 @@ export class CampusScene extends Phaser.Scene {
             selectedRoomPath: null,
           }),
         );
+      const d = door(b);
+      this.add.rectangle(d.x, d.y, 18, 14, 0x0d1b14).setOrigin(0.5, 1).setStrokeStyle(2, b.guarded ? 0xff6b6b : 0x7fd1a8).setDepth(1.2);
       const folder = b.folder === null ? "unmapped" : b.folder || "/";
       this.add
         .text(b.x + 8, b.y + 8, `${b.name}\n${folder}`, {
@@ -84,6 +104,7 @@ export class CampusScene extends Phaser.Scene {
     // Branch tab: dusk over the campus in the agent's color, under that agent's layers.
     this.dusk = this.add.rectangle(0, 0, campus.width, campus.height, 0x000000, 1).setOrigin(0).setDepth(0.5).setAlpha(0);
     this.selection = this.add.graphics().setDepth(3.5);
+    this.tethers = this.add.graphics().setDepth(3.6);
 
     // Render what is already in the store, then follow it. Events before create() would otherwise be lost.
     this.render(this.store.getState());
@@ -121,17 +142,29 @@ export class CampusScene extends Phaser.Scene {
     this.sync(this.flags, flags, (f) => this.flag(f), (o, f) => o.setPosition(f.x, f.y));
 
     const bulls = new Map<string, BullSpec>();
+    const queue = waitQueue(data.leases ?? [], buildings);
     ws.forEach((w, i) => {
+      const spot = queue.get(w.agent);
+      const queuedAt = spot && byId.get(spot.building);
+      if (queuedAt) {
+        // In line outside the door of the building that holds the leased file.
+        const at = { x: queueX(queuedAt, spot.pos), y: bullY(queuedAt) };
+        bulls.set(w.agent, { agent: w.agent, color: tint(w.color), ...at, status: w.status, wait: spot.pos, door: door(queuedAt) });
+        return;
+      }
       const b = byId.get(w.building) ?? bullrunner;
-      // A waiting Bull stands under the claim flag of the agent holding its building.
+      // A waiting Bull with no lease line stands under the claim flag of the agent holding its building.
       const owner = w.status === "waiting" ? ws.find((o) => o.agent !== w.agent && o.claims.includes(b.id)) : undefined;
       const x = owner ? flagX(b, index.get(owner.agent)!) + 4 : slotX(b, i, ws.length);
-      bulls.set(w.agent, { agent: w.agent, color: tint(w.color), x, y: bullY(b), status: w.status });
+      bulls.set(w.agent, { agent: w.agent, color: tint(w.color), x, y: bullY(b), status: w.status, wait: 0, door: null });
     });
     const sel = ui.selected;
     const updateBull = (o: Phaser.GameObjects.Container, s: BullSpec) => {
-      const [mark, markColor] = MARKS[s.status] ?? MARKS.working;
+      const [mark, markColor] = s.wait ? ["", "#ffffff"] : (MARKS[s.status] ?? MARKS.working);
       (o.getByName("mark") as Phaser.GameObjects.Text).setText(mark).setColor(markColor);
+      (o.getByName("badge") as Phaser.GameObjects.Text).setText(`WAIT #${s.wait}`).setVisible(s.wait > 0);
+      (o.getByName("hourglass") as Phaser.GameObjects.Graphics).setVisible(s.wait > 0);
+      o.setData({ wait: s.wait, door: s.door });
       (o.getByName("ring") as Phaser.GameObjects.Ellipse).setVisible(sel?.kind === "bull" && sel.agent === s.agent);
       return this.walk(o, s);
     };
@@ -149,6 +182,37 @@ export class CampusScene extends Phaser.Scene {
     this.selection.clear();
     const picked = sel?.kind === "building" ? byId.get(sel.id) : undefined;
     if (picked) this.selection.lineStyle(4, 0xffe066).strokeRect(picked.x - 4, picked.y - 4, picked.w + 8, picked.h + 8);
+  }
+
+  // Waiting Bulls tap a foot, turn the hourglass, and keep a dotted line to the door they wait at.
+  update(time: number) {
+    const phase = Math.floor(time / 250) % 4;
+    this.tethers.clear();
+    for (const bull of this.bulls.values()) {
+      const body = bull.getByName("body") as Phaser.GameObjects.Graphics;
+      const wait = bull.getData("wait") as number | undefined;
+      if (!wait) {
+        body.y = 0;
+        continue;
+      }
+      body.y = phase % 2 ? -2 : 0;
+      if (bull.getData("phase") !== phase) {
+        bull.setData("phase", phase);
+        const g = (bull.getByName("hourglass") as Phaser.GameObjects.Graphics).clear();
+        HOURGLASS_FRAMES[phase].forEach((row, y) =>
+          row.forEach((ch, x) => {
+            if (HOURGLASS_FILLS[ch] !== undefined) g.fillStyle(HOURGLASS_FILLS[ch]).fillRect(x * 2, y * 2, 2, 2);
+          }),
+        );
+      }
+      const d = bull.getData("door") as { x: number; y: number } | null;
+      if (!d) continue;
+      this.tethers.fillStyle(0xdbe442, 0.7 * bull.alpha);
+      const dx = d.x - bull.x;
+      const dy = d.y - bull.y + 4;
+      const steps = Math.floor(Math.hypot(dx, dy) / 6);
+      for (let k = 1; k < steps; k++) this.tethers.fillRect(bull.x - 16 + (dx * k) / steps, bull.y + (dy * k) / steps, 2, 2);
+    }
   }
 
   // Keyed reconcile: destroy what is gone, update what stays, create what is new.
@@ -234,7 +298,20 @@ export class CampusScene extends Phaser.Scene {
     const bull = this.add
       .container(slotX(bullrunner, 0, 1), bullY(bullrunner), [
         this.add.ellipse(4, -2, 48, 40).setStrokeStyle(3, 0xffe066).setVisible(false).setName("ring"),
-        ...makeBull(this, color),
+        ...makeBull(this, color).map((o, i) => (i === 0 ? o.setName("body") : o)),
+        this.add.graphics({ x: 28, y: -18 }).setVisible(false).setName("hourglass"),
+        this.add
+          .text(2, -26, "", {
+            fontFamily: "monospace",
+            fontSize: "11px",
+            fontStyle: "bold",
+            color: "#dbe442",
+            backgroundColor: "#005432",
+            padding: { x: 3, y: 1 },
+          })
+          .setOrigin(0.5, 1)
+          .setVisible(false)
+          .setName("badge"),
         this.add.text(0, 10, agent, { fontFamily: "monospace", fontSize: "11px", color: "#ffffff" }).setOrigin(0.5, 0),
         this.add
           .text(4, -20, "", { fontFamily: "monospace", fontSize: "18px", fontStyle: "bold", color: "#ffffff" })

@@ -13,7 +13,7 @@ import {
 } from "react";
 import campus from "../../campus/campus.json" with { type: "json" };
 import { DEMO } from "@/lib/fake.ts";
-import { act, askWhy, connect, isFake, orchestrate } from "@/lib/server.ts";
+import { act, askWhy, connect, isFake, orchestrate, SERVER_URL } from "@/lib/server.ts";
 import { createStore, type Store, type StoreState } from "@/lib/store.ts";
 import type { CheckDecision, Status } from "@/lib/types.ts";
 import { BuildingInteriorDrawer, BuildingInteriorHeader } from "./BuildingInteriorPanel";
@@ -135,6 +135,52 @@ function Tabs({ onStartOpener }: { onStartOpener: () => void }) {
   );
 }
 
+// Real mode only: server offline (with a one-click fallback to ?fake), or the server cannot read its repo.
+function ServerBanner() {
+  const fake = useSyncExternalStore(noSubscribe, isFake, () => false);
+  const conn = useBullpen((s) => s.ui.conn);
+  const error = useBullpen((s) => s.data.error);
+  if (fake) return null;
+  if (conn === "offline") {
+    return (
+      <div role="status" className="flex items-center gap-3 border-b border-red-500/40 bg-red-950/60 px-4 py-2 text-sm text-red-100">
+        <span className="size-2 animate-pulse rounded-full bg-red-400" />
+        <span>
+          Server offline at <span className="font-mono">{SERVER_URL}</span>. Retrying...
+        </span>
+        <button
+          type="button"
+          onClick={() => (window.location.search = "fake")}
+          className={`${BUTTON} ml-auto bg-white/10 text-white hover:bg-white/20`}
+        >
+          Switch to fake mode
+        </button>
+      </div>
+    );
+  }
+  if (!error) return null;
+  return (
+    <div role="status" className="border-b border-amber-500/40 bg-amber-950/60 px-4 py-2 text-sm text-amber-100">
+      Server is up but cannot read the demo repo (no agents to show). Check <span className="font-mono">BULLPEN_REPO</span>:{" "}
+      <span className="font-mono text-amber-200/80">{error}</span>
+    </div>
+  );
+}
+
+function Notice() {
+  const store = useStore();
+  const notice = useBullpen((s) => s.notice);
+  if (!notice) return null;
+  return (
+    <div role="alert" className="flex items-start gap-2 border-b border-red-500/40 bg-red-950/60 p-3 text-sm text-red-100">
+      <span className="flex-1">{notice}</span>
+      <button type="button" onClick={() => store.notify(null)} className="rounded px-2 text-xs font-semibold text-white/70 hover:bg-white/10">
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
 function CampusPane() {
   const store = useStore();
   const state = useBullpen((s) => s);
@@ -153,6 +199,7 @@ function CampusPane() {
   return (
     <div className="relative flex h-full w-[65%] flex-col">
       <Tabs onStartOpener={() => setOpenerOpen(true)} />
+      <ServerBanner />
       <BuildingInteriorHeader store={store} state={state} />
       <div className="min-h-0 flex-1">
         <Campus store={store} />
@@ -653,6 +700,7 @@ function Feed() {
 function SidePanel() {
   return (
     <aside className="h-full w-[35%] overflow-y-auto border-l border-white/10">
+      <Notice />
       <OrchestratorBox />
       <MergeIntentCards />
       <LeasesAndApprovals />

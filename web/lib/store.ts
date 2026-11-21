@@ -12,7 +12,8 @@ export function createStore() {
     checks: [],
     plan: null,
     hooks: [],
-    ui: { tab: "main", selected: null, zoomedBuildingId: null, selectedRoomPath: null },
+    notice: null,
+    ui: { conn: "connecting", tab: "main", selected: null, zoomedBuildingId: null, selectedRoomPath: null },
   };
   const listeners = new Set<() => void>();
   const fxListeners = new Set<(fx: Fx) => void>();
@@ -35,7 +36,8 @@ export function createStore() {
         snapshot.merges !== state.merges ||
         snapshot.checks !== state.checks ||
         snapshot.plan !== state.plan ||
-        snapshot.hooks !== state.hooks
+        snapshot.hooks !== state.hooks ||
+        snapshot.notice !== state.notice
       ) {
         set({ ...state, ...snapshot });
       }
@@ -44,6 +46,9 @@ export function createStore() {
     dismissMerge(id: string) {
       const merges = state.merges.filter((m) => m.id !== id);
       if (merges.length !== state.merges.length) set({ ...state, merges });
+    },
+    notify(notice: string | null) {
+      if (notice !== state.notice) set({ ...state, notice });
     },
     setPlan(plan: Plan | null) {
       set({ ...state, plan });
