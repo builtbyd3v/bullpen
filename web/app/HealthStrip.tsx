@@ -8,13 +8,13 @@ import type { CheckEvent, HealthState, HealthStatus } from "@/lib/types.ts";
 const DOT_CLASS: Record<HealthStatus, string> = {
   ok: "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.75)]",
   down: "bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.75)]",
-  checking: "bg-amber-400 animate-pulse",
+  checking: "bg-white/40",
 };
 
 const TEXT_CLASS: Record<HealthStatus, string> = {
   ok: "text-emerald-300",
   down: "text-red-300",
-  checking: "text-amber-200",
+  checking: "text-white/60",
 };
 
 type PillProps = {
@@ -56,8 +56,8 @@ export function HealthStrip({ store, health, latestCheck, replaying }: HealthStr
       <span className="mr-1 font-mono text-[11px] font-bold tracking-widest text-[#cfc493] uppercase">Health</span>
       <HealthPill label="Server" status={health.server} />
       <HealthPill label="WebSocket" status={health.ws} detail="connected" />
-      <HealthPill label="Jetson" status={jetson} detail={`${latestCheck?.latency_ms ?? 0} ms`} pending="no checks yet" />
-      <HealthPill label="Model" status={jetson} detail={latestCheck?.model || "rules"} pending="no checks yet" />
+      <HealthPill label="Jetson" status={jetson} detail={`${latestCheck?.latency_ms ?? 0} ms`} pending="ready" />
+      <HealthPill label="Model" status={jetson} detail={latestCheck?.model || "rules"} pending="waiting for first edit" />
       <HealthPill label="Orchestrator" status={health.orchestrator} />
 
       <div className="ml-auto flex items-center gap-2">

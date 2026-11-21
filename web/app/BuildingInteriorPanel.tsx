@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useNow } from "./useNow";
 import campus from "../../campus/campus.json" with { type: "json" };
 import { buildingForFile } from "@/lib/campus.ts";
 import { fetchDiff } from "@/lib/server.ts";
@@ -57,6 +58,7 @@ export function BuildingInteriorHeader({ store, state }: Props) {
         ← Back to campus
       </button>
       <div className="flex items-center gap-2">
+        <img src={`/sprites/${b.id}.png`} alt="" className="h-10 w-auto [image-rendering:pixelated]" />
         <span className="font-bold text-white">{b.name}</span>
         <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-xs text-emerald-300">{folder}</span>
         {b.guarded && (
@@ -77,6 +79,7 @@ export function BuildingInteriorDrawer({ store, state }: Props) {
   const [diff, setDiff] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const now = useNow(1000);
 
   const leasesHere = (state.data.leases ?? []).filter((l) => buildingForFile(l.file, buildings) === buildingId);
   const agentsHere = state.data.worktrees.filter(
@@ -113,6 +116,7 @@ export function BuildingInteriorDrawer({ store, state }: Props) {
 
   if (!buildingId || !b) return null;
 
+  const colorOf = (agent: string) => state.data.worktrees.find((w) => w.agent === agent)?.color ?? "#94a3b8";
   const relevantAgents = new Set(agentsHere.map((w) => w.agent));
   const miniLogs = state.hooks
     .filter(
@@ -123,9 +127,9 @@ export function BuildingInteriorDrawer({ store, state }: Props) {
     .slice(0, 12);
 
   return (
-    <div className="grid h-56 shrink-0 grid-cols-12 border-t border-white/15 bg-[#09140f]">
+    <div className="grid h-64 shrink-0 grid-cols-12 border-t border-white/15 bg-[#09140f]">
       {/* Live mini log of agent hook actions */}
-      <div className="col-span-4 flex min-h-0 flex-col border-r border-white/10 p-3">
+      <div className="col-span-3 flex min-h-0 flex-col border-r border-white/10 p-3">
         <p className="mb-2 text-xs font-bold tracking-widest text-white/70 uppercase">
           Live action log ({miniLogs.length})
         </p>
@@ -151,7 +155,7 @@ export function BuildingInteriorDrawer({ store, state }: Props) {
       </div>
 
       {/* Real diff from GET /diff?agent=&file= */}
-      <div className="col-span-8 flex min-h-0 flex-col p-3">
+      <div className="col-span-6 flex min-h-0 flex-col border-r border-white/10 p-3">
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <p className="text-xs font-bold tracking-widest text-white/70 uppercase">Diff</p>
           <span className="rounded bg-white/10 px-2 py-0.5 font-mono text-xs text-amber-200">
@@ -189,6 +193,44 @@ export function BuildingInteriorDrawer({ store, state }: Props) {
           ) : (
             <DiffLines diff={diff} />
           )}
+        </div>
+      </div>
+
+      {/* Locks in this building (holder, time left, waiters) and the active agent's commits with trailers. */}
+      <div className="col-span-3 flex min-h-0 flex-col gap-3 overflow-y-auto p-3">
+        <div>
+          <p className="mb-1.5 text-xs font-bold tracking-widest text-white/70 uppercase">Locks here</p>
+          {leasesHere.length === 0 ? (
+            <p className="font-mono text-xs italic text-white/45">No file is locked in {b.name}.</p>
+          ) : (
+            leasesHere.map((l) => {
+              const left = Math.max(0, Math.ceil((Date.parse(l.expires_at) - now) / 1000));
+              return (
+                <div key={l.file} className="mb-1.5 rounded bg-white/5 px-2 py-1.5 font-mono text-xs">
+                  <p className="truncate text-white">{l.file}</p>
+                  <p className="text-white/70">
+                    <span style={{ color: colorOf(l.agent) }} className="font-bold">{l.agent}</span> holds it ·{" "}
+                    <span className="text-[#cfc493]">{now === 0 || Number.isNaN(left) ? "active" : `${left}s`}</span>
+                  </p>
+                  {l.waiters.length > 0 && (
+                    <p className="text-amber-200">{l.waiters.map((w, i) => `${w} waiting #${i + 1}`).join(", ")}</p>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div>
+          <p className="mb-1.5 text-xs font-bold tracking-widest text-white/70 uppercase">Commits · {activeAgent || "none"}</p>
+          {(state.data.worktrees.find((w) => w.agent === activeAgent)?.commits ?? []).slice(0, 4).map((c) => (
+            <div key={c.sha} className="mb-1.5 rounded bg-white/5 px-2 py-1.5 font-mono text-xs">
+              <p className="truncate text-white">
+                <span className="text-[#cfc493]">{c.sha.slice(0, 7)}</span> {c.message}
+              </p>
+              <p className="truncate text-[11px] text-white/50">Bullpen-Agent: {activeAgent}</p>
+              {c.task && <p className="truncate text-[11px] text-white/50">Bullpen-Task: {c.task}</p>}
+            </div>
+          ))}
         </div>
       </div>
     </div>

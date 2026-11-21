@@ -226,8 +226,11 @@ export class CampusScene extends Phaser.Scene {
       const b = byId.get(w.building) ?? bullrunner;
       // A waiting Bull with no lease line stands under the claim flag of the agent holding its building.
       const owner = w.status === "waiting" ? ws.find((o) => o.agent !== w.agent && o.claims.includes(b.id)) : undefined;
-      const x = owner ? flagX(b, index.get(owner.agent)!) + 4 : slotX(b, i, ws.length);
-      bulls.set(w.agent, { agent: w.agent, color: tint(w.color), x, y: bullY(b), status: w.status, wait: 0, door: null });
+      // Idle Bulls park in a neat row beside the Bull Runner stop, clear of every building label.
+      const parked = b === bullrunner && !owner;
+      const x = parked ? b.x + b.w + 76 + i * 46 : owner ? flagX(b, index.get(owner.agent)!) + 4 : slotX(b, i, ws.length);
+      const y = parked ? b.y + b.h - 4 : bullY(b);
+      bulls.set(w.agent, { agent: w.agent, color: tint(w.color), x, y, status: w.status, wait: 0, door: null });
     });
     const sel = ui.selected;
     const updateBull = (o: Phaser.GameObjects.Container, s: BullSpec) => {
