@@ -185,6 +185,15 @@ export async function orchestrate(store: Store, ask: string): Promise<Plan> {
   return plan;
 }
 
+// Resets the demo repo (worktrees back to main). The server keeps running; the campus refetches /state when opened.
+export async function resetDemo(): Promise<number> {
+  const res = await fetch(`${ORCHESTRATOR_URL.replace(/\/$/, "")}/reset`, { method: "POST" });
+  const body: unknown = await res.json().catch(() => null);
+  const rec = typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  if (!res.ok) throw new Error(typeof rec.error === "string" ? rec.error : `Reset failed (${res.status})`);
+  return typeof rec.seconds === "number" ? rec.seconds : 0;
+}
+
 export async function askWhy(question: string): Promise<string> {
   if (isFake()) return fakeAsk(question);
   const res = await fetch(`${ORCHESTRATOR_URL.replace(/\/$/, "")}/ask`, {

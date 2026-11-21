@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { SERVER_URL } from "../lib/server";
+import { useState } from "react";
+import { resetDemo, SERVER_URL } from "../lib/server";
 import { SoundToggle } from "./Alerts";
 import { useCampusHref } from "./Landing";
 
@@ -22,6 +23,19 @@ function UrlRow({ label, value }: UrlRowProps) {
 export default function Settings() {
   const campus = useCampusHref();
   const fakeOn = campus.endsWith("?fake");
+  const [resetting, setResetting] = useState(false);
+  const [resetMsg, setResetMsg] = useState<string | null>(null);
+  const reset = async () => {
+    setResetting(true);
+    setResetMsg(null);
+    try {
+      setResetMsg(`Reset in ${await resetDemo()}s`);
+    } catch (err: unknown) {
+      setResetMsg(err instanceof Error ? err.message : "Reset failed");
+    } finally {
+      setResetting(false);
+    }
+  };
   const BTN = "rounded-md border border-[#006747] bg-[#006747] px-4 py-2 text-sm font-semibold text-[#F7F6EA] no-underline hover:bg-[#005432]";
   return (
     <main className="min-h-screen bg-[#EDEBD1] font-sans text-[#0D231B]">
@@ -45,6 +59,15 @@ export default function Settings() {
             <Link href={fakeOn ? "/settings" : "/settings?fake"} className={BTN}>
               {fakeOn ? "On, turn off" : "Off, turn on"}
             </Link>
+          </div>
+          <div className={ROW}>
+            <span className="font-semibold">Demo repo</span>
+            <span className="flex items-center gap-3">
+              {resetMsg && <span className="text-sm text-[#466069]">{resetMsg}</span>}
+              <button type="button" onClick={reset} disabled={resetting} className={`${BTN} disabled:opacity-50`}>
+                {resetting ? "Resetting..." : "Reset demo"}
+              </button>
+            </span>
           </div>
           <UrlRow label="Server URL" value={SERVER_URL} />
           <UrlRow label="Orchestrator URL" value={ORCHESTRATOR_URL} />

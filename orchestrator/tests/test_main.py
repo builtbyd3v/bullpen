@@ -223,3 +223,19 @@ def test_missing_demo_repo_still_plans(client, fake_dir):
     r = client.post("/orchestrate", json={"ask": "add login"})
     assert r.status_code == 200
     assert r.json()["source"] == "claude"
+
+
+def test_reset_runs_the_reset_command(client, monkeypatch, tmp_path):
+    marker = tmp_path / "reset_ran"
+    monkeypatch.setenv("DEMO_RESET_CMD", f"touch {marker}")
+    r = client.post("/reset")
+    assert r.status_code == 200
+    assert r.json()["ok"] is True and isinstance(r.json()["seconds"], float)
+    assert marker.exists()
+
+
+def test_reset_failure_is_502(client, monkeypatch):
+    monkeypatch.setenv("DEMO_RESET_CMD", "false")
+    r = client.post("/reset")
+    assert r.status_code == 502
+    assert "error" in r.json()

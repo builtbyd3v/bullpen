@@ -9,6 +9,7 @@ import shlex
 import signal
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Annotated
 
@@ -264,6 +265,20 @@ def ask_context() -> str:
             break
         kept.append(line)
     return "\n".join(reversed(kept))
+
+
+@app.post("/reset")
+def reset():
+    """Run the demo reset script (worktrees back to main, leases cleared). The server keeps running."""
+    cmd = shlex.split(env("DEMO_RESET_CMD", str(REPO / "scripts" / "demo_reset.sh")))
+    start = time.monotonic()
+    try:
+        done = subprocess.run(cmd, capture_output=True, text=True, timeout=30, env=child_env())
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return error(502, f"reset failed: {e}")
+    if done.returncode != 0:
+        return error(502, f"reset exited {done.returncode}: {done.stderr.strip()[-300:]}")
+    return {"ok": True, "seconds": round(time.monotonic() - start, 1)}
 
 
 @app.post("/ask")

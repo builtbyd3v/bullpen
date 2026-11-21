@@ -324,7 +324,6 @@ export class CampusScene extends Phaser.Scene {
     }
     this.exiting.set(fx.agent, fx.kind === "undo" ? "collapse" : "fade");
     this.time.delayedCall(2000, () => this.exiting.delete(fx.agent));
-    if (fx.kind === "undo") this.time.delayedCall(350, () => this.cameras.main.shake(450, 0.012));
   }
 
   // Keys hold agent names ("api|enb", "enb|api,web"); an exiting agent in the key picks the exit animation.
@@ -343,7 +342,7 @@ export class CampusScene extends Phaser.Scene {
       }
       return;
     }
-    this.tweens.add({ targets: o, y: o.y + 24, scaleY: 0.05, alpha: 0, angle: Phaser.Math.Between(-8, 8), duration: 450, ease: "Back.easeIn", onComplete: destroy });
+    this.tweens.add({ targets: o, y: o.y + 24, scaleY: 0.05, alpha: 0, duration: 450, ease: "Back.easeIn", onComplete: destroy });
     if (!b) return;
     for (let i = 0; i < 6; i++) {
       const puff = this.add.circle(b.x + (b.w * (i + 0.5)) / 6, b.y + b.h, 10, 0xd8c8a8).setDepth(3).setAlpha(0);
