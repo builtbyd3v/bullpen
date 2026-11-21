@@ -129,7 +129,7 @@ Everything in this repo was built during HackJam '26, starting at 11:00 AM on No
 **Frameworks and libraries**
 
 - Web: Next.js 16, React 19, TypeScript, Tailwind CSS 4, Phaser 3, Node.js.
-- Design prototype: HTML, CSS and JavaScript, with the Pixelify Sans and Press Start 2P fonts from Google Fonts.
+- Design prototype: HTML, CSS and JavaScript, with the Pixelify Sans and Press Start 2P fonts from Google Fonts; Python with Pillow for the mockup sprite generator (`design/mockups-v3/sprites/make_sprites.py`).
 - Server, orchestrator and Jetson: Python, FastAPI, uvicorn, websockets, httpx, pydantic, uv.
 - Models and speech: Ollama; whisper.cpp and Piper for voice (stretch).
 - Video: Remotion, ffmpeg, and macOS `say` for placeholder voiceover.
