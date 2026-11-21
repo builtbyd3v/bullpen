@@ -150,6 +150,11 @@ export function act(store: Store, action: Action): void {
   })
     .then(async (r) => {
       if (r.ok) return;
+      // 404 on approve: it already timed out or someone else answered. Drop the card, no error.
+      if (action.kind === "approve" && r.status === 404) {
+        store.dispatch({ type: "denied", data: { id: action.id, agent: "", text: "timeout" } });
+        return;
+      }
       // FastAPI errors are {"detail": str}; a 409 on merge is a conflict the user should see.
       const body = (await r.json().catch(() => ({}))) as { detail?: unknown };
       store.notify(`${label} failed: ${typeof body.detail === "string" ? body.detail : `HTTP ${r.status}`}`);
