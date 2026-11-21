@@ -72,3 +72,8 @@ Server TODO (Monisha): `server/main.py` still sends bare hook bodies. Wrap them 
 `campus/campus.json` maps repo folders to campus buildings. `folder: null`
 (Juniper-Poplar) catches unmapped paths. `folder: ""` (Bull Runner) is the repo
 root: files with no folder map there. Unknown folders map to Juniper. `guarded: true` (Sun Dome, `db/`) marks folders the referee protects.
+
+## 7. Jetson: `{JETSON_URL}` (port 8700)
+- `POST /commit_msg` body `{"diff": str, "agent": str?}` -> `{"message": str}`. One imperative line, max 72 chars.
+- `POST /ask` body `{"question": str, "context": str?}` -> `{"answer": str}`. Max 2 sentences. `context` is free text (state, recent events).
+- Model failure or timeout (20 s) -> `503 {"error": str}`. Callers fall back (for example to a plain commit message).
