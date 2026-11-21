@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import campus from "../../campus/campus.json" with { type: "json" };
 import { layersByBuilding } from "@/lib/campus.ts";
 import type { Store, StoreState } from "@/lib/store.ts";
-import type { Building, Status } from "@/lib/types.ts";
+import type { Building, Fx, Status } from "@/lib/types.ts";
 
 const buildings: Building[] = campus.buildings;
 const byId = new Map(buildings.map((b) => [b.id, b]));
@@ -45,6 +45,8 @@ export class CampusScene extends Phaser.Scene {
   private conflicts = new Map<string, Phaser.GameObjects.Container>();
   private dusk!: Phaser.GameObjects.Rectangle;
   private selection!: Phaser.GameObjects.Graphics;
+  // Agent -> how its layers leave on the next reconcile. Set by an undo or merge fx, which the server sends just before `state`.
+  private exiting = new Map<string, "collapse" | "fade">();
 
   constructor() {
     super("campus");
@@ -78,7 +80,8 @@ export class CampusScene extends Phaser.Scene {
 
     // Render what is already in the store, then follow it. Events before create() would otherwise be lost.
     this.render(this.store.getState());
-    const unsubscribe = this.store.subscribe(() => this.render(this.store.getState()));
+    const unsubscribers = [this.store.subscribe(() => this.render(this.store.getState())), this.store.onFx((fx) => this.fx(fx))];
+    const unsubscribe = () => unsubscribers.forEach((u) => u());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribe);
     this.events.once(Phaser.Scenes.Events.DESTROY, unsubscribe);
   }
@@ -145,14 +148,57 @@ export class CampusScene extends Phaser.Scene {
   private sync<T, O extends Obj>(objs: Map<string, O>, wanted: Map<string, T>, create: (v: T) => O, update: (o: O, v: T) => void) {
     for (const [key, o] of objs) {
       if (wanted.has(key)) continue;
-      this.tweens.killTweensOf(o);
-      o.destroy();
+      this.remove(key, o);
       objs.delete(key);
     }
     for (const [key, v] of wanted) {
       const o = objs.get(key);
       if (o) update(o, v);
       else objs.set(key, create(v));
+    }
+  }
+
+  private colorOf(agent: string) {
+    return this.store.getState().data.worktrees.find((w) => w.agent === agent)?.color ?? "#ffffff";
+  }
+
+  private fx(fx: Fx) {
+    if (fx.kind === "commit") {
+      const b = byId.get(fx.building);
+      if (!b) return;
+      const style = { fontFamily: "monospace", fontSize: "28px", fontStyle: "bold", color: this.colorOf(fx.agent), stroke: "#000000", strokeThickness: 4 };
+      const plus = this.add.text(b.x + b.w / 2, b.y + 10, "+1", style).setOrigin(0.5).setDepth(5).setScale(0.4);
+      this.tweens.add({ targets: plus, scale: 1.2, duration: 200, ease: "Back.easeOut" });
+      this.tweens.add({ targets: plus, y: plus.y - 60, alpha: 0, delay: 150, duration: 1000, onComplete: () => plus.destroy() });
+      return;
+    }
+    this.exiting.set(fx.agent, fx.kind === "undo" ? "collapse" : "fade");
+    this.time.delayedCall(2000, () => this.exiting.delete(fx.agent));
+    if (fx.kind === "undo") this.time.delayedCall(350, () => this.cameras.main.shake(450, 0.012));
+  }
+
+  // Keys hold agent names ("api|enb", "enb|api,web"); an exiting agent in the key picks the exit animation.
+  private remove(key: string, o: Obj) {
+    this.tweens.killTweensOf(o);
+    const parts = key.split("|").flatMap((p) => p.split(","));
+    const agent = parts.find((p) => this.exiting.has(p));
+    if (!agent) return o.destroy();
+    const b = o instanceof Phaser.GameObjects.Graphics ? byId.get(parts[1]) : undefined;
+    const destroy = () => o.destroy();
+    if (this.exiting.get(agent) === "fade") {
+      this.tweens.add({ targets: o, alpha: 0, duration: 700, onComplete: destroy });
+      if (b) {
+        const flash = this.add.rectangle(b.x, b.y, b.w, b.h, tint(this.colorOf(agent)), 0.7).setOrigin(0).setDepth(1.5);
+        this.tweens.add({ targets: flash, alpha: 0, duration: 700, onComplete: () => flash.destroy() });
+      }
+      return;
+    }
+    this.tweens.add({ targets: o, y: o.y + 24, scaleY: 0.05, alpha: 0, angle: Phaser.Math.Between(-8, 8), duration: 450, ease: "Back.easeIn", onComplete: destroy });
+    if (!b) return;
+    for (let i = 0; i < 6; i++) {
+      const puff = this.add.circle(b.x + (b.w * (i + 0.5)) / 6, b.y + b.h, 10, 0xd8c8a8).setDepth(3).setAlpha(0);
+      const x = puff.x + Phaser.Math.Between(-16, 16);
+      this.tweens.add({ targets: puff, delay: 350, alpha: { from: 0.9, to: 0 }, scale: 2.5, x, y: puff.y - 14, duration: 600, onComplete: () => puff.destroy() });
     }
   }
 
