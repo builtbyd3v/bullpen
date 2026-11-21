@@ -17,17 +17,17 @@ export function useCampusHref(): string {
 
 export const BTN =
   "inline-flex items-center justify-center rounded-md border border-[#CFC493] px-5 py-2.5 text-sm font-semibold no-underline";
-const BTN_PRIMARY = `${BTN} border-[#006747] bg-[#006747] text-[#F7F6EA] hover:bg-[#005432]`;
-const KICKER = "text-xs font-semibold uppercase tracking-widest text-[#006747]";
+const BTN_PRIMARY = `${BTN} border-[#CFC493] bg-[#CFC493] text-[#0D231B] hover:bg-[#E8DA9E]`;
+const KICKER = "text-xs font-semibold uppercase tracking-widest text-[#CFC493]";
 const H3 = "text-3xl font-bold leading-tight";
 
 type StepProps = { title: string; children: React.ReactNode };
 
 function Step({ title, children }: StepProps) {
   return (
-    <li className="rounded-lg border border-[#CFC493] bg-[#F7F6EA] p-4">
+    <li className="rounded-lg border border-[#CFC493] bg-[#0D231B] p-4">
       <b>{title}</b>
-      <p className="mt-1 text-sm text-[#466069]">{children}</p>
+      <p className="mt-1 text-sm text-[#9DBFB7]">{children}</p>
     </li>
   );
 }
@@ -35,7 +35,7 @@ function Step({ title, children }: StepProps) {
 export default function Landing() {
   const href = useCampusHref();
   return (
-    <main className="min-h-screen bg-[#EDEBD1] font-sans text-[#0D231B]">
+    <main className="min-h-screen bg-[#072E20] font-sans text-[#EDEBD1]">
       <div className="mx-auto flex max-w-5xl flex-col gap-16 px-5 pb-20">
         <nav aria-label="Site" className="flex items-center justify-between py-4">
           <a href="#top" className="flex items-center gap-2 text-lg font-bold no-underline">
@@ -53,7 +53,7 @@ export default function Landing() {
 
         <header id="top" className="grid gap-8">
           <h1 className="text-5xl font-bold leading-tight">Source control for AI agents</h1>
-          <p className="max-w-2xl text-lg text-[#466069]">
+          <p className="max-w-2xl text-lg text-[#9DBFB7]">
             Tell one orchestrator what you want. Three Claude Code agents build it on your own sub, and a Jetson referee checks every edit before it lands.
           </p>
           <div>
@@ -72,12 +72,12 @@ export default function Landing() {
           <div className="grid gap-2">
             <span className={KICKER}>The problem</span>
             <h3 id="prob-h" className={H3}>Git was built for humans.</h3>
-            <p className="max-w-2xl text-[#466069]">
+            <p className="max-w-2xl text-[#9DBFB7]">
               Two agents on one repo open the same file. The second save wins, the first agent&apos;s work is gone, and there is no commit to bring it back.
             </p>
           </div>
-          <div className="overflow-hidden rounded-lg border border-[#CFC493] bg-[#F7F6EA] font-mono text-sm">
-            <div className="flex justify-between bg-[#E2DFC0] px-4 py-2">
+          <div className="overflow-hidden rounded-lg border border-[#CFC493] bg-[#0D231B] font-mono text-sm">
+            <div className="flex justify-between bg-[#005432] px-4 py-2">
               <span>shared/auth.ts</span>
               <span>two agents, one file, no referee</span>
             </div>

@@ -269,7 +269,8 @@ def ask_context() -> str:
 
 @app.post("/reset")
 def reset():
-    """Run the demo reset script (worktrees back to main, leases cleared). The server keeps running."""
+    """Run the demo reset script, then undo each agent on the server so stale leases from killed agents
+    (which never sent Stop) are released. The server keeps running and broadcasts undo + state."""
     cmd = shlex.split(env("DEMO_RESET_CMD", str(REPO / "scripts" / "demo_reset.sh")))
     start = time.monotonic()
     try:
@@ -278,7 +279,15 @@ def reset():
         return error(502, f"reset failed: {e}")
     if done.returncode != 0:
         return error(502, f"reset exited {done.returncode}: {done.stderr.strip()[-300:]}")
-    return {"ok": True, "seconds": round(time.monotonic() - start, 1)}
+    released = []
+    for agent in AGENTS:
+        try:
+            r = http.post(env("SERVER_URL", "http://localhost:8600").rstrip("/") + f"/undo/{agent}", timeout=5)
+            if r.is_success:
+                released.append(agent)
+        except httpx.HTTPError:
+            pass
+    return {"ok": True, "seconds": round(time.monotonic() - start, 1), "released": released}
 
 
 @app.post("/ask")
