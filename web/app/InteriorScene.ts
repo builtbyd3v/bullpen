@@ -41,78 +41,66 @@ export class InteriorScene extends Phaser.Scene {
 
     const W = campus.width;
     const H = campus.height;
-    const accent = b.guarded ? 0xff6b6b : 0x7fd1a8;
-    const floorFill = b.guarded ? 0x261214 : 0x12261e;
-
-    // Exterior blueprint frame
-    this.add
-      .rectangle(24, 24, W - 48, H - 48, floorFill)
-      .setOrigin(0)
-      .setStrokeStyle(3, accent);
-
-    // Subtle interior floor tile grid
-    const grid = this.add.graphics().lineStyle(1, accent, 0.08);
-    for (let x = 56; x < W - 24; x += 32) grid.lineBetween(x, 24, x, H - 24);
-    for (let y = 56; y < H - 24; y += 32) grid.lineBetween(24, y, W - 24, y);
-
-    // Interior header inside the floorplan
     const folder = b.folder === null ? "unmapped" : b.folder || "/";
-    this.add.text(44, 38, `${b.name}  —  ${folder}${b.guarded ? "  [GUARDED]" : ""}`, {
+    // Caua's interior palette (design/mockups-v3 "interior"): sand checker floor, evergreen back wall with a gold rule,
+    // tan rooms with desks and monitors, green name signs in gold. Guarded buildings get rose rooms.
+    const g = this.add.graphics();
+    for (let y = 0; y < H; y += 16) {
+      for (let x = (y / 16) % 2 ? 8 : 0; x < W; x += 16) g.fillStyle((x + y) % 32 ? 0xedebd1 : 0xe6eae7).fillRect(x, y, 16, 16);
+    }
+    g.fillStyle(0x005432).fillRect(0, 0, W, 48);
+    g.fillStyle(0xcfc493).fillRect(0, 48, W, 4);
+    for (let x = W - 260; x < W - 20; x += 44) g.fillStyle(0x006484).fillRect(x, 10, 28, 24).fillStyle(0x29afce).fillRect(x, 10, 28, 5);
+    this.add.text(20, 13, `${b.name}  ${folder}${b.guarded ? "  · guarded" : ""}`, {
       fontFamily: "monospace",
-      fontSize: "18px",
+      fontSize: "20px",
       fontStyle: "bold",
-      color: b.guarded ? "#fca5a5" : "#d1fae5",
+      color: "#edebd1",
     });
 
-    // Lay out rooms from campus/campus.json (up to 6 rooms in a clean grid)
+    // Rooms are the building's subfolders or hot files from campus.json, up to 8 in a 4-wide grid.
     const rooms: Room[] =
-      b.rooms && b.rooms.length > 0
-        ? b.rooms.slice(0, 6)
-        : [{ name: folder, path: b.folder ?? "", files: b.files ?? 0 }];
-
-    const cols = Math.min(3, Math.max(1, rooms.length));
+      b.rooms && b.rooms.length > 0 ? b.rooms.slice(0, 8) : [{ name: folder, path: b.folder ?? "", files: b.files ?? 0 }];
+    const cols = Math.min(4, Math.max(2, Math.ceil(rooms.length / 2)));
     const rows = Math.ceil(rooms.length / cols);
-    const padX = 48;
-    const topY = 82;
-    const bottomPad = 48;
-    const gap = 22;
-    const areaW = W - padX * 2;
-    const areaH = H - topY - bottomPad;
-    const roomW = Math.floor((areaW - gap * (cols - 1)) / cols);
-    const roomH = Math.floor((areaH - gap * (rows - 1)) / rows);
+    const padX = 28;
+    const topY = 72;
+    const gap = 18;
+    const roomW = Math.floor((W - padX * 2 - gap * (cols - 1)) / cols);
+    const roomH = Math.min(240, Math.floor((H - topY - 70 - gap * (rows - 1)) / rows));
+    const roomFill = b.guarded ? 0xf2c9c4 : 0xf3d99c;
+    const roomStripe = b.guarded ? 0xe4ada6 : 0xe2be74;
 
     rooms.forEach((room, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const x = padX + col * (roomW + gap);
-      const y = topY + row * (roomH + gap);
+      const x = padX + (i % cols) * (roomW + gap);
+      const y = topY + Math.floor(i / cols) * (roomH + gap);
       this.roomRects.push({ room, x, y, w: roomW, h: roomH });
-
-      // Room box (clickable to inspect diff for that room/file)
+      g.fillStyle(0x0d231b).fillRect(x - 2, y - 2, roomW + 4, roomH + 4);
+      g.fillStyle(roomFill).fillRect(x, y, roomW, roomH);
+      for (let sy = y + 30; sy < y + roomH; sy += 12) g.fillStyle(roomStripe).fillRect(x, sy, roomW, 2);
+      g.fillStyle(0xa68344).fillRect(x + roomW - 4, y, 4, roomH).fillRect(x, y + roomH - 4, roomW, 4);
+      // Desk and monitor at the back of each room.
+      const dx = x + roomW / 2 - 28;
+      const dy = y + roomH - 44;
+      g.fillStyle(0x8a6a43).fillRect(dx, dy, 56, 16).fillStyle(0x5c4630).fillRect(dx, dy + 16, 56, 4);
+      g.fillStyle(0x0d231b).fillRect(dx + 16, dy - 18, 24, 18).fillStyle(0x2a6f57).fillRect(dx + 18, dy - 16, 20, 12);
+      // Name sign.
+      g.fillStyle(0x006747).fillRect(x, y, roomW, 22);
+      this.add.text(x + 8, y + 3, room.name.length > 22 ? `${room.name.slice(0, 21)}…` : room.name, {
+        fontFamily: "monospace",
+        fontSize: "14px",
+        fontStyle: "bold",
+        color: "#cfc493",
+      });
+      this.add.text(x + 8, y + 28, room.path || "/", { fontFamily: "monospace", fontSize: "11px", color: "#466069", wordWrap: { width: roomW - 16 } });
       this.add
-        .rectangle(x, y, roomW, roomH, b.guarded ? 0x3b1a1c : 0x193429)
+        .rectangle(x, y, roomW, roomH, 0x000000, 0)
         .setOrigin(0)
-        .setStrokeStyle(2, accent, 0.7)
         .setInteractive({ useHandCursor: true })
         .on("pointerdown", () => this.store.setUi({ selectedRoomPath: room.path }));
-
-      // Doorway notch along bottom wall of each room
-      this.add.rectangle(x + roomW / 2, y + roomH, 44, 6, floorFill).setOrigin(0.5);
-
-      // Room nameplate
-      this.add.text(x + 12, y + 10, room.name, {
-        fontFamily: "monospace",
-        fontSize: "15px",
-        fontStyle: "bold",
-        color: "#ffffff",
-      });
-      this.add.text(x + 12, y + 30, room.path || "/", {
-        fontFamily: "monospace",
-        fontSize: "11px",
-        color: "#94a3b8",
-        wordWrap: { width: roomW - 24 },
-      });
     });
+    // Door at the bottom of the floor.
+    g.fillStyle(0x0d231b).fillRect(W / 2 - 30, H - 24, 60, 24).fillStyle(0x005432).fillRect(W / 2 - 26, H - 20, 52, 20);
 
     this.dynamicLayer = this.add.container(0, 0).setDepth(5);
     this.render(this.store.getState());
@@ -146,7 +134,7 @@ export class InteriorScene extends Phaser.Scene {
     if (selectedPath) {
       const sel = this.roomRects.find((r) => r.room.path === selectedPath);
       if (sel) {
-        const hi = this.add.graphics().lineStyle(3, 0xffe066).strokeRect(sel.x - 3, sel.y - 3, sel.w + 6, sel.h + 6);
+        const hi = this.add.graphics().lineStyle(4, 0xdbe442).strokeRect(sel.x - 3, sel.y - 3, sel.w + 6, sel.h + 6);
         this.dynamicLayer.add(hi);
       }
     }
@@ -210,7 +198,9 @@ export class InteriorScene extends Phaser.Scene {
         const [mark, markColor] = MARKS[w.status] ?? MARKS.working;
         const bullContainer = this.add.container(cx, cy, [
           ...makeBull(this, colorNum),
-          this.add.text(0, 12, w.agent, { fontFamily: "monospace", fontSize: "12px", fontStyle: "bold", color: "#ffffff" }).setOrigin(0.5, 0),
+          this.add
+            .text(0, 12, w.agent, { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#ffffff", stroke: "#0d231b", strokeThickness: 3, backgroundColor: w.color, padding: { x: 4, y: 1 } })
+            .setOrigin(0.5, 0),
           this.add
             .text(18, -20, mark, { fontFamily: "monospace", fontSize: "16px", fontStyle: "bold", color: markColor })
             .setOrigin(0.5),
