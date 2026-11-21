@@ -67,6 +67,8 @@ Every message is an envelope: `{"type": <type>, "data": <object>}`.
 | `denied` | `{id, agent, text}` | `text` is `"human"` or `"timeout"` |
 | `commit` | `{agent, sha, message, files, task}` | the server auto-commits an edit |
 | `undo` | `{agent}` | after `POST /undo/{agent}` |
+| `plan` | `{ask, tasks: [{agent, task}]}` | the server got a `Plan` event on `/hook` from the orchestrator |
+| `secret_blocked` | `{agent, file, kind}` | the secret guard stopped a diff |
 | `merge` | `{agent, sha, intent}` | after `POST /merge/{agent}`; `intent` is the Jetson `/summarize` text, or `""` |
 
 Clients must ignore types they do not know. Server TODO: `server/main.py` still sends bare hook bodies.
@@ -107,11 +109,19 @@ The server must send CORS headers (allow all origins): the web app runs on anoth
 (Juniper-Poplar) catches unmapped paths. `folder: ""` (Bull Runner) is the repo
 root: files with no folder map there. Unknown folders map to Juniper. `guarded: true` (Sun Dome, `db/`) marks folders the referee protects.
 
+## 6b. Orchestrator: `http://localhost:8650` (Dev)
+Runs Claude Code through the `claude` CLI on the user's subscription. No API key.
+- `POST /orchestrate` body `{"ask": str}` -> `{"tasks": [{"agent": "api" | "web" | "db", "task": str}]}`. Splits the ask into one task per agent, starts the agents (`scripts/demo_start.sh`), then posts `{"event": "Plan", "agent": "orchestrator", "ask": str, "tasks": [...]}` to the server's `POST /hook`. The server stores each task as that worktree's `task` in `/state` and broadcasts `plan`.
+- `POST /ask` body `{"question": str, "agent": str?}` -> `{"answer": str}`. Ask-why: reads the server's `/state` and `/history`, then calls Jetson `/ask`. Jetson down -> `503 {"error": str}`.
+- Sends CORS headers, like the server.
+
 ## 7. Jetson: `{JETSON_URL}` (port 8700), policy and local model only
 `JETSON_URL=http://192.168.55.1:8700` (USB). Fallback `http://dev.local:8700`. No lease state lives here.
 - `POST /check` body `{"agent": str, "tool_name": str, "file": str?, "command": str?}` -> `{"decision": "allow" | "ask" | "deny", "reason": str, "rule": str}`. Rules run first, with no model call: `db/**` = `ask`. `rule` names the rule that matched, or `"default"`.
 - `POST /commit_msg` body `{"diff": str, "agent": str?}` -> `{"message": str}`. One imperative line, max 72 chars.
 - `POST /summarize` body `{"agent": str, "branch": str, "diff": str, "commits": [str]}` -> `{"intent": str}`. One or two sentences on what the branch set out to do.
 - `POST /ask` body `{"question": str, "context": str?}` -> `{"answer": str}`. Max 2 sentences. `context` is free text (state, recent events).
+- `POST /scan` body `{"diff": str}` -> `{"ok": bool, "findings": [{"file": str, "line": int, "kind": str}]}`. Secret guard: regex rules for API keys, tokens, private keys and `.env` values, no model call. The server calls it before the auto-commit; `ok: false` means no commit, broadcast `secret_blocked`, and tell the agent on its next `/checkout` (deny with the reason).
+- Models: `/check` and `/scan` use rules only; `/commit_msg` qwen2.5-coder:3b; `/summarize` llama3.2:3b; `/ask` nomic-embed-text + llama3.2:3b.
 - `POST /reset` -> `{"ok": true}`. Clears any per-demo memory and pre-warms the model.
 - Model failure or timeout (20 s) -> `503 {"error": str}`. `/check` failure means deny at the server. For the others, callers fall back (for example to a plain commit message).
