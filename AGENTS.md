@@ -2,6 +2,8 @@ Keep CLAUDE.md and AGENTS.md identical.
 
 # Bullpen
 
+Bullpen is version control for AI agents. Tell one orchestrator what you want; it spins up Claude Code agents on your own sub, and a Jetson referee checks every edit with file locks, human approval, auto-commits, and per-agent undo, all live on a pixel campus.
+
 Git was built for humans. Bullpen is version control for agents.
 
 You chat (or speak) to one orchestrator. It splits the ask into tasks and starts 3 Claude Code agents (api, web, db), each in its own git worktree and branch. Everything runs on the user's Claude subscription through the `claude` CLI, with no API key. Bullpen stops the agents overwriting each other: file leases, guarded folders, an auto-commit per edit, per-agent undo, ask-why, and merge through an intent card. The web app shows it live as the USF campus: each folder is a building, `main` is the campus, each agent's branch is a colored layer.
@@ -52,8 +54,8 @@ Mode: hackathon
 
 | Area | Owner | GitHub |
 |---|---|---|
-| `jetson/` (all of it), `hooks/`, `orchestrator/` and all AI setup, `scripts/`, `demo-seed/` (demo kit and baseline) | Dev | builtbyd3v |
-| `server/` (the whole backend) | Monisha | Monisha-Repos |
+| ALL AI work: `orchestrator/`, agent launching, every model call on the Jetson, and any LLM the server needs (commit messages, intent summaries, ask-why). Also `jetson/` (all of it), `hooks/`, `scripts/`, `demo-seed/` (demo kit and baseline) | Dev | builtbyd3v |
+| `server/` (the whole backend). It contains no model calls: it only calls Dev's Jetson endpoints (`/check`, `/commit_msg`, `/summarize`, `/scan`) | Monisha | Monisha-Repos |
 | `web/` (frontend and design) | Caua | caua-fm234 |
 | `shared/`, `campus/`, `docs/`, `CLAUDE.md`, `AGENTS.md` | shared: change through the contract rule | |
 
