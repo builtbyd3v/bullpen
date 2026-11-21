@@ -8,8 +8,8 @@
 
 ## Setup, once
 
-1. Set the display to a 16:9 mode (System Settings, Displays, 1920x1080). A 16:10 recording gets side bars.
-2. Open http://localhost:5173 in Chrome. Press Cmd+Shift+F for full screen. Zoom so the campus and the evidence panel are both readable (try 110%).
+1. Open http://localhost:5173 in Chrome. Choose View, Enter Full Screen. Zoom so the campus and the evidence panel are both readable (try 110%).
+2. The MacBook screen is 16:10, and the film is 16:9. Record a 16:9 box, not the whole screen (next section). A whole-screen recording still works, with side bars.
 3. Turn on Do Not Disturb. Hide the bookmarks bar. Close other tabs.
 4. Make the pointer larger: System Settings, Accessibility, Display, Pointer size.
 
@@ -17,7 +17,7 @@
 
 | Tool | Settings |
 |---|---|
-| QuickTime (simplest) | Cmd+Shift+5, "Record Entire Screen", Options: Microphone "None", "Show Mouse Clicks" on. Saves `.mov`. |
+| QuickTime (simplest) | Cmd+Shift+5, "Record Selected Portion". Drag the box until the size readout is 1504 x 846 and place it over the app. Options: Microphone "None", "Show Mouse Clicks" on. The box stays for the next take. Saves `.mov`. |
 | OBS (if installed) | Canvas and output 1920x1080, 30 fps, Display Capture, encoder Apple VT H264, bitrate 12000 Kbps, format mp4, no audio sources. |
 
 Move the pointer slowly. Pause one second before and after each click. Leave the top-left corner and the bottom strip free of key content: the label and the captions sit there.
@@ -26,13 +26,13 @@ Move the pointer slowly. Pause one second before and after each click. Leave the
 
 - QuickTime, New Audio Recording, quality Maximum. A phone with Voice Memos held 15 cm away also works.
 - A quiet room, one speaker for all takes, one file per beat.
-- Read the line from `SCRIPT.md`. Aim for the "say" time shown there. The build fails if a take is longer than its slot minus 0.3 s.
+- Read the line from `SCRIPT.md`. Speak at a natural pace and aim for the "say" time shown there. The build fails if a take is longer than its slot minus 0.3 s.
 
 ## Clips
 
 | File in `raw/` | Slot | Screen | What must be visible |
 |---|---|---|---|
-| `01-problem` | 10 s | Phone camera, landscape, 1080p30 | Over the shoulder: a laptop with two agent terminals, both writing `auth.ts`. One version vanishes. The person drops their head or throws their hands up. Keep the room sound. |
+| `01-problem` | 10 s | Phone camera, landscape, 1080p30 | Turn HDR video off in the phone camera settings first. Over the shoulder: a laptop with two agent terminals, both writing `auth.ts`. One version vanishes. The person drops their head or throws their hands up. Keep the room sound. |
 | `03-ask` | 10 s | Web app, real mode | Type the ask in the chat box, press Enter. Three bulls walk onto the campus. Speed up with `rate` if the split takes long. |
 | `04-lock` | 10 s | Web app | api holds `shared/auth.ts`, web waits at the door. Lease panel: holder, countdown, queue. |
 | `05-deny` | 11 s | Web app | db reaches for the schema at the Sun Dome. Referee log: the highlighted deny row with the `db/**` rule. db moves to other work. |

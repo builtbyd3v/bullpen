@@ -11,7 +11,7 @@
 ```
 cd video
 npm install
-npm run render      # out/final.mp4 and subtitles.srt, about 1 minute
+npm run render      # out/final.mp4 and subtitles.srt, 1 to 2 minutes
 npm run studio      # live preview; run `npm run prep` first
 ```
 

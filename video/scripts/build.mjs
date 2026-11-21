@@ -29,6 +29,8 @@ for (const slot of timeline.slots) {
   const raw = slot.kind === "clip" && find("raw", slot.id);
   if (raw) {
     const out = `public/clips/${slot.id}.mp4`;
+    const transfer = run("ffprobe", ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=color_transfer", "-of", "csv=p=0", p("raw", raw)]).trim();
+    if (transfer === "arib-std-b67" || transfer === "smpte2084") console.warn(`WARNING ${raw} is HDR and will look washed out. Record again with HDR video off.`);
     if (newer(p("raw", raw), p(out))) {
       ffmpeg([
         "-i", p("raw", raw),
@@ -49,7 +51,7 @@ for (const slot of timeline.slots) {
     if (newer(p("raw/vo", take), p(voOut))) ffmpeg(["-i", p("raw/vo", take), "-ar", "48000", "-ac", "2", p(voOut)]);
   } else {
     const spoken = slot.vo.replaceAll("auth.ts", "auth dot T S");
-    run("say", ["-r", "175", "-o", p("out/say.aiff"), spoken]);
+    run("say", ["-r", "150", "-o", p("out/say.aiff"), spoken]);
     ffmpeg(["-i", p("out/say.aiff"), "-ar", "48000", "-ac", "2", p(voOut)]);
   }
   slot.voFile = `vo/${slot.id}.wav`;

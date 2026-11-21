@@ -86,7 +86,7 @@
       "rate": 1,
       "label": "File locks before every edit, 90 s TTL",
       "shot": "Evidence panel close-up: leases with the TTL countdown running.",
-      "vo": "Under the pixels, everything is real. An agent takes a file lock before each edit, and the lock expires after ninety seconds."
+      "vo": "Under the pixels, everything is real. Agents lock a file before each edit, and the lock expires after ninety seconds."
     },
     {
       "id": "10-campus",
