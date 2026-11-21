@@ -16,6 +16,7 @@ import { DEMO } from "@/lib/fake.ts";
 import { act, askWhy, connect, isFake, orchestrate, SERVER_URL } from "@/lib/server.ts";
 import { createStore, type Store, type StoreState } from "@/lib/store.ts";
 import type { CheckDecision, Status } from "@/lib/types.ts";
+import { Alerts } from "./Alerts";
 import { BuildingInteriorDrawer, BuildingInteriorHeader } from "./BuildingInteriorPanel";
 import { HealthStrip } from "./HealthStrip";
 import { ProblemOpener } from "./ProblemOpener";
@@ -778,6 +779,10 @@ function SidePanel() {
   );
 }
 
+function AlertsHost() {
+  return <Alerts store={useStore()} />;
+}
+
 function TopHealthStrip() {
   const store = useStore();
   const health = useBullpen((s) => s.health);
@@ -795,6 +800,7 @@ export default function Bullpen() {
           <CampusPane />
           <SidePanel />
         </main>
+        <AlertsHost />
       </div>
     </BullpenProvider>
   );

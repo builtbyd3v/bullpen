@@ -25,6 +25,7 @@ export function createStore() {
   };
   const listeners = new Set<() => void>();
   const fxListeners = new Set<(fx: Fx) => void>();
+  const envelopeListeners = new Set<(e: Envelope) => void>();
   const set = (next: StoreState) => {
     state = next;
     listeners.forEach((l) => l());
@@ -51,6 +52,11 @@ export function createStore() {
         set({ ...state, ...snapshot });
       }
       fx.forEach((f) => fxListeners.forEach((l) => l(f)));
+      envelopeListeners.forEach((l) => l(envelope));
+    },
+    onEnvelope(listener: (e: Envelope) => void) {
+      envelopeListeners.add(listener);
+      return () => void envelopeListeners.delete(listener);
     },
     setHealth(partial: Partial<HealthState>) {
       set({ ...state, health: { ...state.health, ...partial } });
