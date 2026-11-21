@@ -45,14 +45,38 @@ def test_check_other_file_allows(path):
     assert out == {"decision": "allow", "reason": "", "rule": "default", "model": "rules"}
 
 
-@pytest.mark.parametrize("cmd", ["cat db/schema.sql", "echo x >> ./db/seed.sql", "rm -rf db", "cd db && ls"])
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        "cat db/schema.sql",
+        "echo x >> ./db/seed.sql",
+        "echo x > db/x",
+        "echo x >db/x",
+        "rm -rf db",
+        "ls ./db",
+        "cd db && ls",
+        "cat /Users/dev/wt/api/db/schema.sql",
+        "git diff main...agent/db -- db/schema.sql",
+    ],
+)
 def test_check_bash_touching_guarded_asks(cmd):
     out = check(tool_name="Bash", command=cmd)
     assert out["decision"] == "ask"
     assert out["rule"] == "db/**"
 
 
-@pytest.mark.parametrize("cmd", ["npm test", "npm run db:migrate", "grep -r mongodb api/"])
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        "npm test",
+        "npm run db:migrate",
+        "grep -r mongodb api/",
+        "git log agent/db",
+        "git diff main...agent/db",
+        "git checkout agent/db",
+        "git log origin/agent/db --oneline",
+    ],
+)
 def test_check_bash_not_touching_guarded_allows(cmd):
     assert check(tool_name="Bash", command=cmd)["decision"] == "allow"
 
@@ -244,6 +268,7 @@ def test_commit_msg_uses_coder_model(calls):
     assert r.json() == {"message": "Add login route"}
     assert calls[0][1]["model"] == "qwen2.5-coder:3b"
     assert "think" not in calls[0][1]
+    assert calls[0][1]["options"]["num_ctx"] == 4096
 
 
 def test_model_env_override(monkeypatch, calls):
@@ -330,6 +355,26 @@ def test_reset_warms_every_model(calls):
     assert r.json()["ok"] is True
     assert sorted(r.json()["warmed"]) == ["llama3.2:3b", "nomic-embed-text", "qwen2.5-coder:3b"]
     assert {b["model"] for _, b in calls} == {"llama3.2:3b", "nomic-embed-text", "qwen2.5-coder:3b"}
+    for url, body in calls:
+        if url.endswith("/api/chat"):
+            assert body["options"]["num_ctx"] == 4096
+
+
+def test_warm_uses_long_timeout_and_num_ctx(monkeypatch):
+    seen = []
+
+    def fake_post(url, json=None, timeout=None):
+        seen.append((url, json, timeout))
+        req = httpx.Request("POST", url)
+        if url.endswith("/api/embed"):
+            return httpx.Response(200, json={"embeddings": [[1.0]]}, request=req)
+        return httpx.Response(200, json={"message": {"content": ""}}, request=req)
+
+    monkeypatch.setattr(main.httpx, "post", fake_post)
+    monkeypatch.setattr(main, "NUM_CTX", 2048)
+    main.warm()
+    assert {t for _, _, t in seen} == {120}
+    assert all(b["options"]["num_ctx"] == 2048 for u, b, _ in seen if u.endswith("/api/chat"))
 
 
 def test_health():

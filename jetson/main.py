@@ -16,8 +16,12 @@ ASK_MODEL = os.environ.get("ASK_MODEL", "llama3.2:3b")
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
 GUARDED = [g.strip().strip("/") for g in os.environ.get("BULLPEN_GUARDED", "db").split(",") if g.strip().strip("/")]
 BUILDINGS = {"db": "Sun Dome"}
-# ~4 chars per token keeps the prompt well under num_ctx 8192.
-MAX_INPUT_CHARS = 12_000
+# 4096 lets both 3b chat models and the embedder stay loaded in the Jetson's 8 GB.
+NUM_CTX = int(os.environ.get("NUM_CTX", "4096"))
+# ~4 chars per token keeps prompt plus output under NUM_CTX 4096.
+MAX_INPUT_CHARS = 8_000
+# A cold load on the Jetson takes over 60 s; real requests keep 20 s.
+WARM_TIMEOUT = 120
 # /ask context above this size is ranked by embedding similarity to the question.
 ASK_CONTEXT_CHARS = 3_000
 ASK_MAX_LINES = 400
@@ -29,13 +33,16 @@ def warm() -> list[str]:
         # A chat call with no messages only loads the model.
         try:
             httpx.post(
-                f"{OLLAMA_URL}/api/chat", json={"model": model, "messages": [], "stream": False}, timeout=60
+                f"{OLLAMA_URL}/api/chat",
+                # Same num_ctx as real calls, or Ollama reloads the model on the first one.
+                json={"model": model, "messages": [], "stream": False, "options": {"num_ctx": NUM_CTX}},
+                timeout=WARM_TIMEOUT,
             ).raise_for_status()
             warmed.append(model)
         except httpx.HTTPError:
             pass
     try:
-        embed(["ok"])
+        embed(["ok"], timeout=WARM_TIMEOUT)
         warmed.append(EMBED_MODEL)
     except ModelError:
         pass
@@ -67,7 +74,7 @@ def chat(model: str, system: str, user: str, max_tokens: int) -> str:
             json={
                 "model": model,
                 "stream": False,
-                "options": {"num_ctx": 8192, "num_predict": max_tokens, "temperature": 0.2},
+                "options": {"num_ctx": NUM_CTX, "num_predict": max_tokens, "temperature": 0.2},
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": user},
@@ -85,12 +92,12 @@ def chat(model: str, system: str, user: str, max_tokens: int) -> str:
     return text
 
 
-def embed(texts: list[str]) -> list[list[float]]:
+def embed(texts: list[str], timeout: float = 20) -> list[list[float]]:
     try:
         r = httpx.post(
             f"{OLLAMA_URL}/api/embed",
             json={"model": EMBED_MODEL, "input": texts},
-            timeout=20,
+            timeout=timeout,
         )
         r.raise_for_status()
         vecs = r.json()["embeddings"]
@@ -123,13 +130,21 @@ class CheckIn(BaseModel):
     command: str | None = None
 
 
+CMD_START = r"[\s'\"=<>|;&(`]"
+CMD_END = r"[\s'\";&|)`]"
+
+
 def guarded_folder(file: str | None, command: str | None) -> str | None:
     path = "/" + (file or "").strip().replace("\\", "/").removeprefix("./")
     for g in GUARDED:
         if f"/{g}/" in path:
             return g
-        # A path token in the command that is the folder or sits under it.
-        if command and re.search(rf"(?:^|[\s'\"=<>|;&(`])(?:\S*/)?{re.escape(g)}(?:/|(?=[\s'\";&|)`]|$))", command):
+        # A path token in the command under the folder, or the bare folder itself.
+        # A bare name after a relative prefix (agent/db) is a git ref, not the folder.
+        if command and (
+            re.search(rf"(?:^|{CMD_START})(?:\S*/)?{re.escape(g)}/", command)
+            or re.search(rf"(?:^|{CMD_START})(?:\./|/\S*/)?{re.escape(g)}(?={CMD_END}|$)", command)
+        ):
             return g
     return None
 

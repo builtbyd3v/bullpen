@@ -19,16 +19,22 @@ curl http://192.168.55.1:8700/health
 Env:
 - `OLLAMA_URL` (default `http://localhost:11434`)
 - `BULLPEN_GUARDED` (default `db`): comma list of guarded folders for `/check`
+- `NUM_CTX` (default `4096`): context size for every chat call and the warm call. Keep it the same in both, or Ollama reloads the model.
 - `COMMIT_MODEL` (default `qwen2.5-coder:3b`), `SUMMARIZE_MODEL` (default `llama3.2:3b`), `ASK_MODEL` (default `llama3.2:3b`), `EMBED_MODEL` (default `nomic-embed-text`)
 
 Endpoints:
 - `GET /health` -> `{"ok": true}`
 - `POST /check` `{"agent", "tool_name", "file"?, "command"?}` -> `{"decision", "reason", "rule", "model"}`. Rules only, `model` is `"rules"`. A `file` under a guarded folder (relative, `./`, or absolute with `/db/`) or a Bash `command` that names a guarded path -> `ask`, rule `db/**`. Never `deny`: the deny comes from the server approval timeout. Else `allow`, rule `default`. Bad body -> 422.
 - `POST /scan` `{"diff"}` -> `{"ok", "findings": [{"file", "line", "kind"}]}`. Regex only, added lines only, `line` is the new-file line. Kinds: `aws_access_key`, `github_token`, `anthropic_key`, `openai_key`, `slack_token`, `private_key`, `env_value` (secret-named `NAME=value` in a `.env*` file), `generic_secret` (a quoted literal of 16+ chars that mixes letters and digits, with no `/` or `:`, assigned to a secret/token/password/api_key name). Placeholders, empty values and env reads are skipped. The secret value is never returned.
-- `POST /commit_msg` `{"diff", "agent"?}` -> `{"message"}`: one line, max 72 chars. Diff is cut to 12,000 chars. Model: `COMMIT_MODEL`.
+- `POST /commit_msg` `{"diff", "agent"?}` -> `{"message"}`: one line, max 72 chars. Diff is cut to 8,000 chars. Model: `COMMIT_MODEL`.
 - `POST /summarize` `{"agent", "branch", "diff", "commits"}` -> `{"intent"}`: max 2 sentences on what the branch set out to do. Model: `SUMMARIZE_MODEL`.
-- `POST /ask` `{"question", "context"?}` -> `{"answer"}`: max 2 sentences. Context over 3,000 chars is ranked line by line by `EMBED_MODEL` similarity to the question; on an embed failure it keeps the last 12,000 chars. Model: `ASK_MODEL`.
-- `POST /reset` -> `{"ok": true, "warmed": [models]}`. Pre-warms each model. A warm failure still returns `ok: true`.
+- `POST /ask` `{"question", "context"?}` -> `{"answer"}`: max 2 sentences. Context over 3,000 chars is ranked line by line by `EMBED_MODEL` similarity to the question; on an embed failure it keeps the last 8,000 chars. Model: `ASK_MODEL`.
+- `POST /reset` -> `{"ok": true, "warmed": [models]}`. Pre-warms each model (120 s timeout per warm call; real calls keep 20 s). A warm failure still returns `ok: true`.
 - Model failure or timeout (20 s) -> 503 `{"error"}`.
 - Tests: `uv run --with pytest pytest -q` (Ollama is mocked).
-- Latency (measured with lfm3, before the per-endpoint models): about 1.7 s warm for a 3.5 KB diff, 4.4 s cold, `/ask` about 1.7 s. Re-measure on the device.
+- Bash rule: `cd db`, `./db/x`, `> db/x` and absolute paths match. A ref like `agent/db` does not.
+
+Memory and latency (measured on the Jetson, `NUM_CTX` 4096):
+- All three models stay loaded together: qwen2.5-coder:3b 2.2 GB, llama3.2:3b 2.6 GB, nomic-embed-text 414 MB. At 8192 they do not fit, and each switch reloads a model.
+- A warm switch between models costs 0.2 s. A cold qwen2.5-coder:3b load takes 66 s. `/ask` took 13 s when it had to load the model. `/reset` took 54 s cold.
+- Free memory is tight: about 180 MB with all three loaded. If memory runs out, point `COMMIT_MODEL`, `SUMMARIZE_MODEL` and `ASK_MODEL` at one model.
