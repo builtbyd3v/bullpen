@@ -14,7 +14,7 @@ type Placed = { color: number; x: number; y: number };
 // `wait`: 1-based place in the line at a building door, 0 when not queued.
 type BullSpec = Placed & { agent: string; status: Status; wait: number; door: { x: number; y: number } | null };
 type ScaffoldSpec = { color: number; b: Building; offset: number };
-type ConflictSpec = { colors: number[]; b: Building };
+type LockSpec = { b: Building; holder: string; color: string; expires: number };
 type Obj = Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.Transform & Phaser.GameObjects.Components.AlphaSingle;
 
 const tint = (hex: string) => Phaser.Display.Color.HexStringToColor(hex).color;
@@ -70,7 +70,9 @@ export class CampusScene extends Phaser.Scene {
   private bulls = new Map<string, Phaser.GameObjects.Container>();
   private flags = new Map<string, Phaser.GameObjects.Container>();
   private scaffolds = new Map<string, Phaser.GameObjects.Graphics>();
-  private conflicts = new Map<string, Phaser.GameObjects.Container>();
+  private barriers = new Map<string, Phaser.GameObjects.Graphics>();
+  private locks = new Map<string, Phaser.GameObjects.Text>();
+  private referee!: Phaser.GameObjects.Container;
   private dusk!: Phaser.GameObjects.Rectangle;
   private selection!: Phaser.GameObjects.Graphics;
   private tethers!: Phaser.GameObjects.Graphics;
@@ -109,6 +111,7 @@ export class CampusScene extends Phaser.Scene {
     this.dusk = this.add.rectangle(0, 0, campus.width, campus.height, 0x000000, 1).setOrigin(0).setDepth(0.5).setAlpha(0);
     this.selection = this.add.graphics().setDepth(3.5);
     this.tethers = this.add.graphics().setDepth(3.6);
+    this.referee = this.makeReferee();
     this.tooltip = this.add
       .text(0, 0, "", {
         fontFamily: "monospace",
@@ -129,23 +132,44 @@ export class CampusScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.DESTROY, unsubscribe);
   }
 
-  private render({ data, ui }: StoreState) {
+  private render({ data, ui, checks }: StoreState) {
     const ws = data.worktrees;
     const index = new Map(ws.map((w, i) => [w.agent, i]));
     const shown = (agent: string) => ui.tab === "main" || ui.tab === agent;
 
     const color = new Map(ws.map((w) => [w.agent, tint(w.color)]));
     const scaffolds = new Map<string, ScaffoldSpec>();
-    const conflicts = new Map<string, ConflictSpec>();
     for (const [id, agents] of layersByBuilding(ws, buildings)) {
       const b = byId.get(id);
       if (!b) continue;
       for (const a of agents) scaffolds.set(`${a}|${id}`, { color: color.get(a)!, b, offset: index.get(a)! * 6 });
-      if (agents.length > 1) conflicts.set(`${id}|${agents.join()}`, { colors: agents.map((a) => color.get(a)!), b });
     }
     const noop = () => {};
     this.sync(this.scaffolds, scaffolds, (s) => this.scaffold(s), noop);
-    this.sync(this.conflicts, conflicts, (c) => this.conflict(c), noop);
+
+    // Referee: a deny puts a red barrier on that building's door; Jetson offline blocks every building.
+    const offline = checks[0]?.rule === "offline";
+    const barriers = new Map<string, Building>();
+    if (offline) for (const b of buildings) if (b.id !== "bullrunner") barriers.set(b.id, b);
+    for (const w of ws) {
+      const last = checks.find((c) => c.agent === w.agent);
+      const b = last?.decision === "deny" ? byId.get(buildingForFile(last.file, buildings)) : undefined;
+      if (b) barriers.set(b.id, b);
+    }
+    this.sync(this.barriers, barriers, (b) => this.barrier(b), noop);
+    (this.referee.getByName("live") as Phaser.GameObjects.Graphics).setVisible(!offline);
+    (this.referee.getByName("off") as Phaser.GameObjects.Graphics).setVisible(offline);
+    (this.referee.getByName("label") as Phaser.GameObjects.Text)
+      .setText(offline ? "JETSON OFFLINE" : "REFEREE")
+      .setBackgroundColor(offline ? "#c8373b" : "#0d231b");
+
+    // A lock with a line: the holder's name and time left, over the door the others wait at.
+    const locks = new Map<string, LockSpec>();
+    for (const l of data.leases ?? []) {
+      const b = byId.get(buildingForFile(l.file, buildings));
+      if (b && l.waiters.length) locks.set(b.id, { b, holder: l.agent, color: this.colorOf(l.agent), expires: Date.parse(l.expires_at) });
+    }
+    this.sync(this.locks, locks, (k) => this.lock(k), (o, k) => o.setData(k));
 
     const flags = new Map<string, Placed>();
     for (const w of ws) {
@@ -188,7 +212,6 @@ export class CampusScene extends Phaser.Scene {
     // Tab view: other agents' layers hide, other Bulls dim, and the campus takes the agent's dusk color.
     for (const [key, o] of this.scaffolds) this.fade(o, shown(agentOf(key)) ? 1 : 0);
     for (const [key, o] of this.flags) this.fade(o, shown(agentOf(key)) ? 1 : 0);
-    for (const [key, o] of this.conflicts) this.fade(o, ui.tab === "main" || key.split("|")[1].split(",").includes(ui.tab) ? 1 : 0);
     for (const [agent, o] of this.bulls) this.fade(o, shown(agent) ? 1 : 0.3);
     const tab = ws.find((w) => w.agent === ui.tab);
     if (tab) this.dusk.setFillStyle(dusk(tab.color));
@@ -210,9 +233,9 @@ export class CampusScene extends Phaser.Scene {
       const held = leases.filter((l) => l.agent === w.agent && buildingForFile(l.file, buildings) === b.id).map((l) => l.file);
       const waiting = leases.filter((l) => l.waiters.includes(w.agent) && buildingForFile(l.file, buildings) === b.id).map((l) => l.file);
       if (w.building !== b.id && !w.claims.includes(b.id) && !held.length && !waiting.length) continue;
-      lines.push(`● ${w.agent}  ${w.status}`, `  ${w.task.length > 44 ? `${w.task.slice(0, 43)}…` : w.task}`);
-      for (const f of held) lines.push(`  holds ${f}`);
-      for (const f of waiting) lines.push(`  waits for ${f}`);
+      lines.push(`● ${w.agent}  ${w.status === "working" ? "editing" : w.status}`, `  ${w.task.length > 44 ? `${w.task.slice(0, 43)}…` : w.task}`);
+      for (const f of held) lines.push(`  editing ${f}`);
+      for (const f of waiting) lines.push(`  waiting for ${f}`);
     }
     if (lines.length === 3) lines.push("No agents here");
     this.tooltip.setText(lines);
@@ -224,6 +247,11 @@ export class CampusScene extends Phaser.Scene {
 
   // Waiting Bulls tap a foot, turn the hourglass, and keep a dotted line to the door they wait at.
   update(time: number) {
+    const now = Date.now();
+    for (const label of this.locks.values()) {
+      const sec = Math.max(0, Math.ceil(((label.getData("expires") as number) - now) / 1000));
+      label.setText(`🔒 ${label.getData("holder")} · ${sec}s`).setColor(label.getData("color") as string);
+    }
     const phase = Math.floor(time / 250) % 4;
     this.tethers.clear();
     for (const bull of this.bulls.values()) {
@@ -384,15 +412,40 @@ export class CampusScene extends Phaser.Scene {
     return g;
   }
 
-  // Two or more branches on one building: a striped flag on the roof that flashes.
-  private conflict({ colors, b }: ConflictSpec) {
-    const g = this.add.graphics();
-    g.lineStyle(2, 0xdddddd).lineBetween(0, -36, 0, 0);
-    colors.forEach((c, i) => g.fillStyle(c).fillRect(1, -36 + i * 6, 22, 6));
-    const flag = this.add.container(b.x + b.w - 30, b.y, [g]).setDepth(3);
-    this.tweens.add({ targets: g, alpha: 0.35, duration: 450, yoyo: true, repeat: -1 });
-    flag.once(Phaser.GameObjects.Events.DESTROY, () => this.tweens.killTweensOf(g));
-    return flag;
+  // Red and white barrier across the door: the referee denied an edit here, or the Jetson is offline.
+  private barrier(b: Building) {
+    const g = this.add.graphics({ x: b.x + b.w / 2 - 30, y: b.y + b.h - 12 }).setDepth(3.4);
+    g.fillStyle(0x0d231b).fillRect(-2, -2, 64, 12);
+    for (let i = 0; i < 6; i++) g.fillStyle(i % 2 ? 0xffffff : 0xc8373b).fillRect(i * 10, 0, 10, 8);
+    g.fillStyle(0x0d231b).fillRect(2, 8, 4, 10).fillRect(54, 8, 4, 10);
+    return g;
+  }
+
+  private lock({ b, ...data }: LockSpec) {
+    const label = this.add
+      .text(b.x + b.w / 2 + 16, b.y + b.h - 4, "", { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#ffffff", backgroundColor: "#0d231b", padding: { x: 4, y: 2 } })
+      .setOrigin(0, 1)
+      .setDepth(3.7);
+    return label.setData(data);
+  }
+
+  // The referee figure: striped shirt when the Jetson answers, greyed out when it is offline.
+  private makeReferee() {
+    const draw = (shirt: number, stripe: number, skin: number) => {
+      const g = this.add.graphics();
+      g.fillStyle(skin).fillRect(-5, -30, 10, 9);
+      g.fillStyle(0x0d231b).fillRect(-6, -32, 12, 3);
+      for (let i = 0; i < 5; i++) g.fillStyle(i % 2 ? stripe : shirt).fillRect(-8 + i * 3.2, -20, 3.2, 14);
+      g.fillStyle(0x0d231b).fillRect(-7, -6, 5, 8).fillRect(2, -6, 5, 8);
+      return g;
+    };
+    const live = draw(0xffffff, 0x0d231b, 0xe8c39e).setName("live");
+    const off = draw(0x7e96a0, 0x466069, 0x7e96a0).setName("off").setVisible(false);
+    const label = this.add
+      .text(0, 6, "REFEREE", { fontFamily: "monospace", fontSize: "11px", fontStyle: "bold", color: "#ffffff", backgroundColor: "#0d231b", padding: { x: 3, y: 1 } })
+      .setOrigin(0.5, 0)
+      .setName("label");
+    return this.add.container(campus.width - 56, 40, [live, off, label]).setDepth(4);
   }
 
   private flag({ color, x, y }: Placed) {

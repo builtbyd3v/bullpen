@@ -211,6 +211,11 @@ function CampusPane() {
   );
 }
 
+// Plain verbs for the UI. The server's `working` reads as editing.
+const STATUS_LABEL: Record<Status, string> = { working: "editing", waiting: "waiting", blocked: "blocked", done: "done" };
+const STATUS_ICON: Record<Status, string> = { working: "✎", waiting: "⏳", blocked: "⛔", done: "✓" };
+const LEGEND: [Status, string][] = [["working", "editing"], ["waiting", "waiting"], ["blocked", "blocked"], ["done", "saved"]];
+
 const STATUS_CLASS: Record<Status, string> = {
   working: "bg-emerald-500/20 text-emerald-300",
   waiting: "bg-amber-500/20 text-amber-300",
@@ -226,12 +231,23 @@ const DECISION_CLASS: Record<CheckDecision, string> = {
 
 const BUTTON = "rounded-md px-3 py-1.5 text-sm font-semibold";
 
-type SectionProps = { title: string; children: ReactNode };
+type SectionProps = { title: string; hint?: string; children: ReactNode };
 
-function Section({ title, children }: SectionProps) {
+function Section({ title, hint, children }: SectionProps) {
   return (
     <section className="border-b border-[#cfc493]/15 p-4">
-      <h2 className="mb-3 text-sm font-bold tracking-widest text-[#cfc493] uppercase">{title}</h2>
+      <h2 className="mb-3 flex items-center gap-2 text-base font-bold tracking-widest text-[#cfc493] uppercase">
+        {title}
+        {hint && (
+          <span
+            title={hint}
+            aria-label={hint}
+            className="grid size-5 cursor-help place-items-center rounded-full border border-[#cfc493]/50 text-xs normal-case tracking-normal"
+          >
+            ?
+          </span>
+        )}
+      </h2>
       {children}
     </section>
   );
@@ -460,7 +476,7 @@ function LeasesAndApprovals() {
   if (leases.length === 0 && approvals.length === 0) return null;
 
   return (
-    <Section title="Leases & approvals">
+    <Section title="Locks" hint="One agent edits a file at a time (a lease); the others wait in line. Guarded folders (the fence) need your approval.">
       {/* Pending human approvals */}
       {approvals.length > 0 && (
         <div className="mb-3 space-y-2">
@@ -524,9 +540,9 @@ function LeasesAndApprovals() {
               >
                 <p className="flex items-baseline gap-2 text-sm">
                   <AgentChip agent={lease.agent} color={colorOf(lease.agent)} />
-                  <span className="text-white/60">holds</span>
+                  <span className="text-white/60">editing</span>
                   <span className="min-w-0 truncate font-mono font-semibold text-white">{lease.file}</span>
-                  <span className="ml-auto shrink-0 font-mono text-sm text-[#cfc493]">{ttl ?? "active"}</span>
+                  <span className="ml-auto shrink-0 font-mono text-base text-[#cfc493]">{ttl ?? "active"}</span>
                 </p>
                 {lease.waiters.length > 0 && (
                   <p className="mt-1.5 flex flex-wrap gap-1.5">
@@ -555,13 +571,13 @@ function CommitTimeline() {
   const name = (id: string) => campus.buildings.find((b) => b.id === id)?.name ?? id;
 
   return (
-    <Section title="Commit timeline">
+    <Section title="Commits" hint="Every saved edit is committed on the agent's own branch; Undo drops the branch, Merge lands it on main.">
       {worktrees.map((w) => (
         <div key={w.agent} style={agentColor(w.color)} className="mb-3 rounded-lg border-l-4 border-(--agent) bg-white/5 p-3">
           <div className="flex flex-wrap items-center gap-2">
             <Dot color={w.color} />
             <span className="text-base font-bold text-(--agent)">{w.agent}</span>
-            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[w.status]}`}>{w.status}</span>
+            <span className={`rounded px-2 py-0.5 text-sm font-semibold ${STATUS_CLASS[w.status]}`}>{STATUS_LABEL[w.status]}</span>
             <span className="ml-auto font-mono text-xs text-white/60">+{w.ahead}</span>
           </div>
           {w.task && (
@@ -571,7 +587,7 @@ function CommitTimeline() {
             </details>
           )}
           <p className="font-mono text-xs text-white/50">{w.branch}</p>
-          {w.claims.length > 0 && <p className="mt-0.5 text-xs text-white/65">Claims: {w.claims.map(name).join(", ")}</p>}
+          {w.claims.length > 0 && <p className="mt-0.5 text-sm text-white/65">In {w.claims.map(name).join(", ")}</p>}
 
           <div className="mt-2 flex gap-2">
             <button
@@ -628,10 +644,11 @@ function CommitTimeline() {
 // ============================================================================
 function RefereeLog() {
   const checks = useBullpen((s) => s.checks);
-  if (checks.length === 0) return null;
   return (
-    <Section title="Jetson referee log">
-      {(
+    <Section title="Referee" hint="The Jetson checks every edit before it runs; unplugged, it blocks them all.">
+      {checks.length === 0 ? (
+        <p className="text-base text-white/55">No edits checked yet.</p>
+      ) : (
         <div className="max-h-56 space-y-1.5 overflow-y-auto pr-0.5">
           {checks.map((c, idx) => {
             const isOffline = c.rule === "offline";
@@ -706,18 +723,42 @@ function Selection() {
   );
 }
 
-function Feed() {
-  const feed = useBullpen((s) => s.feed);
-  if (feed.length === 0) return null;
+// One line per agent, built from live state: what file it is editing and for how long, or that it waits, or what it last saved.
+function Activity() {
+  const worktrees = useBullpen((s) => s.data.worktrees);
+  const leases = useBullpen((s) => s.data.leases ?? []);
+  const now = useNowTick(leases.length > 0);
+  if (worktrees.length === 0) return null;
+  const line = (agent: string, status: Status, commits: { files: string[] }[]): [Status, string] => {
+    const held = leases.find((l) => l.agent === agent);
+    if (status === "blocked") return ["blocked", "blocked"];
+    if (status === "waiting" || leases.some((l) => l.waiters.includes(agent))) return ["waiting", "waiting"];
+    const ttl = held ? formatTtl(held.expires_at, now) : null;
+    if (held) return ["working", `editing ${held.file}${ttl ? ` · ${ttl}` : ""}`];
+    const last = commits[0]?.files[0];
+    return last ? ["done", `saved ${last.split("/").pop()}`] : [status, STATUS_LABEL[status]];
+  };
   return (
-    <Section title="Feed">
-      {[...feed].reverse().map((f) => (
-        <p key={f.sha} className="mb-1 flex items-center gap-2 text-sm">
-          <Dot color={f.color} />
-          <span className="flex-1">{f.message}</span>
-          <span className="font-mono text-xs text-white/50">{f.sha.slice(0, 7)}</span>
-        </p>
-      ))}
+    <Section title="Activity" hint="What each agent is doing right now, from live events.">
+      <ul className="space-y-2">
+        {worktrees.map((w) => {
+          const [kind, text] = line(w.agent, w.status, w.commits);
+          return (
+            <li key={w.agent} className="flex items-center gap-3 text-lg">
+              <span aria-hidden="true" className="w-6 text-center">{STATUS_ICON[kind]}</span>
+              <AgentChip agent={w.agent} color={w.color} />
+              <span className="min-w-0 truncate font-mono text-white/90">{text}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/55">
+        {LEGEND.map(([st, label]) => (
+          <span key={st}>
+            {STATUS_ICON[st]} {label}
+          </span>
+        ))}
+      </p>
     </Section>
   );
 }
@@ -726,13 +767,13 @@ function SidePanel() {
   return (
     <aside className="h-full w-[35%] overflow-y-auto border-l-2 border-[#cfc493]/30 bg-[#0a1f16]">
       <Notice />
+      <Activity />
       <OrchestratorBox />
       <MergeIntentCards />
       <LeasesAndApprovals />
       <CommitTimeline />
       <RefereeLog />
       <Selection />
-      <Feed />
     </aside>
   );
 }

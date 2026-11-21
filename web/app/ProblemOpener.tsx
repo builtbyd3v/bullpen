@@ -61,9 +61,9 @@ export function ProblemOpener({ open, onClose }: ProblemOpenerProps) {
                 {beat === 2 && "The work is gone — and there is no history."}
               </h2>
               <p className="mt-1 text-sm text-white/70">
-                {beat === 0 && "Two coding agents edit the same shared file at the exact same time with no lease or referee."}
+                {beat === 0 && "Two coding agents edit the same shared file at the exact same time with no locks and no referee."}
                 {beat === 1 && "api writes verifyToken(), then web saves right over it. Neither agent knows."}
-                {beat === 2 && "No blame, no lease queue, no way to undo just one agent's work."}
+                {beat === 2 && "No blame, no waiting line, no way to undo just one agent's work."}
               </p>
             </div>
 
@@ -126,11 +126,11 @@ export function ProblemOpener({ open, onClose }: ProblemOpenerProps) {
             </span>
             <h2 className="mt-3 text-3xl font-bold text-white">Now the same run with Bullpen.</h2>
             <p className="mt-2 max-w-lg text-sm text-white/80">
-              File leases keep agents from colliding, the Jetson referee enforces guarded zones, and every edit auto-commits per agent.
+              File locks keep agents from colliding, the Jetson referee enforces guarded zones, and every edit auto-commits per agent.
             </p>
             <div className="mt-5 grid w-full grid-cols-3 gap-3 font-mono text-xs">
               <div className="rounded-lg border border-emerald-400/30 bg-black/30 p-3">
-                <p className="font-bold text-emerald-300">Leases</p>
+                <p className="font-bold text-emerald-300">Locks</p>
                 <p className="mt-1 text-white/60">Wait at the door instead of overwriting</p>
               </div>
               <div className="rounded-lg border border-emerald-400/30 bg-black/30 p-3">
