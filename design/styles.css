@@ -346,10 +346,10 @@ html, body {
 
 .campus-frame {
   position: relative;
-  height: calc(100% - 38px);
+  height: 100%;
   width: auto;
   max-width: 100%;
-  aspect-ratio: 512 / 350;
+  aspect-ratio: 512 / 320;
   background: var(--ink);
   border: 4px solid var(--usf-gold);
   box-shadow: 0 0 0 3px var(--usf-evergreen), 8px 8px 0 rgba(0, 0, 0, 0.45);
@@ -364,31 +364,6 @@ html, body {
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-}
-
-.map-legend-bar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--usf-sand);
-  background: rgba(7, 41, 29, 0.94);
-  border: 2px solid var(--usf-gold);
-  padding: 4px 12px;
-  box-shadow: 3px 3px 0 var(--ink);
-}
-
-.map-legend-bar span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.map-legend-bar strong {
-  color: var(--usf-lemongrass);
 }
 
 /* Ribbon-Cutting Celebration Banner */

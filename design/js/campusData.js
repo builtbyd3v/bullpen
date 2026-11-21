@@ -1,163 +1,110 @@
 /* ============================================================================
-   BULLPEN — USF Tampa Campus Greenway Map Data (512 x 350 pixel-art world)
-   Coordinates mapped exclusively from the provided USF Tampa Campus Greenway
-   reference map (E Fletcher Ave, E Fowler Ave, Bruce B Downs Blvd, N 50th St).
+   BULLPEN — Zoomed-In USF Tampa Central Campus Map Data (512 x 320 pixel world)
+   Exclusively modeled on the Central & Athletics section of the provided
+   USF Tampa Campus Greenway reference map (removing USF Health & north of MSC).
    ============================================================================ */
 
 window.BullpenCampusData = (function () {
   const WORLD_W = 512;
-  const WORLD_H = 350;
+  const WORLD_H = 320;
 
-  // Campus boundary inside the four perimeter roads
-  const BORDER = { x: 10, y: 10, w: 490, h: 326 };
+  // Inner campus viewport frame
+  const BORDER = { x: 6, y: 6, w: 500, h: 308 };
 
-  // Diagonal-hatched USF Tampa Campus Greenway polygons (exact map reference)
+  // Helper: clean folder name displayed on building plaques (e.g. "/backend" -> "BACKEND")
+  function getFolderLabel(folderPath) {
+    const clean = String(folderPath || '')
+      .trim()
+      .replace(/^\/+/, '')
+      .replace(/\/+$/, '');
+    return clean ? clean.toUpperCase() : 'ROOT';
+  }
+
+  // Diagonal-hatched USF Tampa Campus Greenway polygons (exact zoomed Central section!)
   const GREENWAY_POLYGONS = [
-    // 1. West Greenway Preserve (south of USF Health, wrapping around HPC & Lake Behnke)
+    // 1. Central Campus Greenway Strip (west edge past FAH & MSC -> Castor Pond -> NE Athletics edge)
     [
-      [11, 158], [46, 158], [52, 168], [52, 194], [64, 200], [82, 198],
-      [88, 184], [90, 160], [110, 152], [182, 152], [182, 178], [134, 178],
-      [130, 212], [126, 258], [66, 258], [62, 282], [11, 282]
+      [7, 58], [134, 58], [204, 58], [218, 44], [268, 36], [316, 32],
+      [316, 62], [270, 66], [250, 82], [202, 82], [190, 92], [54, 92],
+      [42, 108], [7, 108]
     ],
-    // 2. Central Campus Greenway Strip (cutting E-W between FAH/MSC and ISA/SVC to Castor Pond)
+    // 2. Lower edge of Northeast Greenway Forest (top-right corner above Track & Field!)
     [
-      [182, 146], [286, 146], [292, 130], [344, 126], [378, 124],
-      [378, 146], [336, 148], [322, 160], [284, 160], [276, 168], [182, 168]
-    ],
-    // 3. Northeast Greenway Forest (huge NE preserve bordering Fletcher Ave & N 50th St)
-    [
-      [432, 11], [499, 11], [499, 134], [380, 134], [380, 74],
-      [402, 58], [420, 44], [430, 24]
+      [320, 7], [505, 7], [505, 42], [320, 42]
     ],
   ];
 
-  // Water bodies on the reference map
+  // Water bodies inside the zoomed Central Campus section
   const PONDS = [
-    // Lake Behnke (West Greenway)
-    { id: 'behnke', name: 'Lake Behnke', x: 34, y: 204, rx: 14, ry: 22 },
-    // Simmons Park Pond (SW below Alumni Dr)
-    { id: 'simmons', name: 'Simmons Pond', x: 118, y: 296, rx: 22, ry: 12 },
-    // Castor Pond (Central Campus Greenway NE of SVC)
-    { id: 'castor', name: 'Castor Pond', x: 312, y: 142, rx: 14, ry: 8 },
-    // North Village Pond (top center-east near Fletcher)
-    { id: 'north_pond', name: 'North Pond', x: 348, y: 20, rx: 10, ry: 5 },
+    // Castor Pond (inside Central Campus Greenway east of MSC, north of SVC)
+    { id: 'castor', name: 'Castor Pond', x: 244, y: 55, rx: 22, ry: 11 },
   ];
 
-  // Major internal & perimeter campus roads (drawn as crisp pixel corridors)
+  // Major USF roads in the zoomed Central & SE Campus
   const ROADS = [
-    // Perimeter roads
-    { name: 'E Fletcher Ave',   width: 8, pts: [[0, 5], [512, 5]] },
-    { name: 'E Fowler Ave',     width: 8, pts: [[0, 343], [512, 343]] },
-    { name: 'Bruce B Downs',    width: 8, pts: [[5, 0], [5, 350]] },
-    { name: 'N 50th St',        width: 8, pts: [[506, 0], [506, 350]] },
-
-    // USF Leroy Collins Blvd (central main N-S spine)
-    { name: 'USF Leroy Collins Blvd', width: 7, pts: [[270, 10], [270, 343]] },
-    // USF Genshaft Dr (east-central N-S spine between Central Campus & Athletics/SUN)
-    { name: 'USF Genshaft Dr',        width: 6, pts: [[378, 10], [378, 136], [362, 162], [362, 286], [370, 336]] },
-    // USF Magnolia Dr (west-central N-S road east of USF Health)
-    { name: 'USF Magnolia Dr',        width: 5, pts: [[124, 10], [124, 152], [134, 178], [134, 266]] },
-    // USF Holly Dr (northern E-W corridor)
-    { name: 'USF Holly Dr',           width: 5, pts: [[10, 79], [160, 79], [186, 106], [378, 106]] },
+    // USF Leroy Collins Blvd (prominent N-S central spine between ENB/ISA and LIB/MSC!)
+    { name: 'USF Leroy Collins Blvd', width: 10, pts: [[170, 6], [170, 314]] },
+    // USF Genshaft Dr (east-central N-S spine between Central Campus & REC/SUN!)
+    { name: 'USF Genshaft Dr',        width: 9,  pts: [[322, 6], [322, 46], [312, 84], [312, 276], [324, 314]] },
     // USF Maple Dr / Cherry Dr (central E-W road north of LIB & CPR)
-    { name: 'USF Maple Dr',           width: 5, pts: [[182, 212], [362, 212]] },
-    // USF Cedar Dr (loop around Juniper-Poplar & Engineering)
-    { name: 'USF Cedar Dr',           width: 4, pts: [[134, 188], [190, 188], [190, 266]] },
-    // USF Alumni Dr (southern curved E-W boulevard)
-    { name: 'USF Alumni Dr',          width: 6, pts: [[134, 266], [224, 266], [250, 280], [362, 280], [398, 294], [462, 294]] },
-    // USF Palm Dr (Athletics / Sun Dome east road)
-    { name: 'USF Palm Dr',            width: 4, pts: [[362, 224], [434, 224], [434, 294]] },
-    // USF Pine Dr / Simmons Park path (SW)
-    { name: 'USF Pine Dr',            width: 4, pts: [[10, 284], [64, 284], [94, 266], [134, 266]] },
-    // USF Sage Dr (south-east of Library)
-    { name: 'USF Sage Dr',            width: 4, pts: [[306, 212], [306, 280]] },
+    { name: 'USF Maple Dr',           width: 7,  pts: [[44, 158], [312, 158]] },
+    // USF Cedar Dr (west engineering / Juniper-Poplar loop)
+    { name: 'USF Cedar Dr',           width: 6,  pts: [[44, 106], [108, 106]] },
+    { name: 'USF Cedar West',         width: 6,  pts: [[44, 106], [44, 266]] },
+    // USF Alumni Dr (southern sweeping boulevard south of ENB, LIB, BSN & SUN!)
+    { name: 'USF Alumni Dr',          width: 9,  pts: [[6, 264], [134, 264], [170, 276], [312, 276], [362, 292], [468, 292]] },
+    // USF Palm Dr (eastern road between REC/SUN & Soccer/Baseball!)
+    { name: 'USF Palm Dr',            width: 6,  pts: [[312, 174], [434, 174], [434, 292]] },
+    // USF Sage Dr (between LIB/CPR & BSN)
+    { name: 'USF Sage Dr',            width: 6,  pts: [[242, 158], [242, 276]] },
+    // MLK Plaza / North MSC crosswalk lane
+    { name: 'USF Holly Plaza',        width: 6,  pts: [[170, 60], [208, 60]] },
   ];
 
-  // Athletic fields & stadiums on the East side (USF Recreation & Athletics) + South Fowler Fields
+  // USF Recreation & Athletics venues on the East side (exact reference positions!)
   const ATHLETICS = [
-    // Track & Field Stadium (oval terracotta track + green infield)
-    { type: 'track',    label: 'TRACK',    x: 382, y: 138, w: 46, h: 25 },
-    // Recreation Softball Complex (NE of Track)
-    { type: 'softball', label: 'REC FIELD',x: 438, y: 138, w: 44, h: 24 },
+    // Track & Field Stadium (oval terracotta track + green infield + bleachers)
+    { type: 'track',    label: 'TRACK',    x: 334, y: 46,  w: 76, h: 40 },
+    // Recreation Softball Field (NE of Track)
+    { type: 'softball', label: 'REC FIELD',x: 420, y: 46,  w: 74, h: 38 },
     // Tennis / Basketball Courts (south of Track)
-    { type: 'courts',   label: 'COURTS',   x: 382, y: 166, w: 22, h: 18 },
+    { type: 'courts',   label: 'COURTS',   x: 334, y: 90,  w: 36, h: 28 },
     // Athletic Practice Field
-    { type: 'field',    label: '',         x: 408, y: 166, w: 26, h: 22 },
-    // Football Practice Fields (with white yard lines)
-    { type: 'football', label: 'PRACTICE', x: 438, y: 166, w: 36, h: 26 },
+    { type: 'field',    label: '',         x: 376, y: 90,  w: 36, h: 30 },
+    // Football Practice Fields (with crisp white yard lines)
+    { type: 'football', label: 'PRACTICE', x: 420, y: 88,  w: 62, h: 42 },
     // Corbett Soccer Park Stadium
-    { type: 'soccer',   label: 'SOCCER',   x: 442, y: 198, w: 44, h: 26 },
+    { type: 'soccer',   label: 'SOCCER',   x: 440, y: 136, w: 62, h: 40 },
     // Baseball Stadium (east of SUN)
-    { type: 'baseball', label: 'BASEBALL', x: 442, y: 232, w: 34, h: 28 },
+    { type: 'baseball', label: 'BASEBALL', x: 444, y: 184, w: 54, h: 46 },
     // Softball Stadium (south of Baseball)
-    { type: 'softball', label: 'SOFTBALL', x: 442, y: 265, w: 28, h: 22 },
-    // Fowler Fields Complex (SE near Fowler Ave)
-    { type: 'football', label: 'FOWLER',   x: 382, y: 306, w: 40, h: 22 },
-    // North Tennis Courts (near Village)
-    { type: 'courts',   label: '',         x: 346, y: 46,  w: 16, h: 20 },
+    { type: 'softball', label: 'SOFTBALL', x: 444, y: 236, w: 46, h: 36 },
   ];
 
-  // Non-interactive context buildings matching the reference map's exact clusters
+  // Supporting non-interactive context buildings ONLY within the zoomed Central section
   const CONTEXT_BUILDINGS = [
-    // USF Health (NW cluster)
-    { code: 'NEC', x: 18, y: 18, w: 20, h: 20 },
-    { code: 'CPH', x: 24, y: 42, w: 16, h: 16 },
-    { code: 'VHA', x: 44, y: 36, w: 14, h: 20 },
-    { code: 'MDT', x: 56, y: 18, w: 24, h: 24 },
-    { code: 'VDA', x: 16, y: 92, w: 26, h: 22 },
-    { code: 'MDC', x: 20, y: 116, w: 34, h: 30 },
-    { code: 'MCR', x: 74, y: 94, w: 28, h: 42 },
-    { code: 'CRB', x: 84, y: 78, w: 24, h: 12 },
-    // West-Center (between Magnolia & Central)
-    { code: 'MDH', x: 132, y: 44, w: 22, h: 22 },
-    { code: 'LDG', x: 158, y: 46, w: 22, h: 16 },
-    { code: 'MDC2',x: 132, y: 14, w: 28, h: 22 },
-    { code: 'MUS', x: 160, y: 96, w: 22, h: 18 },
-    { code: 'PED', x: 144, y: 118, w: 34, h: 12 },
-    // HPC inside West Greenway clearing
-    { code: 'HPC', x: 60, y: 168, w: 24, h: 24 },
-    // North Central & The Village / Holly Apartments / Greek Village
-    { code: 'CPT', x: 200, y: 44, w: 46, h: 42 },
-    { code: 'VIL1',x: 284, y: 34, w: 18, h: 28 },
-    { code: 'VIL2',x: 306, y: 34, w: 24, h: 24 },
-    { code: 'HLY', x: 296, y: 68, w: 62, h: 24 },
-    { code: 'GRK1',x: 388, y: 20, w: 16, h: 14 },
-    { code: 'GRK2',x: 408, y: 30, w: 14, h: 14 },
     // Central Campus supporting buildings
-    { code: 'SVC', x: 274, y: 150, w: 22, h: 24 },
-    { code: 'CBG', x: 282, y: 176, w: 30, h: 22, isGarage: true },
-    { code: 'ALN', x: 256, y: 178, w: 20, h: 14 },
-    { code: 'EDU', x: 316, y: 190, w: 22, h: 18 },
-    { code: 'SOC', x: 342, y: 174, w: 20, h: 16 },
-    { code: 'CPR', x: 314, y: 218, w: 26, h: 14 },
-    { code: 'CIS', x: 312, y: 242, w: 14, h: 18 },
-    { code: 'BGD', x: 184, y: 234, w: 20, h: 26, isGarage: true },
-    { code: 'JP',  x: 148, y: 214, w: 26, h: 20 },
-    { code: 'ENG', x: 214, y: 218, w: 16, h: 16 },
-    { code: 'ENC', x: 234, y: 214, w: 18, h: 16 },
-    // South / SW below Alumni Dr
-    { code: 'OHB', x: 112, y: 274, w: 22, h: 14 },
-    { code: 'UTB', x: 156, y: 276, w: 16, h: 22 },
-    { code: 'UTA', x: 180, y: 276, w: 16, h: 22 },
-    { code: 'ESH', x: 176, y: 308, w: 20, h: 18 },
-    { code: 'ALC', x: 318, y: 306, w: 24, h: 18 },
-    { code: 'ATH', x: 422, y: 194, w: 16, h: 24 },
-    { code: 'IPF', x: 478, y: 166, w: 16, h: 28 },
+    { code: 'SVC', x: 182, y: 66,  w: 30, h: 30 },
+    { code: 'CBG', x: 194, y: 104, w: 46, h: 34, isGarage: true },
+    { code: 'ALN', x: 162, y: 108, w: 26, h: 20 },
+    { code: 'EDU', x: 252, y: 122, w: 30, h: 24 },
+    { code: 'SOC', x: 286, y: 102, w: 22, h: 24 },
+    { code: 'CPR', x: 248, y: 168, w: 42, h: 22 },
+    { code: 'BGD', x: 34,  y: 204, w: 28, h: 42, isGarage: true },
+    { code: 'JP',  x: 10,  y: 162, w: 28, h: 30 },
+    { code: 'ENG', x: 76,  y: 168, w: 24, h: 24 },
+    { code: 'ENC', x: 108, y: 164, w: 28, h: 24 },
+    { code: 'ATH', x: 404, y: 132, w: 26, h: 34 },
   ];
 
-  // District labels matching the reference map
+  // District labels matching the zoomed reference map
   const DISTRICT_LABELS = [
-    { text: 'USF HEALTH',       x: 68,  y: 112 },
-    { text: 'CENTRAL CAMPUS',   x: 228, y: 158 },
-    { text: 'USF ATHLETICS',    x: 452, y: 128 },
-    { text: 'SIMMONS PARK',     x: 114, y: 320 },
+    { text: 'CENTRAL CAMPUS', x: 112, y: 74 },
+    { text: 'USF ATHLETICS',  x: 416, y: 38 },
   ];
 
   // ==========================================================================
-  // INTERACTIVE BUILDINGS (Each represents a repository folder — editable in Options!)
-  // Default mapping directly follows the Bullpen spec:
-  //   ENB = /backend, MSC = /frontend, LIB = /docs, SUN = /database (Guarded)
-  // Plus 4 additional real USF campus landmarks from the exact map!
+  // INTERACTIVE BUILDINGS (Enlarged & Detailed — Labeled by Folder Name!)
   // ==========================================================================
   const DEFAULT_BUILDINGS = [
     {
@@ -166,8 +113,8 @@ window.BullpenCampusData = (function () {
       name: 'Engineering Building II',
       defaultFolder: '/backend',
       folder: '/backend',
-      x: 210, y: 238, w: 40, h: 24,
-      door: { x: 232, y: 266 }, // on Alumni Dr
+      x: 74, y: 204, w: 72, h: 46,
+      door: { x: 110, y: 264 }, // on Alumni Dr
       roofStyle: 'engineering',
       primary: true,
       guarded: false,
@@ -213,8 +160,8 @@ window.BullpenCampusData = (function () {
       name: 'Marshall Student Center',
       defaultFolder: '/frontend',
       folder: '/frontend',
-      x: 248, y: 112, w: 38, h: 28,
-      door: { x: 270, y: 142 }, // right on Leroy Collins Blvd / MLK Plaza
+      x: 136, y: 12, w: 68, h: 44,
+      door: { x: 170, y: 62 }, // right on Leroy Collins Blvd / MLK Plaza
       roofStyle: 'marshall',
       primary: true,
       guarded: false,
@@ -258,8 +205,8 @@ window.BullpenCampusData = (function () {
       name: 'USF Tampa Library',
       defaultFolder: '/docs',
       folder: '/docs',
-      x: 278, y: 218, w: 30, h: 22,
-      door: { x: 270, y: 228 }, // facing Leroy Collins Blvd
+      x: 184, y: 170, w: 52, h: 42,
+      door: { x: 170, y: 194 }, // facing Leroy Collins Blvd
       roofStyle: 'library',
       primary: true,
       guarded: false,
@@ -295,8 +242,8 @@ window.BullpenCampusData = (function () {
       name: 'Sun Dome (Yuengling Center)',
       defaultFolder: '/database',
       folder: '/database',
-      x: 386, y: 226, w: 42, h: 36,
-      door: { x: 362, y: 244 }, // facing Genshaft Dr
+      x: 348, y: 184, w: 76, h: 62,
+      door: { x: 312, y: 214 }, // facing Genshaft Dr
       roofStyle: 'dome',
       primary: true,
       guarded: true,
@@ -334,8 +281,8 @@ window.BullpenCampusData = (function () {
       name: 'Muma College of Business',
       defaultFolder: '/config',
       folder: '/config',
-      x: 326, y: 242, w: 30, h: 28,
-      door: { x: 340, y: 280 }, // Alumni Dr
+      x: 248, y: 204, w: 56, h: 52,
+      door: { x: 276, y: 276 }, // Alumni Dr
       roofStyle: 'courtyard',
       primary: false,
       guarded: false,
@@ -369,13 +316,13 @@ window.BullpenCampusData = (function () {
       name: 'Interdisciplinary Sciences',
       defaultFolder: '/tests',
       folder: '/tests',
-      x: 224, y: 170, w: 28, h: 22,
-      door: { x: 270, y: 184 }, // Leroy Collins Blvd
+      x: 102, y: 98, w: 52, h: 38,
+      door: { x: 170, y: 118 }, // Leroy Collins Blvd
       roofStyle: 'science',
       primary: false,
       guarded: false,
       description: 'Automated integration suites, fuzzers, and regression harnesses.',
-      summary: 'Added 14 lease contention unit tests — all passing.',
+      summary: 'Added 14 lease queue unit tests — all passing.',
       changes: []
     },
     {
@@ -384,8 +331,8 @@ window.BullpenCampusData = (function () {
       name: 'Campus Recreation Center',
       defaultFolder: '/scripts',
       folder: '/scripts',
-      x: 372, y: 190, w: 38, h: 22,
-      door: { x: 362, y: 202 }, // Genshaft Dr
+      x: 326, y: 124, w: 66, h: 38,
+      door: { x: 312, y: 144 }, // Genshaft Dr
       roofStyle: 'rec',
       primary: false,
       guarded: false,
@@ -399,8 +346,8 @@ window.BullpenCampusData = (function () {
       name: 'Fine Arts Hall',
       defaultFolder: '/assets',
       folder: '/assets',
-      x: 188, y: 120, w: 24, h: 26,
-      door: { x: 214, y: 146 },
+      x: 36, y: 16, w: 48, h: 40,
+      door: { x: 64, y: 106 }, // Cedar / Central Walkway
       roofStyle: 'arts',
       primary: false,
       guarded: false,
@@ -411,69 +358,59 @@ window.BullpenCampusData = (function () {
   ];
 
   // ==========================================================================
-  // CAMPUS WALKING PATH GRAPH (so idle & dispatched Bulls walk on REAL roads!)
+  // CAMPUS WALKING PATH GRAPH (Exact zoomed Central Campus road network!)
   // ==========================================================================
   const WAYPOINTS = {
-    // Leroy Collins Blvd (N-S spine)
-    lc_north:   { x: 270, y: 106 },
-    lc_msc:     { x: 270, y: 142 },
-    lc_isa:     { x: 270, y: 184 },
-    lc_maple:   { x: 270, y: 212 },
-    lc_lib:     { x: 270, y: 228 },
-    lc_alumni:  { x: 270, y: 280 },
-    lc_south:   { x: 270, y: 318 },
+    // Leroy Collins Blvd (N-S central spine)
+    lc_msc:     { x: 170, y: 62 },
+    lc_isa:     { x: 170, y: 118 },
+    lc_maple:   { x: 170, y: 158 },
+    lc_lib:     { x: 170, y: 194 },
+    lc_alumni:  { x: 170, y: 276 },
+    lc_south:   { x: 170, y: 304 },
 
-    // Holly Dr & North Plaza
-    holly_w:    { x: 186, y: 106 },
-    fah_door:   { x: 214, y: 146 },
-    holly_e:    { x: 378, y: 106 },
-
-    // Magnolia & Cedar Dr (West Central)
-    mag_holly:  { x: 124, y: 79 },
-    cedar_nw:   { x: 190, y: 188 },
-    cedar_mid:  { x: 190, y: 212 },
-    cedar_s:    { x: 190, y: 266 },
-    enb_door:   { x: 232, y: 266 },
+    // Cedar & West Engineering Loop
+    cedar_nw:   { x: 44,  y: 106 },
+    fah_door:   { x: 64,  y: 106 },
+    cedar_isa:  { x: 108, y: 106 },
+    cedar_mid:  { x: 44,  y: 158 },
+    cedar_s:    { x: 44,  y: 264 },
+    enb_door:   { x: 110, y: 264 },
 
     // Maple Dr & Sage Dr (Central)
-    maple_mid:  { x: 306, y: 212 },
-    maple_e:    { x: 362, y: 212 },
-    sage_s:     { x: 306, y: 280 },
-    bsn_door:   { x: 340, y: 280 },
+    maple_mid:  { x: 242, y: 158 },
+    maple_e:    { x: 312, y: 158 },
+    sage_s:     { x: 242, y: 276 },
+    bsn_door:   { x: 276, y: 276 },
 
     // Genshaft Dr (East-Central)
-    gen_north:  { x: 378, y: 136 },
-    gen_rec:    { x: 362, y: 202 },
-    gen_palm:   { x: 362, y: 224 },
-    gen_sun:    { x: 362, y: 244 },
-    gen_alumni: { x: 362, y: 280 },
+    gen_north:  { x: 312, y: 84 },
+    gen_rec:    { x: 312, y: 144 },
+    gen_palm:   { x: 312, y: 174 },
+    gen_sun:    { x: 312, y: 214 },
+    gen_alumni: { x: 312, y: 276 },
 
-    // Athletics & Palm Dr
-    palm_e:     { x: 434, y: 224 },
-    palm_s:     { x: 434, y: 294 },
-    alumni_se:  { x: 398, y: 294 },
+    // Palm Dr & Athletics
+    palm_e:     { x: 434, y: 174 },
+    palm_s:     { x: 434, y: 292 },
+    alumni_se:  { x: 362, y: 292 },
   };
 
   const WAYPOINT_EDGES = [
-    ['lc_north', 'lc_msc'],
     ['lc_msc', 'lc_isa'],
     ['lc_isa', 'lc_maple'],
     ['lc_maple', 'lc_lib'],
     ['lc_lib', 'lc_alumni'],
     ['lc_alumni', 'lc_south'],
 
-    ['holly_w', 'lc_north'],
-    ['lc_north', 'holly_e'],
-    ['holly_w', 'fah_door'],
-    ['fah_door', 'lc_msc'],
-    ['holly_e', 'gen_north'],
-
+    ['cedar_nw', 'fah_door'],
+    ['fah_door', 'cedar_isa'],
+    ['cedar_isa', 'lc_isa'],
     ['cedar_nw', 'cedar_mid'],
     ['cedar_mid', 'cedar_s'],
     ['cedar_mid', 'lc_maple'],
     ['cedar_s', 'enb_door'],
     ['enb_door', 'lc_alumni'],
-    ['fah_door', 'cedar_nw'],
 
     ['lc_maple', 'maple_mid'],
     ['maple_mid', 'maple_e'],
@@ -482,6 +419,7 @@ window.BullpenCampusData = (function () {
     ['sage_s', 'bsn_door'],
     ['bsn_door', 'gen_alumni'],
 
+    ['lc_msc', 'gen_north'],
     ['gen_north', 'gen_rec'],
     ['gen_rec', 'maple_e'],
     ['maple_e', 'gen_palm'],
@@ -494,7 +432,6 @@ window.BullpenCampusData = (function () {
     ['alumni_se', 'palm_s'],
   ];
 
-  // Building ID -> nearest graph waypoint for clean pathfinding
   const BUILDING_WAYPOINT = {
     ENB: 'enb_door',
     MSC: 'lc_msc',
@@ -506,7 +443,6 @@ window.BullpenCampusData = (function () {
     FAH: 'fah_door',
   };
 
-  // Precomputed adjacency list for shortest-path BFS/Dijkstra on campus roads
   const ADJACENCY = {};
   Object.keys(WAYPOINTS).forEach(k => { ADJACENCY[k] = []; });
   WAYPOINT_EDGES.forEach(([a, b]) => {
@@ -567,21 +503,19 @@ window.BullpenCampusData = (function () {
     return path.length ? path : [{ ...WAYPOINTS[targetNodeId] }];
   }
 
-  // Pixel trees placed authentically around campus parks & greenways
+  // Pixel trees placed cleanly across parks, greenways & lawns inside zoomed Central Campus
   const TREES = [
-    // Simmons Park & SW
-    [22,298],[42,312],[60,300],[78,318],[92,312],[146,312],[158,322],[212,312],[232,324],[252,306],
-    // Legacy Park (below LIB) & South Lawn
-    [282,254],[294,262],[288,298],[302,316],[352,310],[366,298],
-    // Central Campus & Greenway edges
-    [152,164],[170,160],[200,158],[236,154],[298,154],[332,158],[352,148],[358,132],
-    // North Campus & Village lawns
-    [104,24],[114,54],[190,26],[252,26],[262,64],[334,24],[364,26],[366,86],
-    // East & Athletics perimeter
-    [412,30],[448,30],[474,42],[484,78],[458,92],[422,94],[400,114],[472,114],
-    [486,240],[486,272],[476,304],[444,316],[486,320],
-    // West Preserve canopy accents
-    [26,172],[48,224],[72,236],[96,222],[110,192],[94,166],[22,256],[44,268],
+    // Central Campus Greenway canopy
+    [18,74],[34,88],[62,72],[96,84],[144,78],[214,76],[286,54],[302,44],
+    // NE Greenway edge
+    [348,22],[386,20],[426,24],[468,20],[494,30],
+    // Legacy Park (south of LIB) & South Alumni lawn
+    [194,232],[214,244],[202,258],[226,238],
+    [22,286],[58,294],[94,290],[132,296],[198,296],[244,298],[288,298],[344,302],[408,304],
+    // West & North lawns around FAH / Engineering
+    [16,32],[20,128],[66,134],[90,142],[148,144],
+    // East campus edges
+    [328,118],[492,126],[498,232],[496,282],
   ];
 
   // Sample realistic tasks & generated diffs for dynamic agent dispatches
@@ -641,7 +575,7 @@ window.BullpenCampusData = (function () {
         file: '/docs/ARCHITECTURE.md',
         diff: [
           { type: 'add', text: '| Building | Folder | Protection |' },
-          { type: 'add', text: '| SUN (Sun Dome) | /database | Guarded Zone |' },
+          { type: 'add', text: '| Sun Dome | /database | Guarded Zone |' },
         ]
       }
     ],
@@ -717,6 +651,7 @@ window.BullpenCampusData = (function () {
     BUILDING_WAYPOINT,
     TREES,
     SAMPLE_TASKS,
+    getFolderLabel,
     findPath,
     nearestWaypoint,
   };

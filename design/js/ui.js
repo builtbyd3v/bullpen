@@ -6,6 +6,7 @@
 
 (function () {
   const { CLAUDE_MODELS } = window.BullpenPalette;
+  const Data = window.BullpenCampusData;
   const { state, tick, startOpeningScene } = window.BullpenState;
   const { CampusMapRenderer } = window.BullpenMapRenderer;
   const TraditionalView = window.BullpenTraditionalView;
@@ -141,9 +142,10 @@
       activeHtml += `<div class="tt-agent">⏳ Waiting at door: ${escapeHtml(names)}</div>`;
     }
 
+    const folderTag = Data.getFolderLabel(b.folder);
     tooltipEl.innerHTML = `
       <div class="tt-head">
-        <span class="tt-code">${escapeHtml(b.code)}</span>
+        <span class="tt-code">${escapeHtml(folderTag)}</span>
         <span class="tt-name">${escapeHtml(b.name)}</span>
       </div>
       <div class="tt-folder">
@@ -264,9 +266,10 @@
         }).join('')
       : `<div class="empty-changes">No agent commits recorded in <code>${escapeHtml(b.folder)}</code> yet. Dispatch a Claude Bull to see live construction &amp; diffs!</div>`;
 
+    const folderTag = Data.getFolderLabel(b.folder);
     buildingDrawerBody.innerHTML = `
       <div class="drawer-bldg-hero">
-        <div class="drawer-code-badge">${escapeHtml(b.code)}</div>
+        <div class="drawer-code-badge">${escapeHtml(folderTag)}</div>
         <div class="drawer-bldg-titles">
           <h3>${escapeHtml(b.name)}</h3>
           <div class="drawer-folder-line">
@@ -322,7 +325,7 @@
     optionsMappingsList.innerHTML = state.buildings.map(b => `
       <div class="opt-map-row">
         <div class="opt-bldg-info">
-          <span class="opt-code">${escapeHtml(b.code)}</span>
+          <span class="opt-code">${escapeHtml(Data.getFolderLabel(b.folder))}</span>
           <span class="opt-name">${escapeHtml(b.name)}</span>
         </div>
         <input
@@ -394,12 +397,14 @@
 
     oracleListEl.innerHTML = state.oracleFeed.map(item => {
       const m = CLAUDE_MODELS[item.modelId] || CLAUDE_MODELS['claude-opus-4-6'];
+      const b = item.buildingId ? state.getBuilding(item.buildingId) : null;
+      const bldgLabel = b ? Data.getFolderLabel(b.folder) : 'CAMPUS';
       return `
         <button class="oracle-item type-${item.type}" data-oracle-bldg="${escapeHtml(item.buildingId || '')}">
           <div class="oracle-item-top">
             <span class="oracle-icon">${iconFor[item.type] || '📌'}</span>
             <span class="oracle-model-dot" style="background:${m.primary}"></span>
-            <span class="oracle-bldg">${escapeHtml(item.buildingId || 'CAMPUS')}</span>
+            <span class="oracle-bldg">${escapeHtml(bldgLabel)}</span>
             <span class="oracle-time">${escapeHtml(item.time)}</span>
           </div>
           <div class="oracle-title">${escapeHtml(item.title)}</div>
@@ -451,7 +456,7 @@
 
     const prevB = demoBuildingSelect.value || 'ENB';
     demoBuildingSelect.innerHTML = state.buildings.map(b =>
-      `<option value="${b.id}">${escapeHtml(b.code)} — ${escapeHtml(b.folder)}</option>`
+      `<option value="${b.id}">${escapeHtml(Data.getFolderLabel(b.folder))} — ${escapeHtml(b.name)}</option>`
     ).join('');
     demoBuildingSelect.value = prevB;
   }

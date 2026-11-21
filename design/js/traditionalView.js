@@ -31,10 +31,10 @@ window.BullpenTraditionalView = (function () {
     switch (agent.state) {
       case 'working': {
         const rem = Math.max(0, Math.ceil(state.timeLimitSec - (agent.workElapsed || 0)));
-        return `Editing ${b ? b.folder : ''} (${b ? b.code : ''}) — ${rem}s left`;
+        return `Editing ${b ? b.folder : ''} — ${rem}s left`;
       }
-      case 'walking':     return `Heading to ${b ? b.folder : ''} (${b ? b.code : ''})`;
-      case 'waiting':     return `Waiting in queue #${agent.queuePos || 1} outside ${b ? b.folder : ''} (${b ? b.code : ''})`;
+      case 'walking':     return `Heading to ${b ? b.folder : ''}`;
+      case 'waiting':     return `Waiting in queue #${agent.queuePos || 1} outside ${b ? b.folder : ''}`;
       case 'kicked':      return `Evicted from building — Error or Time Limit Exceeded!`;
       case 'celebrating': return `Completed task — Releasing lease`;
       default:            return 'Idle — Monitoring workspace';
@@ -56,7 +56,7 @@ window.BullpenTraditionalView = (function () {
           <div class="trad-folder-main">
             <span class="trad-folder-icon">${icon}</span>
             <span class="trad-folder-path">${escapeHtml(b.folder)}</span>
-            <span class="trad-bldg-chip">${escapeHtml(b.code)}</span>
+            <span class="trad-bldg-chip">${escapeHtml(b.name)}</span>
           </div>
           <div class="trad-folder-meta">
             ${waiters.length ? `<span class="trad-queue-pill">⏳ ${waiters.length} WAIT</span>` : ''}
@@ -116,7 +116,7 @@ window.BullpenTraditionalView = (function () {
       return `
         <tr data-inspect-bldg="${c.building.id}" class="trad-commit-row">
           <td><code class="commit-sha">${escapeHtml(c.commit)}</code></td>
-          <td><span class="trad-folder-inline">${escapeHtml(c.building.folder)}</span> <span class="trad-bldg-chip">${escapeHtml(c.building.code)}</span></td>
+          <td><span class="trad-folder-inline">${escapeHtml(c.building.folder)}</span></td>
           <td><span class="trad-model-tag" style="background:${model.badgeBg};color:${model.badgeText}">${escapeHtml(model.shortName)}</span></td>
           <td>${escapeHtml(c.summary)}</td>
           <td class="muted">${escapeHtml(c.time)}</td>

@@ -124,7 +124,8 @@ window.BullpenSprites = (function () {
   }
 
   // ==========================================================================
-  // INTERACTIVE PIXEL BUILDING (Custom USF architectural silhouettes!)
+  // INTERACTIVE PIXEL BUILDINGS — High-Detail Zoomed USF Architecture!
+  // Labeled with each building's mapped folder name (live-updated from Options)
   // ==========================================================================
   function drawInteractiveBuilding(ctx, b, opts) {
     const { hovered, selected, status, time } = opts;
@@ -132,13 +133,14 @@ window.BullpenSprites = (function () {
     const y = Math.round(b.y);
     const w = Math.round(b.w);
     const h = Math.round(b.h);
+    const folderLabel = window.BullpenCampusData.getFolderLabel(b.folder);
 
     // 1. Highlight glow / status perimeter
     if (status === 'kickout') {
       const pulse = Math.floor(time * 12) % 2 === 0;
       px(ctx, x - 3, y - 3, w + 6, h + 6, pulse ? USF.alertRed : USF.lemongrass);
     } else if (hovered || selected) {
-      px(ctx, x - 2, y - 2, w + 4, h + 4, hovered ? USF.lemongrass : USF.gold);
+      px(ctx, x - 3, y - 3, w + 6, h + 6, hovered ? USF.lemongrass : USF.gold);
       px(ctx, x - 1, y - 1, w + 2, h + 2, USF.green);
     } else if (status === 'working') {
       px(ctx, x - 2, y - 2, w + 4, h + 4, USF.craneGold);
@@ -146,124 +148,354 @@ window.BullpenSprites = (function () {
       px(ctx, x - 2, y - 2, w + 4, h + 4, USF.apple);
     }
 
-    // 2. Drop shadow (south-east pixel depth)
-    px(ctx, x + 2, y + 3, w, h, 'rgba(0, 56, 34, 0.45)');
+    // 2. Ground drop shadow (crisp south-east pixel depth)
+    px(ctx, x + 3, y + 4, w, h, 'rgba(0, 56, 34, 0.42)');
 
-    // 3. Base architectural silhouette by building style
+    // 3. Detailed Architectural Pixel Art by Building Landmark
     if (b.roofStyle === 'dome') {
-      // SUN DOME (Yuengling Center): Iconic octagonal domed roof + circular SSP annex
+      // ======================================================================
+      // SUN DOME (Yuengling Center) — Ribbed Octagonal Arena Dome + SSP Annex
+      // ======================================================================
       const cx = x + Math.floor(w / 2);
-      const cy = y + Math.floor(h / 2) - 2;
-      // Outer octagon silhouette
-      px(ctx, x + 4, y, w - 8, h - 6, USF.ink);
-      px(ctx, x, y + 4, w, h - 14, USF.ink);
-      px(ctx, x + 5, y + 1, w - 10, h - 8, USF.bldgDark);
-      px(ctx, x + 1, y + 5, w - 2, h - 16, USF.bldgMid);
-      // Ribbed USF dome crown
-      px(ctx, x + 6, y + 3, w - 12, h - 14, USF.sand);
-      px(ctx, x + 10, y + 5, w - 20, h - 18, USF.white);
-      // Dome ribs
-      px(ctx, cx - 1, y + 2, 2, h - 12, USF.gold);
-      px(ctx, x + 4, cy - 1, w - 8, 2, USF.gold);
-      // USF Green ring trim around dome
-      px(ctx, x + 8, y + 4, w - 16, 1, USF.green);
-      px(ctx, x + 8, y + h - 12, w - 16, 1, USF.green);
-      // SSP circular south annex
-      px(ctx, cx - 8, y + h - 9, 16, 9, USF.ink);
-      px(ctx, cx - 7, y + h - 8, 14, 7, USF.bldgMid);
-      px(ctx, cx - 5, y + h - 7, 10, 4, USF.bldgLight);
+      const domeH = h - 10;
+      const cy = y + Math.floor(domeH / 2);
+
+      // Outer stepped octagonal concrete apron & perimeter columns
+      px(ctx, x + 8, y, w - 16, domeH, USF.ink);
+      px(ctx, x + 4, y + 4, w - 8, domeH - 8, USF.ink);
+      px(ctx, x, y + 8, w, domeH - 16, USF.ink);
+
+      // Concrete facade base wall
+      px(ctx, x + 9, y + 1, w - 18, domeH - 2, USF.bldgDark);
+      px(ctx, x + 5, y + 5, w - 10, domeH - 10, USF.bldgMid);
+      px(ctx, x + 1, y + 9, w - 2, domeH - 18, USF.bldgMid);
+
+      // Exterior arena buttress pillars along perimeter
+      for (let bx = x + 12; bx < x + w - 12; bx += 8) {
+        px(ctx, bx, y + 2, 2, 3, USF.sand);
+        px(ctx, bx, y + domeH - 5, 2, 3, USF.sand);
+      }
+      for (let by = y + 12; by < y + domeH - 12; by += 7) {
+        px(ctx, x + 2, by, 3, 2, USF.sand);
+        px(ctx, x + w - 5, by, 3, 2, USF.sand);
+      }
+
+      // USF Green structural tension ring
+      px(ctx, x + 10, y + 5, w - 20, domeH - 10, USF.evergreen);
+      px(ctx, x + 6, y + 9, w - 12, domeH - 18, USF.green);
+
+      // Stepped white/sand fiberglass stadium dome roof
+      px(ctx, x + 12, y + 7, w - 24, domeH - 14, USF.sand);
+      px(ctx, x + 8, y + 11, w - 16, domeH - 22, USF.sand);
+      px(ctx, x + 15, y + 9, w - 30, domeH - 18, USF.white);
+      px(ctx, x + 12, y + 13, w - 24, domeH - 26, USF.white);
+
+      // 8 radial USF Gold & Silver stadium dome ribs
+      px(ctx, cx - 1, y + 6, 2, domeH - 12, USF.gold);
+      px(ctx, x + 7, cy - 1, w - 14, 2, USF.gold);
+      for (let d = 5; d <= 16; d++) {
+        px(ctx, cx - d, cy - Math.round(d * 0.7), 1, 1, USF.silver);
+        px(ctx, cx + d, cy - Math.round(d * 0.7), 1, 1, USF.silver);
+        px(ctx, cx - d, cy + Math.round(d * 0.7), 1, 1, USF.silver);
+        px(ctx, cx + d, cy + Math.round(d * 0.7), 1, 1, USF.silver);
+      }
+
+      // Central glowing oculus skylight crown
+      px(ctx, cx - 7, cy - 5, 14, 10, USF.green);
+      px(ctx, cx - 5, cy - 3, 10, 6, USF.storm);
+      px(ctx, cx - 4, cy - 2, 8, 3, USF.sky);
+      px(ctx, cx - 2, cy - 2, 3, 1, USF.white);
+
+      // West concourse entrance doors facing Genshaft Dr
+      px(ctx, x + 1, cy - 5, 3, 10, USF.evergreen);
+      px(ctx, x + 2, cy - 3, 2, 6, USF.lemongrass);
+
+      // Circular SSP South Annex with skylight
+      px(ctx, cx - 13, y + h - 13, 26, 13, USF.ink);
+      px(ctx, cx - 12, y + h - 12, 24, 11, USF.bldgDark);
+      px(ctx, cx - 10, y + h - 11, 20, 8, USF.bldgLight);
+      px(ctx, cx - 6, y + h - 9, 12, 4, USF.storm);
+      px(ctx, cx - 5, y + h - 8, 10, 2, USF.sky);
+
     } else if (b.roofStyle === 'marshall') {
-      // MSC (Marshall Student Center): U-shaped plaza union + USF green skylight
+      // ======================================================================
+      // MARSHALL STUDENT CENTER — Grand U-Wing Union, Atrium Skylight & Plaza
+      // ======================================================================
       px(ctx, x, y, w, h, USF.ink);
       px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
-      px(ctx, x + 1, y + 1, w - 2, h - 6, USF.bldgMid);
-      // Raised roof wings
-      px(ctx, x + 2, y + 2, w - 4, 8, USF.bldgLight);
-      px(ctx, x + 2, y + 2, 10, h - 7, USF.bldgLight);
-      px(ctx, x + w - 12, y + 2, 10, h - 7, USF.bldgLight);
-      // Central glass atrium & USF green entrance awning
-      px(ctx, x + 13, y + 10, w - 26, 9, USF.storm);
-      px(ctx, x + 14, y + 11, w - 28, 3, USF.sky);
-      px(ctx, x + 12, y + h - 5, w - 24, 3, USF.green);
-      // Windows
-      for (let wx = x + 4; wx < x + w - 5; wx += 4) {
-        px(ctx, wx, y + h - 4, 2, 2, USF.slate);
+      // Warm sandstone main facade
+      px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
+
+      // Raised U-shaped tiled roof wings with crisp cornice bevels
+      px(ctx, x + 2, y + 2, w - 4, 12, USF.bldgLight);
+      px(ctx, x + 3, y + 3, w - 6, 3, USF.sand); // sun-lit north parapet
+      px(ctx, x + 2, y + 2, 16, h - 11, USF.bldgLight);
+      px(ctx, x + w - 18, y + 2, 16, h - 11, USF.bldgLight);
+      // Roof mechanical boxes on side wings
+      px(ctx, x + 5, y + 7, 7, 5, USF.silver);
+      px(ctx, x + 6, y + 8, 5, 3, USF.gray);
+      px(ctx, x + w - 13, y + 7, 7, 5, USF.silver);
+      px(ctx, x + w - 12, y + 8, 5, 3, USF.gray);
+
+      // Stepped Blue-Sky Glass Central Atrium Skylight!
+      const ax = x + 19, ay = y + 12, aw = w - 38, ah = 15;
+      px(ctx, ax, ay, aw, ah, USF.ink);
+      px(ctx, ax + 1, ay + 1, aw - 2, ah - 2, USF.storm);
+      px(ctx, ax + 2, ay + 2, aw - 4, 5, USF.sky);
+      px(ctx, ax + 3, ay + 3, aw - 12, 2, USF.white); // glass specular shine
+      // Skylight steel mullions
+      for (let mx = ax + 6; mx < ax + aw - 3; mx += 6) {
+        px(ctx, mx, ay + 1, 1, ah - 2, USF.evergreen);
       }
+
+      // Lower colonnade facade + 2 floors of glowing student union windows
+      px(ctx, x + 2, y + h - 11, w - 4, 9, USF.sand);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 10, 3, 3, USF.storm);
+        px(ctx, wx, y + h - 10, 2, 1, USF.sky);
+        px(ctx, wx, y + h - 5, 3, 3, USF.slate);
+      }
+      // Iconic USF Green & Gold Front Entrance Awning + double glass doors
+      const ex = x + Math.floor(w / 2) - 10;
+      px(ctx, ex, y + h - 9, 20, 4, USF.green);
+      px(ctx, ex, y + h - 6, 20, 1, USF.gold);
+      px(ctx, ex + 4, y + h - 5, 12, 4, USF.evergreen);
+      px(ctx, ex + 5, y + h - 4, 4, 3, USF.lemongrass);
+      px(ctx, ex + 11, y + h - 4, 4, 3, USF.lemongrass);
+
     } else if (b.roofStyle === 'engineering') {
-      // ENB (Engineering Building II): Modern wing + skybridge + roof HVAC units
+      // ======================================================================
+      // ENGINEERING BUILDING II — Solar Array, Animated HVAC Fans & Skybridge
+      // ======================================================================
       px(ctx, x, y, w, h, USF.ink);
       px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
-      px(ctx, x + 1, y + 1, w - 2, h - 6, USF.bldgMid);
-      px(ctx, x + 2, y + 2, w - 4, h - 9, USF.bldgLight);
-      // East skybridge wing
-      px(ctx, x + w - 10, y + 5, 9, 8, USF.bldgMid);
-      // Rooftop HVAC & solar array detail
-      px(ctx, x + 5, y + 4, 6, 4, USF.silver);
-      px(ctx, x + 13, y + 4, 5, 4, USF.gray);
-      px(ctx, x + 22, y + 4, 10, 5, USF.storm);
-      px(ctx, x + 23, y + 5, 8, 3, USF.sky);
-      // Banded tech windows
-      for (let wx = x + 3; wx < x + w - 4; wx += 4) {
-        px(ctx, wx, y + h - 5, 3, 2, USF.evergreen);
+      px(ctx, x + 1, y + 1, w - 2, h - 11, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 15, USF.bldgLight);
+      px(ctx, x + 3, y + 3, w - 6, 2, USF.sand);
+
+      // Twin Rooftop Industrial HVAC Fan Units (with animated spinning blades!)
+      const fanSpin = Math.floor(time * 8) % 2;
+      [x + 6, x + 18].forEach(fx => {
+        px(ctx, fx, y + 6, 9, 9, USF.slate);
+        px(ctx, fx + 1, y + 7, 7, 7, USF.silver);
+        px(ctx, fx + 2, y + 8, 5, 5, USF.ink);
+        if (fanSpin === 0) {
+          px(ctx, fx + 4, y + 8, 1, 5, USF.gray);
+          px(ctx, fx + 2, y + 10, 5, 1, USF.gray);
+        } else {
+          px(ctx, fx + 3, y + 9, 3, 3, USF.gray);
+          px(ctx, fx + 4, y + 10, 1, 1, USF.white);
+        }
+      });
+
+      // Rooftop Solar Panel Array (angled dark-blue grid with sun glare!)
+      const sx = x + 31, sy = y + 6, sw = 24, sh = 11;
+      px(ctx, sx, sy, sw, sh, USF.ink);
+      px(ctx, sx + 1, sy + 1, sw - 2, sh - 2, USF.storm);
+      for (let gx = sx + 5; gx < sx + sw - 2; gx += 5) {
+        px(ctx, gx, sy + 1, 1, sh - 2, USF.silver);
       }
+      px(ctx, sx + 1, sy + 5, sw - 2, 1, USF.silver);
+      px(ctx, sx + 2, sy + 2, 3, 2, USF.sky);
+      px(ctx, sx + 12, sy + 2, 3, 2, USF.sky);
+
+      // East Glass Skybridge Wing
+      px(ctx, x + w - 13, y + 7, 12, 16, USF.evergreen);
+      px(ctx, x + w - 12, y + 8, 10, 14, USF.teal);
+      px(ctx, x + w - 11, y + 9, 8, 3, USF.sky);
+      px(ctx, x + w - 11, y + 14, 8, 3, USF.sky);
+
+      // Two-Story Curtain-Wall Tech Facade with Lit Workstations!
+      px(ctx, x + 2, y + h - 13, w - 4, 11, USF.bldgDark);
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        // Upper lab floor
+        px(ctx, wx, y + h - 12, 4, 4, USF.evergreen);
+        px(ctx, wx + 1, y + h - 11, 2, 2, (wx % 12 === 0) ? USF.lemongrass : USF.sky);
+        // Ground floor
+        px(ctx, wx, y + h - 6, 4, 4, USF.slate);
+        px(ctx, wx + 1, y + h - 5, 2, 2, USF.seaglass);
+      }
+      // Main USF Green Engineering Canopy Entrance
+      const ex = x + Math.floor(w / 2) - 9;
+      px(ctx, ex, y + h - 8, 18, 3, USF.green);
+      px(ctx, ex, y + h - 6, 18, 1, USF.gold);
+      px(ctx, ex + 4, y + h - 5, 10, 4, USF.ink);
+      px(ctx, ex + 5, y + h - 4, 3, 3, USF.sky);
+      px(ctx, ex + 10, y + h - 4, 3, 3, USF.sky);
+
     } else if (b.roofStyle === 'library') {
-      // LIB (USF Tampa Library): Iconic tall rectangular tower with vertical fins
-      px(ctx, x, y - 3, w, h + 3, USF.ink);
-      px(ctx, x + 1, y - 2, w - 2, h + 1, USF.bldgDark);
-      px(ctx, x + 1, y - 2, w - 2, h - 5, USF.sand);
-      // Roof skylight bar
-      px(ctx, x + 4, y, w - 8, 5, USF.gold);
-      px(ctx, x + 6, y + 1, w - 12, 3, USF.seaglass);
-      // Vertical concrete facade fins + warm glowing study windows
-      for (let fx = x + 3; fx < x + w - 3; fx += 4) {
-        px(ctx, fx, y + 7, 2, h - 9, USF.bldgLight);
-        px(ctx, fx + 2, y + 8, 2, 2, USF.lemongrass);
-        px(ctx, fx + 2, y + 12, 2, 2, USF.sky);
+      // ======================================================================
+      // USF TAMPA LIBRARY — Tall Brutalist Tower, Concrete Fins & 3 Study Floors
+      // ======================================================================
+      px(ctx, x, y - 4, w, h + 4, USF.ink);
+      px(ctx, x + 1, y - 3, w - 2, h + 2, USF.bldgDark);
+      px(ctx, x + 1, y - 3, w - 2, h - 4, USF.sand);
+
+      // Stepped Mechanical Penthouse + Glowing Roof Skylight Strip
+      px(ctx, x + 6, y - 1, w - 12, 9, USF.bldgMid);
+      px(ctx, x + 7, y, w - 14, 7, USF.bldgLight);
+      px(ctx, x + 10, y + 2, w - 20, 4, USF.storm);
+      px(ctx, x + 11, y + 3, w - 22, 2, USF.sky);
+
+      // Iconic Vertical Concrete Brise-Soleil Fins + 3 Full Study Window Floors!
+      for (let fx = x + 3; fx < x + w - 4; fx += 5) {
+        px(ctx, fx, y + 10, 2, h - 13, USF.bldgLight);
+        px(ctx, fx + 1, y + 10, 1, h - 13, USF.white);
+        // Floor 3 (top study floor)
+        px(ctx, fx + 2, y + 11, 3, 4, USF.evergreen);
+        px(ctx, fx + 3, y + 12, 2, 2, (fx % 10 === 0) ? USF.lemongrass : USF.sky);
+        // Floor 2 (middle stacks)
+        px(ctx, fx + 2, y + 17, 3, 4, USF.slate);
+        px(ctx, fx + 3, y + 18, 2, 2, USF.lemongrass);
+        // Floor 1 (reading lounge)
+        px(ctx, fx + 2, y + 23, 3, 4, USF.storm);
+        px(ctx, fx + 3, y + 24, 2, 2, USF.sky);
       }
-      // USF Green main entrance
-      px(ctx, x + Math.floor(w / 2) - 4, y + h - 4, 8, 3, USF.green);
+
+      // Grand USF Green Library Entrance Steps & Glass Portico
+      const ex = x + Math.floor(w / 2) - 9;
+      px(ctx, ex - 2, y + h - 8, 22, 3, USF.green);
+      px(ctx, ex - 2, y + h - 6, 22, 1, USF.gold);
+      px(ctx, ex + 2, y + h - 5, 14, 4, USF.evergreen);
+      px(ctx, ex + 4, y + h - 4, 4, 3, USF.lemongrass);
+      px(ctx, ex + 10, y + h - 4, 4, 3, USF.lemongrass);
+
     } else if (b.roofStyle === 'courtyard') {
-      // BSN (Muma Business): Square with green central courtyard
+      // ======================================================================
+      // MUMA COLLEGE OF BUSINESS — 4-Wing Quad + Inner Garden Courtyard & Fountain
+      // ======================================================================
       px(ctx, x, y, w, h, USF.ink);
       px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
-      px(ctx, x + 1, y + 1, w - 2, h - 5, USF.bldgLight);
-      // Inner courtyard garden
-      px(ctx, x + 8, y + 7, w - 16, h - 15, USF.evergreen);
-      px(ctx, x + 9, y + 8, w - 18, h - 17, USF.apple);
-      px(ctx, x + 12, y + 11, 4, 4, USF.sand);
-    } else {
-      // ISA, REC, FAH
-      px(ctx, x, y, w, h, USF.ink);
-      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
-      px(ctx, x + 1, y + 1, w - 2, h - 5, USF.bldgMid);
-      px(ctx, x + 3, y + 2, w - 6, h - 8, USF.bldgLight);
-      px(ctx, x + 6, y + 4, w - 12, 4, USF.seaglass);
-      for (let wx = x + 3; wx < x + w - 4; wx += 4) {
-        px(ctx, wx, y + h - 4, 2, 2, USF.slate);
+      px(ctx, x + 1, y + 1, w - 2, h - 7, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 10, USF.bldgLight);
+      px(ctx, x + 3, y + 3, w - 6, 2, USF.sand);
+
+      // Detailed Inner Academic Courtyard Garden!
+      const qx = x + 11, qy = y + 10, qw = w - 22, qh = h - 24;
+      px(ctx, qx, qy, qw, qh, USF.ink);
+      px(ctx, qx + 1, qy + 1, qw - 2, qh - 2, USF.evergreen);
+      px(ctx, qx + 2, qy + 2, qw - 4, qh - 4, USF.apple);
+      // Stone cross walkways
+      px(ctx, qx + Math.floor(qw / 2) - 1, qy + 1, 3, qh - 2, USF.sand);
+      px(ctx, qx + 1, qy + Math.floor(qh / 2) - 1, qw - 2, 3, USF.sand);
+      // Sparkling central pixel fountain!
+      const fcx = qx + Math.floor(qw / 2);
+      const fcy = qy + Math.floor(qh / 2);
+      px(ctx, fcx - 4, fcy - 4, 9, 9, USF.silver);
+      px(ctx, fcx - 3, fcy - 3, 7, 7, USF.sky);
+      px(ctx, fcx - 1, fcy - 1, 3, 3, (Math.floor(time * 5) % 2 === 0) ? USF.white : USF.seaglass);
+
+      // Symmetrical south-wing facade windows + entrance
+      px(ctx, x + 2, y + h - 8, w - 4, 6, USF.bldgDark);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 7, 3, 3, USF.storm);
+        px(ctx, wx, y + h - 7, 2, 1, USF.sky);
       }
+      px(ctx, x + Math.floor(w / 2) - 6, y + h - 7, 12, 5, USF.green);
+      px(ctx, x + Math.floor(w / 2) - 4, y + h - 6, 8, 4, USF.gold);
+
+    } else if (b.roofStyle === 'science') {
+      // ======================================================================
+      // INTERDISCIPLINARY SCIENCES (ISA) — Curved Glass Lab Wing & Fume Stacks
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 10, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 13, USF.bldgLight);
+
+      // Rooftop science lab fume exhaust stacks
+      for (let sx = x + 6; sx < x + 26; sx += 6) {
+        px(ctx, sx, y + 5, 4, 5, USF.slate);
+        px(ctx, sx + 1, y + 6, 2, 3, USF.silver);
+      }
+      // Curved modern blue-glass lab wing on east side
+      px(ctx, x + w - 18, y + 4, 15, h - 15, USF.storm);
+      px(ctx, x + w - 16, y + 6, 11, 5, USF.sky);
+      px(ctx, x + w - 15, y + 7, 5, 2, USF.white);
+      px(ctx, x + w - 16, y + 13, 11, 5, USF.seaglass);
+
+      // Multi-floor banded laboratory windows
+      for (let wx = x + 4; wx < x + w - 6; wx += 5) {
+        px(ctx, wx, y + h - 9, 3, 3, USF.storm);
+        px(ctx, wx, y + h - 9, 2, 1, USF.sky);
+        px(ctx, wx, y + h - 5, 3, 3, USF.evergreen);
+      }
+      px(ctx, x + Math.floor(w / 2) - 6, y + h - 6, 12, 4, USF.green);
+
+    } else if (b.roofStyle === 'rec') {
+      // ======================================================================
+      // CAMPUS RECREATION CENTER (REC) — Ribbed Gym Roof & Clerestory Skylight
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 12, USF.bldgLight);
+
+      // Standing-seam ribbed gym roof texture
+      for (let rx = x + 5; rx < x + w - 4; rx += 5) {
+        px(ctx, rx, y + 3, 1, h - 15, USF.bldgDark);
+        px(ctx, rx + 1, y + 3, 1, h - 15, USF.sand);
+      }
+      // Long central clerestory skylight bar
+      px(ctx, x + 8, y + 10, w - 16, 7, USF.ink);
+      px(ctx, x + 9, y + 11, w - 18, 5, USF.storm);
+      px(ctx, x + 10, y + 12, w - 20, 2, USF.sky);
+
+      // Tall gym glass curtain wall + USF Green entrance portico
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        px(ctx, wx, y + h - 8, 4, 5, USF.storm);
+        px(ctx, wx + 1, y + h - 7, 2, 2, USF.sky);
+      }
+      px(ctx, x + 4, y + h - 9, 14, 3, USF.green);
+      px(ctx, x + 4, y + h - 7, 14, 1, USF.gold);
+
+    } else {
+      // ======================================================================
+      // FINE ARTS HALL (FAH) — Sawtooth North-Light Studio Skylights & Gallery
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 12, USF.bldgLight);
+
+      // 3 Sawtooth Artist Studio Skylights across the roof!
+      for (let sy = y + 5; sy <= y + 19; sy += 7) {
+        px(ctx, x + 5, sy, w - 10, 5, USF.bldgDark);
+        px(ctx, x + 6, sy, w - 12, 2, USF.sky);
+        px(ctx, x + 7, sy, 8, 1, USF.white);
+        px(ctx, x + 6, sy + 2, w - 12, 2, USF.sand);
+      }
+      // Tall gallery windows + warm brick entrance arch
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        px(ctx, wx, y + h - 8, 4, 5, USF.slate);
+        px(ctx, wx + 1, y + h - 7, 2, 2, USF.lemongrass);
+      }
+      px(ctx, x + Math.floor(w / 2) - 6, y + h - 7, 12, 5, USF.green);
+      px(ctx, x + Math.floor(w / 2) - 5, y + h - 7, 10, 1, USF.gold);
     }
 
-    // 4. Guarded Zone shield emblem (e.g. SUN /database)
+    // 4. Guarded Zone USF Shield Emblem (e.g. /database)
     if (b.guarded) {
-      const sx = x + w - 7;
+      const sx = x + w - 10;
       const sy = y - 2;
-      px(ctx, sx, sy, 8, 9, USF.ink);
-      px(ctx, sx + 1, sy + 1, 6, 6, USF.green);
-      px(ctx, sx + 2, sy + 7, 4, 1, USF.green);
-      px(ctx, sx + 3, sy + 2, 2, 4, USF.lemongrass);
-      px(ctx, sx + 2, sy + 3, 4, 1, USF.lemongrass);
+      px(ctx, sx, sy, 10, 11, USF.ink);
+      px(ctx, sx + 1, sy + 1, 8, 7, USF.green);
+      px(ctx, sx + 2, sy + 8, 6, 1, USF.green);
+      px(ctx, sx + 3, sy + 9, 4, 1, USF.green);
+      px(ctx, sx + 4, sy + 2, 2, 5, USF.lemongrass);
+      px(ctx, sx + 2, sy + 4, 6, 1, USF.lemongrass);
     }
 
-    // 5. Building code plaque + primary gold accent
+    // 5. Folder Name Plaque (replaces building code abbreviation!)
     const pillBg = status === 'kickout'
       ? USF.alertRed
       : (status === 'working' ? USF.evergreen : (b.primary ? USF.green : USF.slate));
-    const pillFg = status === 'kickout' ? USF.white : (b.primary ? USF.gold : USF.sand);
-    drawPixelPill(ctx, b.code, x + w / 2, y + h - 2, pillBg, pillFg);
+    const pillFg = status === 'kickout' ? USF.white : (b.primary ? USF.lemongrass : USF.sand);
+    drawPixelPill(ctx, folderLabel, x + w / 2, y + h - 3, pillBg, pillFg, USF.ink);
   }
 
   // ==========================================================================
-  // CONSTRUCTION SITE FX (Cones, Scaffolding, Animated Crane, Caution Tape!)
+  // CONSTRUCTION SITE FX (Cones, Multi-Tier Scaffolding, Tall Animated Crane!)
   // ==========================================================================
   function drawConstructionSite(ctx, b, time) {
     const x = Math.round(b.x);
@@ -271,103 +503,103 @@ window.BullpenSprites = (function () {
     const w = Math.round(b.w);
     const h = Math.round(b.h);
 
-    // 1. Yellow/black hazard tape strip along the bottom front
-    for (let tx = x - 3; tx < x + w + 2; tx += 4) {
+    // 1. Yellow/black hazard tape flanking left & right of the folder name plaque
+    const folderLabel = window.BullpenCampusData.getFolderLabel(b.folder);
+    const pillHalfW = Math.ceil((folderLabel.length * 4 + 7) / 2);
+    const cx = Math.round(x + w / 2);
+    for (let tx = x - 4; tx < x + w + 3; tx += 4) {
+      if (tx + 3 > cx - pillHalfW && tx < cx + pillHalfW) continue;
       px(ctx, tx, y + h + 1, 2, 2, USF.craneGold);
       px(ctx, tx + 2, y + h + 1, 2, 2, USF.ink);
     }
 
-    // 2. Pixel Scaffolding wrapping building facade
+    // 2. Multi-Tier Pixel Scaffolding wrapping the enlarged building facade
     const scafColor = USF.silver;
     const scafDark  = USF.slate;
-    // Vertical poles
-    for (let sx = x - 1; sx <= x + w; sx += 9) {
-      px(ctx, sx, y - 3, 1, h + 3, scafDark);
-      px(ctx, sx + 1, y - 3, 1, h + 3, scafColor);
+    for (let sx = x - 1; sx <= x + w; sx += 12) {
+      px(ctx, sx, y - 4, 1, h + 4, scafDark);
+      px(ctx, sx + 1, y - 4, 1, h + 4, scafColor);
     }
-    // Horizontal planks + diagonal cross-braces
-    const levels = [y + 1, y + Math.floor(h * 0.5), y + h - 4];
+    const levels = [y + 2, y + Math.floor(h * 0.36), y + Math.floor(h * 0.68), y + h - 4];
     levels.forEach(ly => {
       px(ctx, x - 2, ly, w + 4, 2, USF.bldgDark);
       px(ctx, x - 2, ly, w + 4, 1, USF.gold);
     });
-    // Cross X-bracing pixels
-    for (let i = 0; i < 6; i++) {
-      px(ctx, x + 2 + i, y + 3 + i, 1, 1, scafColor);
-      px(ctx, x + 8 - i, y + 3 + i, 1, 1, scafColor);
-      px(ctx, x + w - 9 + i, y + 3 + i, 1, 1, scafColor);
-      px(ctx, x + w - 3 - i, y + 3 + i, 1, 1, scafColor);
+    // Diagonal cross X-bracing pixels on left & right bays
+    for (let i = 0; i < 9; i++) {
+      px(ctx, x + 2 + i, y + 4 + i, 1, 1, scafColor);
+      px(ctx, x + 10 - i, y + 4 + i, 1, 1, scafColor);
+      px(ctx, x + w - 11 + i, y + 4 + i, 1, 1, scafColor);
+      px(ctx, x + w - 3 - i, y + 4 + i, 1, 1, scafColor);
     }
 
-    // 3. Orange Traffic Cones around perimeter
+    // 3. Orange Traffic Cones with white reflective bands around perimeter
     const cones = [
-      [x - 6, y + h - 1],
-      [x + w + 2, y + h - 1],
-      [x - 6, y + 2],
-      [x + Math.floor(w / 2) - 10, y + h + 3],
-      [x + Math.floor(w / 2) + 8, y + h + 3],
+      [x - 7, y + h - 1],
+      [x + w + 3, y + h - 1],
+      [x - 7, y + 4],
+      [x + w + 3, y + 4],
+      [x + Math.floor(w * 0.3), y + h + 4],
+      [x + Math.floor(w * 0.7), y + h + 4],
     ];
     cones.forEach(([cx, cy]) => {
-      px(ctx, cx - 1, cy + 3, 5, 1, USF.ink);
+      px(ctx, cx - 1, cy + 4, 5, 1, USF.ink);
       px(ctx, cx,     cy + 2, 3, 2, USF.coneOrange);
-      px(ctx, cx,     cy + 1, 3, 1, USF.white); // reflective white stripe!
+      px(ctx, cx,     cy + 1, 3, 1, USF.white);
       px(ctx, cx + 1, cy,     1, 1, USF.coneOrange);
     });
 
-    // 4. Animated Pixel Construction Crane beside the building!
-    const craneX = x + w + 4;
+    // 4. Tall Animated Pixel Tower Crane beside the building!
+    const craneX = x + w + 5;
     const craneBaseY = y + h;
-    const towerH = 34;
+    const towerH = Math.max(42, h + 14);
     const topY = craneBaseY - towerH;
 
-    // Crane concrete base
-    px(ctx, craneX - 2, craneBaseY - 2, 8, 4, USF.slate);
-    px(ctx, craneX - 1, craneBaseY - 1, 6, 2, USF.silver);
+    // Concrete crane base
+    px(ctx, craneX - 3, craneBaseY - 3, 10, 5, USF.slate);
+    px(ctx, craneX - 2, craneBaseY - 2, 8, 3, USF.silver);
 
     // Lattice mast tower
-    px(ctx, craneX, topY, 1, towerH - 2, USF.ink);
-    px(ctx, craneX + 3, topY, 1, towerH - 2, USF.ink);
-    px(ctx, craneX + 1, topY, 2, towerH - 2, USF.craneGold);
-    for (let ty = topY + 2; ty < craneBaseY - 3; ty += 4) {
-      px(ctx, craneX + 1, ty, 2, 1, USF.ink);
+    px(ctx, craneX, topY, 1, towerH - 3, USF.ink);
+    px(ctx, craneX + 4, topY, 1, towerH - 3, USF.ink);
+    px(ctx, craneX + 1, topY, 3, towerH - 3, USF.craneGold);
+    for (let ty = topY + 2; ty < craneBaseY - 4; ty += 4) {
+      px(ctx, craneX + 1, ty, 3, 1, USF.ink);
     }
 
     // Operator cab
-    px(ctx, craneX - 2, topY + 4, 6, 4, USF.ink);
-    px(ctx, craneX - 1, topY + 5, 4, 2, USF.sky);
+    px(ctx, craneX - 3, topY + 5, 8, 5, USF.ink);
+    px(ctx, craneX - 2, topY + 6, 6, 3, USF.sky);
 
     // Horizontal jib arm extending LEFT over the building + counterweight RIGHT
-    const jibLeft = x + 2;
-    const jibRight = craneX + 11;
+    const jibLeft = x + 4;
+    const jibRight = craneX + 14;
     px(ctx, jibLeft, topY - 1, jibRight - jibLeft, 3, USF.ink);
     px(ctx, jibLeft + 1, topY, jibRight - jibLeft - 2, 1, USF.craneGold);
-    // Counterweight block on right
-    px(ctx, jibRight - 4, topY - 1, 5, 4, USF.slate);
-    px(ctx, jibRight - 3, topY, 3, 2, USF.silver);
-    // Apex mast & guy wires
-    px(ctx, craneX + 1, topY - 5, 2, 5, USF.craneGold);
-    px(ctx, craneX - 5, topY - 3, 6, 1, USF.ink);
-    px(ctx, craneX + 3, topY - 3, 5, 1, USF.ink);
+    px(ctx, jibRight - 5, topY - 1, 6, 5, USF.slate);
+    px(ctx, jibRight - 4, topY, 4, 3, USF.silver);
+    // Apex mast & tension cables
+    px(ctx, craneX + 1, topY - 7, 3, 7, USF.craneGold);
+    px(ctx, craneX - 8, topY - 4, 9, 1, USF.ink);
+    px(ctx, craneX + 4, topY - 4, 7, 1, USF.ink);
 
-    // Animated trolley sliding back and forth along jib + swinging steel beam!
-    const swing = (Math.sin(time * 2.2) + 1) * 0.5; // 0..1
-    const trolleyX = Math.round(jibLeft + 4 + swing * Math.max(6, (craneX - jibLeft - 10)));
-    const cableLen = Math.round(7 + Math.sin(time * 3.1) * 3);
-    px(ctx, trolleyX - 1, topY + 2, 4, 2, USF.ink);
-    // Cable
+    // Animated trolley sliding back & forth along jib + hanging gold I-beam!
+    const swing = (Math.sin(time * 2.2) + 1) * 0.5;
+    const trolleyX = Math.round(jibLeft + 6 + swing * Math.max(10, (craneX - jibLeft - 14)));
+    const cableLen = Math.round(9 + Math.sin(time * 3.1) * 4);
+    px(ctx, trolleyX - 2, topY + 2, 5, 2, USF.ink);
     px(ctx, trolleyX, topY + 4, 1, cableLen, USF.ink);
-    // Hook & lifted gold beam
     const hookY = topY + 4 + cableLen;
     px(ctx, trolleyX - 1, hookY, 3, 2, USF.coneOrange);
-    px(ctx, trolleyX - 4, hookY + 2, 9, 2, USF.ink);
-    px(ctx, trolleyX - 3, hookY + 2, 7, 1, USF.gold);
+    px(ctx, trolleyX - 6, hookY + 2, 13, 3, USF.ink);
+    px(ctx, trolleyX - 5, hookY + 3, 11, 1, USF.gold);
 
-    // 5. Twinkling pixel welding sparks / dust puffs
+    // 5. Twinkling pixel welding sparks
     const sparkPhase = Math.floor(time * 10);
-    for (let s = 0; s < 3; s++) {
+    for (let s = 0; s < 4; s++) {
       if ((sparkPhase + s) % 3 === 0) {
-        const sx = x + ((s * 13 + sparkPhase * 5) % Math.max(8, w - 4));
-        const sy = y + ((s * 7 + sparkPhase * 3) % Math.max(6, h - 4));
+        const sx = x + ((s * 17 + sparkPhase * 5) % Math.max(12, w - 6));
+        const sy = y + ((s * 11 + sparkPhase * 3) % Math.max(10, h - 6));
         px(ctx, sx, sy, 2, 2, s % 2 === 0 ? USF.lemongrass : USF.white);
       }
     }

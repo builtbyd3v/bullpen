@@ -52,65 +52,53 @@ window.BullpenMapRenderer = (function () {
         }
       }
 
-      // Soft urban concrete / parking quads (matching gray pads on reference map)
+      // Soft urban concrete / parking quads (exact zoomed Central Campus pads)
       const quads = [
-        [14, 14, 108, 138],   // USF Health concrete & parking
-        [130, 14, 134, 126],  // North-West Academic & Holly Lots
-        [276, 14, 96, 90],    // The Village & Holly Apartments plaza
-        [138, 184, 126, 78],  // Engineering / Juniper-Poplar quad
-        [276, 172, 82, 36],   // Collins Garage & EDU plaza
-        [276, 240, 82, 36],   // Legacy Park / BSN parking
-        [366, 226, 66, 52],   // Sun Dome plaza & lots
-        [140, 270, 120, 62],  // South UTB/UTA/ESH quad
+        [10, 152, 152, 108],  // Engineering / Beard Garage / Juniper-Poplar quad
+        [176, 98, 130, 56],   // Collins Garage & EDU plaza
+        [244, 198, 64, 72],   // Muma Business quad
+        [318, 178, 112, 98],  // Sun Dome concourse & lots
+        [124, 10, 92, 50],    // Marshall Student Center / MLK Plaza concrete pad
       ];
       quads.forEach(([qx, qy, qw, qh]) => {
         px(ctx, qx, qy, qw, qh, '#D5DDD7');
-        // Subtle green lawn borders inside quads
         px(ctx, qx + 2, qy + 2, qw - 4, 2, '#B6CE96');
       });
 
-      // Simmons Park lush green lawn (SW) & Fowler South Lawn
-      px(ctx, 12, 282, 136, 52, '#99BE73');
-      px(ctx, 274, 282, 100, 52, '#9EC278');
-      px(ctx, 276, 242, 30, 24, '#92BA6D'); // John & Grace Legacy Park south of LIB
+      // John & Grace Legacy Park lush green lawn south of Library + South Alumni Lawn
+      px(ctx, 178, 214, 58, 58, '#93BB6E');
+      px(ctx, 8, 270, 496, 42, '#9EC378');
 
       // 3. USF TAMPA CAMPUS GREENWAY — Signature Diagonal Hatched Green Polygons!
       this.drawGreenwayPolygons(ctx);
 
-      // 4. Ponds (Lake Behnke, Simmons Pond, Castor Pond, North Pond)
+      // 4. Pond (Castor Pond inside Central Campus Greenway)
       Data.PONDS.forEach(p => this.drawPond(ctx, p));
 
-      // 5. Athletics Fields & Stadiums (East USF Recreation & Athletics + Fowler Fields)
+      // 5. Athletics Fields & Stadiums (East USF Recreation & Athletics)
       Data.ATHLETICS.forEach(a => this.drawAthleticVenue(ctx, a));
 
-      // 6. Campus Roads (Perimeter + Internal USF Boulevards)
+      // 6. Campus Roads (Zoomed Central USF Boulevards)
       this.drawRoads(ctx);
 
-      // 7. Official USF Green Campus Boundary Frame (matching reference map!)
+      // 7. Official USF Green Campus Frame
       ctx.strokeStyle = USF.green;
       ctx.lineWidth = 2;
       ctx.strokeRect(B.x + 1, B.y + 1, B.w - 2, B.h - 2);
 
-      // 8. Non-interactive Background Context Buildings (exact reference map clusters)
+      // 8. Supporting Campus Context Buildings
       Data.CONTEXT_BUILDINGS.forEach(cb => this.drawContextBuilding(ctx, cb));
 
       // 9. Pixel Trees around campus parks, greenways & lawns
       Data.TREES.forEach(([tx, ty], idx) => Sprites.drawPixelTree(ctx, tx, ty, idx));
 
-      // 10. Crisp Perimeter Road Labels
-      Sprites.drawPixelText(ctx, 'E FLETCHER AVE', 256, 2, USF.evergreen, 'center');
-      Sprites.drawPixelText(ctx, 'E FOWLER AVE', 256, 341, USF.evergreen, 'center');
-      // Left/right vertical markers (clear of top-left root folder plaque)
-      Sprites.drawPixelPill(ctx, 'BBD', 16, 146, USF.evergreen, USF.sand);
-      Sprites.drawPixelPill(ctx, '50TH', 492, 18, USF.evergreen, USF.sand);
-
-      // 11. District Labels (subtle legible pixel tags matching reference map)
+      // 10. District Labels (exact zoomed reference map)
       Data.DISTRICT_LABELS.forEach(lbl => {
         Sprites.drawPixelText(ctx, lbl.text, lbl.x, lbl.y, USF.deepForest, 'center', 'rgba(255,255,255,0.55)');
       });
 
-      // 12. Mini Pixel Compass Rose (SW corner inside border, honoring reference map)
-      this.drawCompassRose(ctx, 22, 322);
+      // 11. Mini Pixel Compass Rose (SW corner inside border)
+      this.drawCompassRose(ctx, 20, 298);
     }
 
     drawGreenwayPolygons(ctx) {
@@ -250,15 +238,24 @@ window.BullpenMapRenderer = (function () {
 
     drawContextBuilding(ctx, cb) {
       const { x, y, w, h, isGarage } = cb;
-      px(ctx, x + 2, y + 2, w, h, 'rgba(0, 56, 34, 0.25)');
-      px(ctx, x, y, w, h, '#8B7957');
+      px(ctx, x + 2, y + 3, w, h, 'rgba(0, 56, 34, 0.26)');
+      px(ctx, x, y, w, h, '#7E6D4D');
       if (isGarage) {
+        // Detailed pixel parking garage roof with lanes & ramps
         px(ctx, x + 1, y + 1, w - 2, h - 2, '#D9A773');
-        px(ctx, x + 2, y + 3, w - 4, 1, '#9E744B');
-        px(ctx, x + 2, y + h - 4, w - 4, 1, '#9E744B');
+        px(ctx, x + 2, y + 2, w - 4, 2, '#E8BE8E');
+        for (let py = y + 6; py < y + h - 4; py += 5) {
+          px(ctx, x + 3, py, w - 6, 1, '#9E744B');
+        }
+        px(ctx, x + Math.floor(w / 2), y + 4, 2, h - 8, '#B88959');
       } else {
-        px(ctx, x + 1, y + 1, w - 2, h - 2, '#E9CE93');
-        px(ctx, x + 1, y + 1, w - 2, 2, '#F4E1B3');
+        px(ctx, x + 1, y + 1, w - 2, h - 2, '#E5C689');
+        px(ctx, x + 2, y + 2, w - 4, h - 7, '#EED59F');
+        px(ctx, x + 2, y + 2, w - 4, 2, '#F6E5BD');
+        // Subtle facade windows
+        for (let wx = x + 3; wx < x + w - 4; wx += 5) {
+          px(ctx, wx, y + h - 4, 3, 2, '#9A8863');
+        }
       }
     }
 
@@ -370,13 +367,15 @@ window.BullpenMapRenderer = (function () {
         }
       });
 
-      // 7. Root Folder Campus Plaque (top-left inside campus border)
+      // 8. Root Folder Campus Plaque (bottom-right open lawn inside campus border)
       const rootLabel = `ROOT: ${state.rootFolder}`;
       const rw = rootLabel.length * 4 + 12;
-      px(ctx, 14, 14, rw, 13, USF.ink);
-      px(ctx, 15, 15, rw - 2, 11, USF.green);
-      px(ctx, 15, 15, rw - 2, 1, USF.gold);
-      Sprites.drawPixelText(ctx, rootLabel, 20, 18, USF.gold, 'left');
+      const rx = Data.WORLD_W - rw - 12;
+      const ry = Data.WORLD_H - 23;
+      px(ctx, rx, ry, rw, 13, USF.ink);
+      px(ctx, rx + 1, ry + 1, rw - 2, 11, USF.green);
+      px(ctx, rx + 1, ry + 1, rw - 2, 1, USF.gold);
+      Sprites.drawPixelText(ctx, rootLabel, rx + 6, ry + 4, USF.gold, 'left');
 
       ctx.restore();
     }

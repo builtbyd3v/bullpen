@@ -27,7 +27,7 @@ window.BullpenState = (function () {
         name: 'Agent 1 (Opus)',
         shortLabel: 'OPUS',
         modelId: 'claude-opus-4-6',
-        x: 270, y: 184,
+        x: 170, y: 158,
         facing: 1,
         state: 'idle', // idle | walking | waiting | working | kicked | celebrating
         path: [],
@@ -48,7 +48,7 @@ window.BullpenState = (function () {
         name: 'Agent 2 (Sonnet)',
         shortLabel: 'SONNET',
         modelId: 'claude-sonnet-4-6',
-        x: 270, y: 142,
+        x: 170, y: 62,
         facing: -1,
         state: 'idle',
         path: [],
@@ -69,7 +69,7 @@ window.BullpenState = (function () {
         name: 'Agent 3 (Haiku)',
         shortLabel: 'HAIKU',
         modelId: 'claude-haiku-4-5',
-        x: 340, y: 280,
+        x: 276, y: 276,
         facing: 1,
         state: 'idle',
         path: [],
@@ -316,7 +316,7 @@ window.BullpenState = (function () {
         buildingId,
         agentId: agent.id,
         modelId: agent.modelId,
-        title: `${agent.shortLabel} heading to ${b.code} (${b.folder})`,
+        title: `${agent.shortLabel} heading to ${b.folder}`,
         detail: payload.task,
       });
       state.notify('agents');
@@ -358,7 +358,7 @@ window.BullpenState = (function () {
       state.dispatchAgent(a2.id, b.id, {
         duration: 9,
         task: `Queued UI/API follow-up in ${b.folder}`,
-        reason: `Waiting politely for ${a1.shortLabel} to finish at ${b.code}.`,
+        reason: `Waiting politely for ${a1.shortLabel} to finish in ${b.folder}.`,
       });
     },
 
@@ -527,7 +527,7 @@ window.BullpenState = (function () {
       buildingId: b.id,
       agentId: agent.id,
       modelId: agent.modelId,
-      title: `${agent.shortLabel} waiting outside ${b.code} (${b.folder})`,
+      title: `${agent.shortLabel} waiting outside ${b.folder}`,
       detail: `Queue #${agent.queuePos} — waiting for active agent to finish.`,
     });
     state.notify('agents');
@@ -566,7 +566,7 @@ window.BullpenState = (function () {
       buildingId: b.id,
       agentId: next.id,
       modelId: next.modelId,
-      title: `${next.shortLabel} entered ${b.code} (${b.folder})!`,
+      title: `${next.shortLabel} entered ${b.folder}!`,
       detail: `Lease acquired from queue: ${next.task}`,
     });
     state.notify('agents');
@@ -632,9 +632,10 @@ window.BullpenState = (function () {
     state.screenShake = 1.7;
 
     const label = reasonType === 'timeout' ? 'TIME LIMIT EXCEEDED' : 'ERROR EVICTION';
+    const folderTag = Data.getFolderLabel(b.folder);
     state.announcement = {
       kind: 'kickout',
-      title: `KICKED OUT — ${agent.shortLabel} BOOTED FROM ${b.code} (${b.folder})!`,
+      title: `KICKED OUT — ${agent.shortLabel} BOOTED FROM ${folderTag} (${b.folder})!`,
       subtitle: `${label}: ${reasonText}`,
       buildingId: b.id,
       timer: 4.2,
@@ -645,7 +646,7 @@ window.BullpenState = (function () {
       buildingId: b.id,
       agentId: agent.id,
       modelId: agent.modelId,
-      title: `${agent.shortLabel} kicked out of ${b.code} (${label})!`,
+      title: `${agent.shortLabel} kicked out of ${b.folder} (${label})!`,
       detail: reasonText,
     });
 
@@ -690,9 +691,10 @@ window.BullpenState = (function () {
       agentName: agent.shortLabel,
     });
 
+    const folderTag = Data.getFolderLabel(b.folder);
     state.announcement = {
       kind: 'ribbon',
-      title: `RIBBON CUTTING — ${b.code} (${b.folder}) COMPLETE!`,
+      title: `RIBBON CUTTING — ${folderTag} (${b.folder}) COMPLETE!`,
       subtitle: `${agent.name} finished: ${payload.summary}`,
       buildingId: b.id,
       timer: 4.5,
@@ -703,7 +705,7 @@ window.BullpenState = (function () {
       buildingId: b.id,
       agentId: agent.id,
       modelId: agent.modelId,
-      title: `Ribbon cut! Work complete in ${b.folder} (${b.code})`,
+      title: `Ribbon cut! Work complete in ${b.folder}`,
       detail: payload.summary,
       commit: commitHash,
     });
