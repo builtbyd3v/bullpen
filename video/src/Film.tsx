@@ -75,11 +75,16 @@ export function Film({ slots, cues, mix, music }: FilmProps) {
                 playbackRate={slot.rate ?? 1}
                 muted={slot.audio === false}
                 volume={(f) => duck(f / fps, slot.voFile ? [[0, slot.voDur ?? slot.dur]] : [], mix.app, mix.appUnderVoice)}
-                style={{ width: "100%", height: "100%" }}
+                style={{ width: "100%", height: "100%", transform: slot.zoom ? `scale(${slot.zoom.scale})` : undefined, transformOrigin: slot.zoom ? `${slot.zoom.x}% ${slot.zoom.y}%` : undefined }}
               />
             ) : (
               <Slate slot={slot} />
             )}
+            {slot.sfx?.map((n, i) => (
+              <Sequence key={i} from={Math.round(n.at * fps)}>
+                <Audio src={staticFile(n.file)} volume={duck(n.at, slot.voFile ? [[0, slot.voDur ?? slot.dur]] : [], mix.app, mix.appUnderVoice)} />
+              </Sequence>
+            ))}
             {slot.label ? <LowerThird text={slot.label} /> : null}
             {slot.voFile ? <Audio src={staticFile(slot.voFile)} volume={mix.voice} /> : null}
           </Sequence>

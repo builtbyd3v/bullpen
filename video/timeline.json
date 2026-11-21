@@ -27,50 +27,70 @@
       "kind": "clip",
       "dur": 10,
       "start": 0,
-      "rate": 1,
+      "rate": 1.6,
       "label": "One ask, three agents",
       "shot": "type one ask in the Orchestrator box, three bulls walk onto campus",
-      "vo": "One ask. The orchestrator splits it into three tasks, and three Claude Code agents walk onto campus, each on its own branch."
+      "vo": "One ask. The orchestrator splits it into three tasks, and three Claude Code agents walk onto campus, each on its own branch.",
+      "src": "take-live",
+      "from": "ask"
     },
     {
       "id": "04-lock",
       "kind": "clip",
       "dur": 10,
-      "start": 0,
+      "start": -1,
       "rate": 1,
       "label": "File lock: shared/auth.ts",
       "shot": "api holds shared/auth.ts, web waits at the door, lock countdown runs",
-      "vo": "Two agents want auth.ts. The first takes a live lock. The second waits at the door until the file is free."
+      "vo": "Two agents want auth.ts. The first takes a live lock. The second waits at the door until the file is free.",
+      "src": "take-live",
+      "from": "lock",
+      "zoom": {
+        "scale": 1.5,
+        "x": 0,
+        "y": 35
+      }
     },
     {
       "id": "05-deny",
       "kind": "clip",
       "dur": 11,
-      "start": 0,
+      "start": -0.5,
       "rate": 1,
       "label": "Referee: db/** is guarded",
       "shot": "db reaches for the schema, referee log shows the block on db/**",
-      "vo": "The database agent reaches for the schema. The referee, a Jetson on the desk, says no. The agent reads the reason and changes its plan."
+      "vo": "The database agent reaches for the schema. The referee, a Jetson on the desk, says no. The agent reads the reason and changes its plan.",
+      "src": "take-live",
+      "from": "approval",
+      "zoom": {
+        "scale": 1.5,
+        "x": 100,
+        "y": 100
+      }
     },
     {
       "id": "06-undo",
       "kind": "clip",
       "dur": 9,
-      "start": 0,
-      "rate": 1,
+      "start": -2,
+      "rate": 0.8,
       "label": "Undo one agent",
       "shot": "click Undo on web, its commits leave the timeline",
-      "vo": "Don't like what one agent did? Undo that agent alone. Its commits roll back, and the others keep working."
+      "vo": "Don't like what one agent did? Undo that agent alone. Its commits roll back, and the others keep working.",
+      "src": "take-live",
+      "from": "undo"
     },
     {
       "id": "07-merge",
       "kind": "clip",
       "dur": 10,
-      "start": 0,
+      "start": -1,
       "rate": 1,
       "label": "Merge through an intent card",
       "shot": "open api's building, show the diff, click Merge to main, intent card",
-      "vo": "Happy with another? Open its building, read the real diff, and merge through an intent card that says what changed and why."
+      "vo": "Happy with another? Open its building, read the real diff, and merge through an intent card that says what changed and why.",
+      "src": "take-live",
+      "from": "merge"
     },
     {
       "id": "08-unplug",
@@ -79,7 +99,7 @@
       "start": 0,
       "rate": 1,
       "label": "Jetson unplugged: every edit denied",
-      "shot": "hand pulls the Jetson's USB cable, screen behind shows the referee OFFLINE",
+      "shot": "pull the Jetson's USB cable during a live take, referee log shows OFFLINE and blocks every edit",
       "vo": "Now pull the Jetson's cable. The referee is offline, so every edit is denied. Bullpen fails closed.",
       "irl": true
     },
@@ -88,47 +108,65 @@
       "kind": "clip",
       "dur": 9,
       "start": 0,
-      "rate": 1,
+      "rate": 0.75,
       "label": "File locks before every edit, 90 s TTL",
       "shot": "Locks panel close-up, countdown running",
-      "vo": "Under the pixels, everything is real. Agents lock a file before each edit, and the lock expires after ninety seconds."
+      "vo": "Under the pixels, everything is real. Agents lock a file before each edit, and the lock expires after ninety seconds.",
+      "src": "take-live",
+      "from": "locks",
+      "zoom": {
+        "scale": 1.5,
+        "x": 100,
+        "y": 60
+      }
     },
     {
       "id": "10-campus",
       "kind": "clip",
-      "dur": 8,
-      "start": 0,
+      "dur": 9,
+      "start": 8,
       "rate": 1,
       "label": "Auto-commit per edit: Bullpen-Agent, Bullpen-Task",
       "shot": "campus built from a second repo, then the commit timeline",
-      "vo": "Point Bullpen at any repo and it builds your campus. Each edit becomes a commit, tagged with its agent."
+      "vo": "Point Bullpen at any repo and it builds your campus. Each edit becomes a commit, tagged with its agent.",
+      "src": "take-live",
+      "from": "run"
     },
     {
       "id": "11-interior",
       "kind": "clip",
-      "dur": 6,
-      "start": 0,
+      "dur": 5,
+      "start": 0.5,
       "rate": 1,
       "label": "Your own Claude subscription, no API key",
       "shot": "inside a building: agent at its file, branch sign, real diff",
-      "vo": "It runs on your own Claude subscription, with no API key."
+      "vo": "It runs on your own Claude subscription, with no API key.",
+      "src": "take-live",
+      "from": "interior"
     },
     {
       "id": "12-referee",
       "kind": "clip",
-      "dur": 10,
+      "dur": 11,
       "start": 0,
-      "rate": 1,
+      "rate": 0.85,
       "label": "On the Jetson: qwen2.5-coder:3b, llama3.2:3b, nomic-embed-text",
       "shot": "Referee log close-up: rule, latency, model per row",
-      "vo": "The referee runs on separate hardware the agents cannot reach. Small on-device models write the history, and a secret guard scans each diff."
+      "vo": "The referee runs on separate hardware the agents cannot reach. Small on-device models write the history, and a secret guard scans each diff.",
+      "src": "take-live",
+      "from": "referee",
+      "zoom": {
+        "scale": 1.5,
+        "x": 100,
+        "y": 100
+      }
     },
     {
       "id": "13-close",
       "kind": "title",
-      "dur": 12,
+      "dur": 11,
       "tagline": "Git tracks what changed. Bullpen controls who's allowed to change it.",
-      "vo": "Anthropic rebuilt source control for agents, and called it Scion. Bullpen brings that to every engineer. Git tracks what changed. Bullpen controls who's allowed to change it.",
+      "vo": "Bullpen stops two agents from writing the same file at once, and records who changed what. Git tracks what changed. Bullpen controls who's allowed to change it.",
       "still": true
     }
   ]

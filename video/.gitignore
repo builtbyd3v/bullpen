@@ -6,3 +6,4 @@ raw/*
 !raw/vo/
 raw/vo/*
 !raw/vo/.gitkeep
+.env

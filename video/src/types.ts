@@ -19,6 +19,12 @@ export type Slot = {
   clip?: string | null;
   voFile?: string | null;
   voDur?: number;
+  // Recorder takes: the source file, a mark in its log, and the app's sound-effect notes inside this slot.
+  src?: string;
+  from?: string;
+  sfx?: { at: number; file: string }[];
+  // Close-up: scale, and the point to zoom on as a percentage of width and height.
+  zoom?: { scale: number; x: number; y: number };
 };
 
 // Volumes from 0 to 1. The "UnderVoice" values apply while a voiceover take plays.
