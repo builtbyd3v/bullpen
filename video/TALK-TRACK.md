@@ -37,4 +37,4 @@
 | How is this different from git worktrees or branch protection? | Worktrees isolate agents but do not coordinate them. Git finds the conflict at merge; Bullpen decides before the edit. |
 | Why a Jetson, and not rules on the laptop? | The rules sit on hardware the agents cannot reach or edit, and the local models make the history free and private. |
 | Is the video real? | Yes: one automated take of the real stack on this laptop with the Jetson attached. Only the pull-request conflict screen uses scripted data, because the merge guard prevents that state on the real server. For the offline beat we paused the referee service; the denied edits are real. |
-| What is AI-generated? | We built everything today in this repo with Claude Code. The voice is ElevenLabs. Every model and tool is credited in the README. |
+| What is AI-generated? | We built everything today in this repo: Dev and Monisha with Claude Code, Caua the web app and design with Antigravity. The voice is ElevenLabs. Every model and tool is credited in the README. |
