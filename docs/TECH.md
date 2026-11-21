@@ -6,7 +6,7 @@
 - Each claim below names the file that implements it.
 
 **What is AI-generated, what we wrote**
-Claude Code wrote most of the code, docs and tests under our direction. We set the product, the architecture, the contract (`shared/events.md`), the referee rules, the work split and the demo, and we reviewed and tested every PR. Full list: README, "Credits".
+Claude Code wrote most of the code, docs and tests under our direction. We set the product, the architecture, the contract (`shared/events.md`), the referee rules, the work split and the demo, and we reviewed and tested what it produced. Full list: README, "Credits".
 
 **What we built vs. what we use**
 Claude Code is the agent being controlled, not our product. We built the layer around it: the hook (`hooks/bullpen_hook.py`), the server (`server/`), the Jetson referee (`jetson/main.py`), the orchestrator (`orchestrator/main.py`) and the campus view (`web/`).
@@ -42,8 +42,8 @@ The Jetson `/summarize` reads the branch diff and commit messages and writes a 2
 The context is plain text: recent checks, approvals, denials, waits and commits from the server's `events.log`, then a summary of `/state`, capped to the newest lines that fit. The Jetson ranks long context by embedding similarity (nomic-embed-text) and llama3.2:3b answers in 2 sentences.
 
 **10 agents, and the limits**
-- The server finds agents from `git worktree list` (branch `agent/<name>`) and has spare colors, so more worktrees work. `make_demo.sh` and the orchestrator split create exactly 3.
-- `/check` is rules only, so it scales with requests, not with model speed. Local model calls queue on one 8 GB Jetson.
+- The server finds agents from `git worktree list` (branch `agent/<name>`) so more worktrees work; colors repeat after 7 agents (`server/config.py`). `make_demo.sh` and the orchestrator split create exactly 3.
+- `/check` is rules only, so it scales with requests, not with model speed. Local model calls share one 8 GB Jetson.
 - Leases and approvals live in memory in one server process. A server restart drops them. Leases are per file, so two agents can still make edits that conflict in meaning across files; merge catches text conflicts only.
 
 **What we would build next**
