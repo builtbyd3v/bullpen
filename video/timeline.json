@@ -55,7 +55,7 @@
       "src": "take-live",
       "from": "ask",
       "start": 0,
-      "rate": 2
+      "rate": 2.3
     },
     {
       "id": "05-lock",
@@ -66,12 +66,12 @@
       "vo": "Two agents want auth.ts. The first takes a live lock. The second waits at the door.",
       "src": "take-live",
       "from": "lock",
-      "start": -1,
+      "start": 1.5,
       "rate": 1,
       "zoom": {
-        "scale": 1.5,
+        "scale": 1.4,
         "x": 0,
-        "y": 35
+        "y": 100
       }
     },
     {
@@ -79,16 +79,16 @@
       "kind": "clip",
       "dur": 9,
       "label": "Referee: db/** is guarded",
-      "shot": "db reaches for the schema, the approval card shows, the edit is denied",
-      "vo": "The database agent reaches for the schema. The referee says no, so the agent changes its plan.",
+      "shot": "db reaches for a guarded file, the approval banner shows, the edit is denied, db writes a plan",
+      "vo": "The database folder is guarded, so the referee asks a human. Denied: the agent writes a plan instead.",
       "src": "take-live",
       "from": "approval",
-      "start": -0.5,
+      "start": -0.3,
       "rate": 1,
       "zoom": {
         "scale": 1.5,
         "x": 100,
-        "y": 100
+        "y": 0
       }
     },
     {
@@ -100,19 +100,19 @@
       "vo": "Don't like one agent's work? Undo that agent alone. The others keep working.",
       "src": "take-live",
       "from": "undo",
-      "start": -2,
-      "rate": 0.8
+      "start": -1.5,
+      "rate": 0.75
     },
     {
       "id": "08-merge",
       "kind": "clip",
       "dur": 8,
-      "label": "Merge through an intent card",
-      "shot": "inside api's building, the real diff, then Merge to main and the intent card",
-      "vo": "Happy with another? Read the real diff, then merge through an intent card.",
+      "label": "Merge to main: the other branches sync",
+      "shot": "inside api's building with the real diff, then Merge to main and the other branches sync",
+      "vo": "Happy with another? Open its building, read the real diff, and merge. The other branches sync with main at once.",
       "src": "take-live",
       "from": "interior",
-      "start": 1,
+      "start": 0.5,
       "rate": 1.5
     },
     {
@@ -120,16 +120,16 @@
       "kind": "clip",
       "dur": 8,
       "label": "File locks before every edit, 90 s TTL",
-      "shot": "Locks panel close-up",
+      "shot": "File locks panel close-up during the collision: holder, countdown, who waits",
       "vo": "Under the pixels, everything is real. Agents lock a file before every edit, and each lock expires in ninety seconds.",
       "src": "take-live",
-      "from": "locks",
-      "start": 0,
+      "from": "lock",
+      "start": 3,
       "rate": 0.8,
       "zoom": {
-        "scale": 1.5,
+        "scale": 1.7,
         "x": 100,
-        "y": 60
+        "y": 100
       }
     },
     {
@@ -137,15 +137,15 @@
       "kind": "clip",
       "dur": 9,
       "label": "On the Jetson: qwen2.5-coder:3b, llama3.2:3b, nomic-embed-text",
-      "shot": "Referee log close-up: rule, latency, model per row",
+      "shot": "Referee log close-up: decision, rule and latency per row",
       "vo": "The referee runs on a Jetson the agents cannot reach. On-device models write the history, and a secret guard scans every diff.",
       "src": "take-live",
       "from": "referee",
-      "start": 0,
+      "start": 1.5,
       "rate": 0.9,
       "zoom": {
         "scale": 1.5,
-        "x": 100,
+        "x": 50,
         "y": 100
       }
     },
@@ -162,19 +162,29 @@
         "referee"
       ],
       "start": 2,
-      "rate": 1
+      "rate": 1,
+      "zoom": {
+        "scale": 1.5,
+        "x": 50,
+        "y": 100
+      }
     },
     {
       "id": "12-commits",
       "kind": "clip",
       "dur": 6,
       "label": "Auto-commit per edit: Bullpen-Agent, Bullpen-Task",
-      "shot": "the campus with agents at work and the commit timeline filling",
+      "shot": "Commits panel: one commit per edit with the Bullpen-Agent and Bullpen-Task trailers",
       "vo": "Every edit is a commit, tagged with its agent, on your own Claude subscription.",
       "src": "take-live",
-      "from": "lock",
-      "start": 2,
-      "rate": 1
+      "from": "askwhy",
+      "start": 9,
+      "rate": 1,
+      "zoom": {
+        "scale": 1.4,
+        "x": 100,
+        "y": 60
+      }
     },
     {
       "id": "13-close",

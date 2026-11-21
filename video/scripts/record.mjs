@@ -89,12 +89,9 @@ await pause(2);
 if (mode === "conflict") {
   // The cross-PR conflict view, from fake data: on the real server the merge guard keeps two agent
   // branches from changing the same file, so a live run has no overlap to show.
-  await click(page.getByRole("button", { name: "Play demo" }), "play");
-  await pause(2);
-  const review = page.getByRole("link", { name: /review/i });
-  if (await review.count()) await review.first().click();
-  else await page.goto(`${url}/prs?fake`, { waitUntil: "load" });
+  await page.goto(`${url}/prs?fake`, { waitUntil: "load" });
   await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+  await pause(1);
   mark("conflict");
   await pause(7);
 } else if (mode === "fake") {
@@ -127,6 +124,8 @@ if (mode === "conflict") {
   await page.getByLabel("Ask why").pressSequentially("Why is db blocked?", { delay: 30 });
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await pause(14);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  await pause(1);
 
   // 5. Undo web, once both agents have commits to show.
   await until(() => seen("commit", "api") && seen("commit", "web"), 90);
@@ -137,7 +136,7 @@ if (mode === "conflict") {
   mark("interior");
   // The campus is a canvas, so the building is clicked by position. Set BUILDING_X and BUILDING_Y (pixels in the
   // 1920x1080 page) to the middle of api's building, read from a screenshot of the current layout.
-  await page.mouse.click(Number(process.env.BUILDING_X ?? 975), Number(process.env.BUILDING_Y ?? 330));
+  await page.mouse.click(Number(process.env.BUILDING_X ?? 257), Number(process.env.BUILDING_Y ?? 605));
   await pause(7);
   await click(page.getByRole("button", { name: /back to campus/i }), "back");
   await pause(1.5);
@@ -145,12 +144,11 @@ if (mode === "conflict") {
   await pause(9);
 
   // 7. Evidence panels for the technical section.
-  mark("locks");
-  await page.getByRole("heading", { name: /locks/i }).scrollIntoViewIfNeeded();
-  await pause(7);
+  // The Referee panel sits below the fold, so the page scrolls down to it. (File locks are cut from
+  // the collision earlier in the take: by now no file is locked.)
   mark("referee");
-  await page.getByRole("heading", { name: /referee/i }).scrollIntoViewIfNeeded();
-  await pause(9);
+  await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }));
+  await pause(10);
   // 8. Optional: UNPLUG=1 waits for a person to pull the Jetson's cable, with the Referee panel and the health strip on screen.
   if (process.env.UNPLUG) {
     mark("unplug");
