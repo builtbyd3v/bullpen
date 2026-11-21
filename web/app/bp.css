@@ -148,3 +148,7 @@
 @media (max-width: 1100px) { .bp .verdict, .bp .prs, .bp .lower { grid-template-columns: 1fr; } .verdict .r { border-left: 0; border-top: 1px solid var(--line-2); }  }.bp .under > *, .bp .dash-main > * { min-width: 0; }
 .bp .ref div > span:nth-child(2) { min-width: 0; overflow-wrap: anywhere; }
 .bp .ref .r { white-space: nowrap; }
+.bp .under .card { overflow: hidden; }
+.bp .ask > * { min-width: 0; }
+.bp .ask .flex .btn { white-space: normal; text-align: left; }
+.bp .card > h2 .src { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }

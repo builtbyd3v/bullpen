@@ -364,8 +364,13 @@ function OrchestratorBox() {
 
   return (
     <section className="card">
-      <h2>Orchestrator <span className="src">POST :8650/orchestrate</span></h2>
+      <h2>
+        Orchestrator
+        <span className="tag ok">Claude Code</span>
+        <span className="src">POST :8650/orchestrate</span>
+      </h2>
       <div className="ask">
+        <p className="text-[13px] text-(--ink-3)">Splits your ask across 3 Claude Code agents that run on your own Claude plan. No API key.</p>
         <form onSubmit={handleOrchestrate}>
           <input value={askInput} onChange={(e) => setAskInput(e.target.value)} placeholder="Tell Bullpen what to build..." aria-label="Orchestrate task" />
           <button className="btn primary" type="submit" disabled={orchestrating || !askInput.trim()}>{orchestrating ? "Planning..." : "Run"}</button>
@@ -381,7 +386,7 @@ function OrchestratorBox() {
         {plan && (
           <div className="plan">
             {plan.tasks.map((t) => (
-              <div key={t.agent}><span className="dot" style={{ background: colorFor(t.agent) }} /><b>{t.agent}</b>{t.task}</div>
+              <div key={t.agent}><span className="dot" style={{ background: colorFor(t.agent) }} /><b>{t.agent}</b><span className="min-w-0 flex-1">{t.task}</span><span className="tag mute">claude-code</span></div>
             ))}
           </div>
         )}
