@@ -67,6 +67,9 @@ def test_starts_three_agents_detached(setup):
         assert f"You are the {a} agent in a Bullpen demo" in rec
         assert f"docs/{a}-plan.md" in rec
         assert "Do not use Bash to read or list files." in rec
+        assert "make your first edit within your first 3 tool calls" in rec
+        assert f"Only edit the files your task names, plus docs/{a}-plan.md." in rec
+        assert "--model sonnet" in rec
         assert wait_for(fake_dir / "logs" / f"{a}.log").strip() == f"started {a}"
     assert "line 2" in (fake_dir / "rec-db").read_text()
 
@@ -98,3 +101,9 @@ def test_bad_tasks_file_fails(setup):
     assert run(tasks, env).returncode != 0
     tasks.write_text("not json")
     assert run(tasks, env).returncode != 0
+
+
+def test_agent_model_is_overridable(setup):
+    fake_dir, tasks, env = setup
+    assert run(tasks, {**env, "BULLPEN_AGENT_MODEL": "opus"}).returncode == 0
+    assert "--model opus" in wait_for(fake_dir / "rec-api")

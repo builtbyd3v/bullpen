@@ -12,7 +12,7 @@ uv run uvicorn main:app --port 8650
 ```
 Env: `SERVER_URL` (http://localhost:8600), `JETSON_URL` (http://192.168.55.1:8700), `DEMO_START_CMD` (`<repo>/scripts/demo_start.sh`), `CLAUDE_BIN` (`claude`), `DEMO_DIR` (`<parent of repo>/demo`), `BULLPEN_EVENTS_LOG` (`<repo>/server/events.log`).
 
-Agents need the worktrees from `scripts/make_demo.sh`. Each agent gets fixed referee ground rules through `--append-system-prompt`. Agent logs and pids: `/tmp/bullpen/<agent>.log` and `.pid` (`BULLPEN_LOG_DIR`).
+Agents need the worktrees from `scripts/make_demo.sh`. Each agent gets fixed referee ground rules through `--append-system-prompt` (including pacing: first edit within 3 tool calls, edit only the files the task names) and runs `--model sonnet` (env `BULLPEN_AGENT_MODEL`). Agent logs and pids: `/tmp/bullpen/<agent>.log` and `.pid` (`BULLPEN_LOG_DIR`).
 
 ## Test
 ```
