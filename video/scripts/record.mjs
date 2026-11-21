@@ -28,20 +28,21 @@ const browser = await chromium.launch({ channel: "chrome", headless: false });
 const context = await browser.newContext({ viewport: size, deviceScaleFactor: 1, recordVideo: { dir: tmp, size } });
 // Log each oscillator the app starts: one oscillator is one note of a sound effect.
 await context.addInitScript(() => {
-  window.__notes = [];
   const start = OscillatorNode.prototype.start;
   OscillatorNode.prototype.start = function (when = 0) {
     const now = this.context.currentTime;
     this.__note = { at: Date.now() + Math.max(0, when - now) * 1000, when: Math.max(when, now), freq: this.frequency.value, wave: this.type };
-    window.__notes.push(this.__note);
     return start.call(this, when);
   };
   const stop = OscillatorNode.prototype.stop;
   OscillatorNode.prototype.stop = function (when = 0) {
-    if (this.__note) this.__note.len = Math.max(0.02, when - this.__note.when);
+    if (this.__note) window.__note({ at: this.__note.at, freq: this.__note.freq, wave: this.__note.wave, len: Math.max(0.02, when - this.__note.when) });
     return stop.call(this, when);
   };
 });
+// Notes are sent to this process as they play, so a reload or a route change cannot lose them.
+const played = [];
+await context.exposeFunction("__note", (n) => played.push(n));
 const page = await context.newPage();
 const opened = Date.now();
 const now = () => (Date.now() - opened) / 1000;
@@ -115,13 +116,24 @@ if (mode === "fake") {
   await page.getByRole("button", { name: "Ask", exact: true }).click();
   await pause(14);
 
-  // 5. Undo web, once both agents have commits to show.
+  // 5. Once both agents have commits: the cross-PR conflict view, then back to the campus.
   await until(() => seen("commit", "api") && seen("commit", "web"), 90);
+  mark("conflict");
+  await page.goto(`${url}/prs`, { waitUntil: "load" });
+  await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+  await pause(6);
+  await page.goto(app, { waitUntil: "load" });
+  await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+  await pause(2);
+
+  // Undo web.
   await click(page.getByRole("button", { name: "Undo", exact: true }).nth(1), "undo");
   await pause(6);
 
   // 6. Merge api: inside its building first, then back out and merge.
   mark("interior");
+  // The campus is a canvas, so the building is clicked by position. Set BUILDING_X and BUILDING_Y (pixels in the
+  // 1920x1080 page) to the middle of api's building, read from a screenshot of the current layout.
   await page.mouse.click(Number(process.env.BUILDING_X ?? 975), Number(process.env.BUILDING_Y ?? 330));
   await pause(7);
   await click(page.getByRole("button", { name: /back to campus/i }), "back");
@@ -147,7 +159,7 @@ if (mode === "fake") {
   mark("end");
 }
 
-const notes = await page.evaluate((o) => window.__notes.map((n) => ({ t: (n.at - o) / 1000, freq: n.freq, len: n.len ?? 0.1, wave: n.wave })), opened);
+const notes = played.map((n) => ({ t: (n.at - opened) / 1000, freq: n.freq, len: n.len, wave: n.wave }));
 const video = page.video();
 ws?.close();
 await context.close();
