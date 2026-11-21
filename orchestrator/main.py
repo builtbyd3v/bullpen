@@ -182,15 +182,93 @@ def orchestrate(body: OrchestrateIn):
     return result
 
 
-@app.post("/ask")
-def ask(body: AskIn):
+# One short line per event type (events.md section 4). Types not listed here are skipped.
+EVENT_LINES = {
+    "check": lambda d: " ".join(filter(None, [d["agent"], d["tool"], d.get("file")]))
+                       + f" -> {d['decision']} (rule {d.get('rule', '')}, {d.get('latency_ms', '?')} ms)",
+    "approval_needed": lambda d: f"{d['agent']} wants {d['tool']} {d['target']} ({d.get('reason', '')})",
+    "approved": lambda d: f"a human approved {d['agent']}'s {d['what']}",
+    "denied": lambda d: f"{DENIED.get(d.get('text'), d.get('text'))} {d['agent']}'s {d['what']}",
+    "claim_wait": lambda d: f"{d['agent']} waits for {d['file']} held by {d['holder']}",
+    "claim_granted": lambda d: f"{d['agent']} holds {d['file']}",
+    "claim_released": lambda d: f"{d['agent']} released {d['file']} ({d.get('text', '')})",
+    "commit": lambda d: f'{d["agent"]} {d["sha"][:7]} "{d["message"]}" ({", ".join(d.get("files", []))})',
+    "undo": lambda d: d["agent"],
+    "merge": lambda d: f"{d['agent']} {d.get('intent', '')}".strip(),
+    "secret_blocked": lambda d: f"{d['agent']} {d['file']} ({d.get('kind', '')})",
+    "plan": lambda d: f'"{d["ask"]}" -> ' + "; ".join(f"{t['agent']}: {t['task']}" for t in d["tasks"]),
+}
+DENIED = {"human": "a human denied", "timeout": "no human answered in 60 s, so the referee denied"}
+MAX_EVENTS = 150
+
+
+def recent_events() -> list[str]:
+    """The server's events log (same machine), rendered one line per event, newest last."""
+    path = env("BULLPEN_EVENTS_LOG", str(REPO / "server" / "events.log"))
+    try:
+        raw = Path(path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    lines, asks = [], {}  # asks: approval id -> what was asked and why, named again on approve/deny
+    for line in raw:
+        try:
+            e = json.loads(line)
+            d = e["data"]
+            if e["type"] == "approval_needed":
+                asks[d["id"]] = f"{d['tool']} {d['target']} (it needed approval: {d.get('reason', '')})"
+            if e["type"] in ("approved", "denied"):
+                d = {**d, "what": asks.get(d.get("id"), "")}
+            lines.append(f"{e['type']}: {EVENT_LINES[e['type']](d)}")
+        except (ValueError, KeyError, TypeError, AttributeError):
+            continue  # bad line, or a type we skip (state, hook, unknown)
+    return lines[-MAX_EVENTS:]
+
+
+def state_summary(state: dict) -> list[str]:
+    leases = state.get("leases") or []
+    lines = []
+    for w in state.get("worktrees") or []:
+        held = [lease["file"] for lease in leases if lease.get("agent") == w.get("agent")]
+        line = (f'{w.get("agent")}: status {w.get("status")}, building {w.get("building")}, '
+                f'task "{w.get("task") or ""}", {len(w.get("commits") or [])} commits')
+        lines.append(line + (f", holds {', '.join(held)}" if held else ""))
+    for a in state.get("approvals") or []:
+        lines.append(f"pending approval: {a.get('agent')} wants {a.get('tool')} {a.get('target')} "
+                     f"({a.get('reason', '')})")
+    for lease in leases:
+        if lease.get("waiters"):
+            lines.append(f"lease: {lease.get('file')} held by {lease.get('agent')}, "
+                         f"waiting: {', '.join(lease['waiters'])}")
+    return lines
+
+
+def ask_context() -> str:
+    """Plain text for the Jetson: recent events, then the current state; newest last, capped."""
+    lines = []
+    events = recent_events()
+    if events:
+        lines += ["Recent events, oldest first:", *events]
     try:
         r = http.get(env("SERVER_URL", "http://localhost:8600").rstrip("/") + "/state",
                      timeout=SERVER_TIMEOUT)
         r.raise_for_status()
-        context = json.dumps(r.json())[:MAX_CONTEXT_CHARS]
-    except (httpx.HTTPError, ValueError):
-        context = ""
+        summary = state_summary(r.json())
+        if summary:
+            lines += ["Current state:", *summary]
+    except (httpx.HTTPError, ValueError, AttributeError, TypeError, KeyError):
+        pass
+    kept, size = [], 0
+    for line in reversed(lines):  # keep the newest lines that fit
+        size += len(line) + 1
+        if size > MAX_CONTEXT_CHARS:
+            break
+        kept.append(line)
+    return "\n".join(reversed(kept))
+
+
+@app.post("/ask")
+def ask(body: AskIn):
+    context = ask_context()
     try:
         r = http.post(env("JETSON_URL", "http://192.168.55.1:8700").rstrip("/") + "/ask",
                       json={"question": body.question, "context": context}, timeout=JETSON_TIMEOUT)

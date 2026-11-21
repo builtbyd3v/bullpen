@@ -114,13 +114,71 @@ def test_empty_or_missing_ask_is_422(client, fake_dir):
     assert not (fake_dir / "started_tasks.json").exists()
 
 
-def test_ask_uses_state_as_context(client, calls):
+def test_ask_uses_state_summary_as_context(client, calls):
     r = client.post("/ask", json={"question": "why is db waiting?"})
     assert r.status_code == 200
     assert r.json() == {"answer": "db waits for approval."}
     [sent] = calls.bodies("/ask")
     assert sent["question"] == "why is db waiting?"
-    assert json.loads(sent["context"]) == calls.state
+    ctx = sent["context"]
+    assert 'db: status blocked, building sundome, task "Add a role column", 0 commits' in ctx
+    assert 'web: status working, building msc, task "Show the role", 1 commits, holds shared/auth.ts' in ctx
+    assert "pending approval: db wants Edit db/schema.sql (Sun Dome is guarded)" in ctx
+    assert "lease: shared/auth.ts held by web, waiting: api" in ctx
+
+
+def envelope(type_, data):
+    return json.dumps({"at": 1.0, "type": type_, "data": data})
+
+
+DB_SEQUENCE = [
+    envelope("hook", {"agent": "db", "event": "PreToolUse"}),
+    envelope("check", {"agent": "db", "tool": "Edit", "file": "db/schema.sql", "decision": "ask",
+                       "rule": "db/**", "latency_ms": 4, "model": "rules", "at": "t"}),
+    envelope("approval_needed", {"id": "ap1", "agent": "db", "tool": "Edit", "target": "db/schema.sql",
+                                 "reason": "Sun Dome is guarded", "expires_at": "t"}),
+    envelope("state", {"worktrees": []}),
+    "{not json",
+    envelope("denied", {"id": "ap1", "agent": "db", "text": "human"}),
+    envelope("claim_wait", {"agent": "api", "file": "shared/auth.ts", "building": "x", "holder": "web"}),
+    envelope("commit", {"agent": "web", "sha": "1a2b3c4d5e", "message": "Add role",
+                        "files": ["shared/auth.ts"], "task": "t"}),
+    envelope("mystery", {"agent": "db"}),
+]
+
+
+def test_ask_context_has_recent_events(client, calls, fake_dir, monkeypatch):
+    log = fake_dir / "events.log"
+    log.write_text("\n".join(DB_SEQUENCE) + "\n")
+    monkeypatch.setenv("BULLPEN_EVENTS_LOG", str(log))
+    calls.server_up = False
+
+    assert client.post("/ask", json={"question": "Why is db blocked?"}).status_code == 200
+
+    [sent] = calls.bodies("/ask")
+    assert sent["context"].splitlines() == [
+        "Recent events, oldest first:",
+        "check: db Edit db/schema.sql -> ask (rule db/**, 4 ms)",
+        "approval_needed: db wants Edit db/schema.sql (Sun Dome is guarded)",
+        "denied: a human denied db's Edit db/schema.sql (it needed approval: Sun Dome is guarded)",
+        "claim_wait: api waits for shared/auth.ts held by web",
+        'commit: web 1a2b3c4 "Add role" (shared/auth.ts)',
+    ]
+
+
+def test_ask_context_capped_keeping_newest(client, calls, fake_dir, monkeypatch):
+    log = fake_dir / "events.log"
+    log.write_text("\n".join(envelope("commit", {"agent": "web", "sha": f"{i:07d}", "files": ["a.ts"],
+                                                 "message": "x" * 100 + f" n{i:04d}"}) for i in range(2000)))
+    monkeypatch.setenv("BULLPEN_EVENTS_LOG", str(log))
+
+    assert client.post("/ask", json={"question": "why?"}).status_code == 200
+
+    ctx = calls.bodies("/ask")[0]["context"]
+    assert len(ctx) <= main.MAX_CONTEXT_CHARS
+    assert "n1999" in ctx
+    assert "n1850" not in ctx  # within the last 150 events, but cut by the char cap
+    assert ctx.rstrip().endswith("lease: shared/auth.ts held by web, waiting: api")
 
 
 def test_ask_server_down_still_answers(client, calls, monkeypatch):

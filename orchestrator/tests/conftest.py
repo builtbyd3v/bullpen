@@ -46,7 +46,18 @@ class Calls:
         self.requests: list[httpx.Request] = []
         self.server_up = True
         self.jetson_up = True
-        self.state = {"worktrees": [{"agent": "db", "status": "waiting"}]}
+        self.state = {
+            "main": "main",
+            "worktrees": [
+                {"agent": "db", "status": "blocked", "building": "sundome", "task": "Add a role column",
+                 "commits": [], "claims": []},
+                {"agent": "web", "status": "working", "building": "msc", "task": "Show the role",
+                 "commits": [{"sha": "1a2b3c4", "message": "Add role"}], "claims": ["msc"]},
+            ],
+            "approvals": [{"id": "ap1", "agent": "db", "tool": "Edit", "target": "db/schema.sql",
+                           "reason": "Sun Dome is guarded"}],
+            "leases": [{"file": "shared/auth.ts", "agent": "web", "expires_at": "x", "waiters": ["api"]}],
+        }
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -90,6 +101,7 @@ def isolated(fake_dir, monkeypatch):
     monkeypatch.setenv("SERVER_URL", "http://server.test")
     monkeypatch.setenv("JETSON_URL", "http://jetson.test")
     monkeypatch.setenv("BULLPEN_LOG_DIR", str(fake_dir / "logs"))
+    monkeypatch.setenv("BULLPEN_EVENTS_LOG", str(fake_dir / "no-events.log"))
     monkeypatch.setenv("DEMO_DIR", str(fake_dir / "demo"))
     canned = fake_dir / "demo_tasks.json"
     canned.write_text(json.dumps({"ask": "canned ask", "tasks": [
