@@ -18,10 +18,31 @@ test("commit appends to the feed and fires a commit fx at the first file's build
     type: "commit",
     data: { agent: "web", sha: "abc1234", message: "Add page", files: ["web/Page.tsx", "api/x.py"] },
   });
-  assert.equal(snapshot.feed.length, 1);
-  assert.equal(snapshot.feed[0].color, "#3e63dd");
-  assert.equal(snapshot.feed[0].message, "Add page");
+  const last = snapshot.feed.at(-1);
+  assert.equal(snapshot.feed.length, withState.feed.length + 1);
+  assert.equal(last?.color, "#3e63dd");
+  assert.equal(last?.message, "Add page");
   assert.deepEqual(fx, [{ kind: "commit", agent: "web", building: "msc" }]);
+});
+
+test("state seeds the feed from worktree commits, oldest first, without duplicates", () => {
+  const seeded = reduce(start, { type: "state", data: FAKE_STATE }).snapshot;
+  assert.deepEqual(
+    seeded.feed.map((f) => f.sha),
+    ["9f8e7d6", "a1b2c3d", "4c5d6e7", "1a2b3c4"],
+  );
+  const again = reduce(seeded, { type: "state", data: FAKE_STATE }).snapshot;
+  assert.equal(again.feed, seeded.feed);
+});
+
+test("a commit already seeded from state is not added twice but still fires fx", () => {
+  const seeded = reduce(start, { type: "state", data: FAKE_STATE }).snapshot;
+  const { snapshot, fx } = reduce(seeded, {
+    type: "commit",
+    data: { agent: "api", sha: "a1b2c3d", message: "Add users route", files: ["api/users.py"] },
+  });
+  assert.equal(snapshot.feed.length, seeded.feed.length);
+  assert.equal(fx.length, 1);
 });
 
 test("hook envelopes change nothing", () => {

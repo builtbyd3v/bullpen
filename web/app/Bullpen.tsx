@@ -2,8 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { createContext, use, useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
-import { connect } from "@/lib/server.ts";
+import campus from "../../campus/campus.json" with { type: "json" };
+import { buildingForFile } from "@/lib/campus.ts";
+import { act, connect } from "@/lib/server.ts";
 import { createStore, type Store, type StoreState } from "@/lib/store.ts";
+import type { Status } from "@/lib/types.ts";
 
 const Campus = dynamic(() => import("./Campus"), { ssr: false });
 
@@ -71,11 +74,159 @@ function CampusPane() {
   );
 }
 
-function SidePanel() {
-  const agents = useBullpen((s) => s.data.worktrees.length);
+const STATUS_CLASS: Record<Status, string> = {
+  working: "bg-emerald-500/20 text-emerald-300",
+  waiting: "bg-amber-500/20 text-amber-300",
+  blocked: "bg-red-500/20 text-red-300",
+  done: "bg-white/10 text-white/60",
+};
+
+const BUTTON = "rounded-md px-3 py-1.5 text-sm font-semibold";
+
+type SectionProps = { title: string; children: ReactNode };
+
+function Section({ title, children }: SectionProps) {
   return (
-    <aside className="h-full w-[35%] border-l border-white/10 p-4 font-mono text-sm text-white/60">
-      Side panel ({agents} agents)
+    <section className="border-b border-white/10 p-4">
+      <h2 className="mb-3 text-xs font-bold tracking-widest text-white/50 uppercase">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+type DotProps = { color: string };
+
+function Dot({ color }: DotProps) {
+  return <span style={agentColor(color)} className="inline-block size-3 shrink-0 rounded-full bg-(--agent)" />;
+}
+
+function NeedsYou() {
+  const store = useStore();
+  const approvals = useBullpen((s) => s.data.approvals);
+  const worktrees = useBullpen((s) => s.data.worktrees);
+  return (
+    <Section title="Needs you">
+      {approvals.length === 0 && <p className="text-white/50">Nothing needs you.</p>}
+      {approvals.map((a) => (
+        <div
+          key={a.id}
+          style={agentColor(worktrees.find((w) => w.agent === a.agent)?.color ?? "#888888")}
+          className="mb-2 rounded-lg border-l-4 border-(--agent) bg-(--agent)/10 p-3"
+        >
+          <p className="text-lg font-semibold">
+            <span className="text-(--agent)">{a.agent}</span> wants {a.tool} <span className="font-mono">{a.target}</span>
+          </p>
+          <p className="mb-2 text-white/70">{a.reason}</p>
+          <div className="flex gap-2">
+            <button onClick={() => act(store, { kind: "approve", id: a.id, decision: "allow" })} className={`${BUTTON} bg-emerald-600 hover:bg-emerald-500`}>
+              Approve
+            </button>
+            <button onClick={() => act(store, { kind: "approve", id: a.id, decision: "deny" })} className={`${BUTTON} bg-white/10 hover:bg-white/20`}>
+              Deny
+            </button>
+          </div>
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+function Agents() {
+  const store = useStore();
+  const worktrees = useBullpen((s) => s.data.worktrees);
+  const name = (id: string) => campus.buildings.find((b) => b.id === id)?.name ?? id;
+  return (
+    <Section title="Agents">
+      {worktrees.map((w) => (
+        <div key={w.agent} style={agentColor(w.color)} className="mb-2 rounded-lg border-l-4 border-(--agent) bg-white/5 p-3">
+          <div className="flex items-center gap-2">
+            <Dot color={w.color} />
+            <span className="text-lg font-bold text-(--agent)">{w.agent}</span>
+            <span className={`rounded px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[w.status]}`}>{w.status}</span>
+            <span className="ml-auto font-mono text-sm text-white/60">+{w.ahead}</span>
+          </div>
+          <p className="mt-1">{w.task}</p>
+          <p className="font-mono text-sm text-white/50">{w.branch}</p>
+          {w.claims.length > 0 && <p className="text-sm text-white/70">Claims: {w.claims.map(name).join(", ")}</p>}
+          <div className="mt-2 flex gap-2">
+            <button onClick={() => act(store, { kind: "merge", agent: w.agent })} className={`${BUTTON} bg-white/10 hover:bg-white/20`}>
+              Merge
+            </button>
+            <button onClick={() => act(store, { kind: "undo", agent: w.agent })} className={`${BUTTON} bg-red-600/80 hover:bg-red-500`}>
+              Undo
+            </button>
+          </div>
+        </div>
+      ))}
+    </Section>
+  );
+}
+
+function Selection() {
+  const store = useStore();
+  const selected = useBullpen((s) => s.ui.selected);
+  const worktrees = useBullpen((s) => s.data.worktrees);
+  if (!selected) return null;
+  const building = selected.kind === "building" ? campus.buildings.find((b) => b.id === selected.id) : undefined;
+  const bull = selected.kind === "bull" ? worktrees.find((w) => w.agent === selected.agent) : undefined;
+  return (
+    <Section title="Selection">
+      <div className="mb-2 flex items-center">
+        <p className="text-lg font-bold">
+          {building && `${building.name} (${building.folder === null ? "unmapped" : building.folder || "/"})`}
+          {bull && <span style={agentColor(bull.color)} className="text-(--agent)">{bull.agent}</span>}
+        </p>
+        <button onClick={() => store.setUi({ selected: null })} className={`${BUTTON} ml-auto bg-white/10 hover:bg-white/20`}>
+          Close
+        </button>
+      </div>
+      {building &&
+        worktrees.map((w) => {
+          const files = w.changed_files.filter((f) => buildingForFile(f, campus.buildings) === building.id);
+          return (
+            files.length > 0 && (
+              <div key={w.agent} style={agentColor(w.color)} className="mb-2">
+                <p className="font-bold text-(--agent)">{w.agent}</p>
+                <ul className="font-mono text-sm">
+                  {files.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+              </div>
+            )
+          );
+        })}
+      {bull?.commits.map((c) => (
+        <p key={c.sha} className="text-sm">
+          <span className="font-mono text-white/50">{c.sha.slice(0, 7)}</span> {c.message}
+        </p>
+      ))}
+    </Section>
+  );
+}
+
+function Feed() {
+  const feed = useBullpen((s) => s.feed);
+  return (
+    <Section title="Feed">
+      {[...feed].reverse().map((f) => (
+        <p key={f.sha} className="mb-1 flex items-center gap-2">
+          <Dot color={f.color} />
+          <span className="flex-1">{f.message}</span>
+          <span className="font-mono text-sm text-white/50">{f.sha.slice(0, 7)}</span>
+        </p>
+      ))}
+    </Section>
+  );
+}
+
+function SidePanel() {
+  return (
+    <aside className="h-full w-[35%] overflow-y-auto border-l border-white/10">
+      <NeedsYou />
+      <Agents />
+      <Selection />
+      <Feed />
     </aside>
   );
 }
