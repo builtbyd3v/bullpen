@@ -96,6 +96,10 @@ def test_check_bash_not_touching_guarded_allows(cmd):
         "git log --oneline -- db/",
         "git branch -a",
         "cd db && ls",
+        'for f in shared/auth.ts api/login.ts config/roles.json db/schema.sql; do echo "=== $f"; cat "$f"; done',
+        'for f in db/*; do cat "$f"; done',
+        "while read l; do cat db/schema.sql; done < list",
+        "if test -f db/schema.sql; then cat db/schema.sql; else ls db; fi",
     ],
 )
 def test_check_bash_read_only_on_guarded_allows(cmd):
@@ -123,6 +127,11 @@ def test_check_bash_read_only_on_guarded_allows(cmd):
         "FOO=1 cat db/schema.sql",
         "sqlite3 db/app.db",
         "cat db/schema.sql & rm db/seed.sql",
+        'for f in db/*; do rm "$f"; done',
+        "for f in a; do echo x > db/s.sql; done",
+        "for f in $(ls db); do cat $f; done",
+        "while true; do rm db/x; done",
+        "if test -f db/x; then rm db/x; fi",
     ],
 )
 def test_check_bash_write_on_guarded_asks(cmd):

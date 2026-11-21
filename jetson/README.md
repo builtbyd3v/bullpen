@@ -37,6 +37,8 @@ Endpoints:
   - every part split on `;`, `&&`, `||`, `|`, `&` and newlines starts with `cat`, `ls`, `head`, `tail`, `grep`, `rg`, `wc`, `pwd`, `cd`, `echo`, `stat`, `file`, `tree`, `sort`, `uniq`, `cut`, `diff`, `which`, `true`, `test`, `find`, or `git log|diff|status|show|ls-files|branch|rev-parse|blame`
   - no write flags: `find -delete/-exec/-ok/-fprint/-fls`, `sort -o`, `tree -o`, `rg --pre`, `git --output`, `uniq IN OUT`, `git branch` with anything but list flags
 
+  - shell structure is not a command: `for NAME in WORDS`, `done` and `fi` are skipped; `do`, `then`, `else`, `elif`, `while`, `until` and `if` are checked as the command after them. `read` is allowed, so `while read l; do cat db/x; done < list` passes.
+
   Anything else (`sed`, `python`, `cp`, `rm`, `sqlite3`, `npm`, `env`, `FOO=1 cmd`, unknown commands) stays `ask`.
 
 Memory and latency (measured on the Jetson, `NUM_CTX` 4096):

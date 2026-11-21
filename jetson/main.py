@@ -137,8 +137,10 @@ CMD_END = r"[\s'\";&|)`]"
 
 READ_ONLY = {
     "cat", "ls", "head", "tail", "grep", "rg", "wc", "pwd", "cd", "echo", "stat", "file", "tree",
-    "sort", "uniq", "cut", "diff", "which", "true", "test", "find", "git",
+    "sort", "uniq", "cut", "diff", "which", "true", "test", "find", "git", "read",
 }  # fmt: skip
+# Shell keywords that run the command after them; the keyword itself does nothing.
+SHELL_PREFIX = {"do", "then", "else", "elif", "while", "until", "if"}
 READ_ONLY_GIT = {"log", "diff", "status", "show", "ls-files", "branch", "rev-parse", "blame"}
 GIT_BRANCH_READ_FLAGS = {"-a", "-r", "-v", "-vv", "-l", "--list", "--all", "--remotes", "--show-current", "--verbose"}
 # Flags that make an allowlisted command write files or run other commands.
@@ -164,7 +166,10 @@ def read_only(command: str) -> bool:
             words = shlex.split(segment)
         except ValueError:
             return False
-        if not words:
+        while words and words[0] in SHELL_PREFIX:
+            words = words[1:]
+        # `for NAME in WORDS` runs nothing ($(...) was rejected above); done/fi close a block.
+        if not words or words[0] in ("for", "done", "fi"):
             continue
         cmd, args = words[0], words[1:]
         if cmd not in READ_ONLY or any(a.startswith(WRITE_FLAGS.get(cmd, ())) for a in args):
