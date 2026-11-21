@@ -19,6 +19,7 @@ export type Snapshot = {
   checks: CheckEvent[];
   plan: Plan | null;
   hooks: HookLog[];
+  replaying: boolean;
 };
 
 const MAX_CHECKS = 60;
@@ -57,10 +58,14 @@ function parseHookLog(data: Record<string, unknown>): HookLog | null {
 }
 
 export function reduce(snapshot: Snapshot, envelope: Envelope): { snapshot: Snapshot; fx: Fx[] } {
+  const replaying = Boolean(envelope.replay);
+  const withReplay = (next: Snapshot): Snapshot =>
+    next.replaying === replaying ? next : { ...next, replaying };
+
   switch (envelope.type) {
     case "state":
       return {
-        snapshot: { ...snapshot, data: envelope.data, feed: seedFeed(snapshot.feed, envelope.data) },
+        snapshot: withReplay({ ...snapshot, data: envelope.data, feed: seedFeed(snapshot.feed, envelope.data) }),
         fx: [],
       };
     case "commit": {
@@ -69,10 +74,10 @@ export function reduce(snapshot: Snapshot, envelope: Envelope): { snapshot: Snap
       const item: FeedItem = { agent, color, sha, message, at: Date.now() };
       const building = buildingForFile(files[0] ?? "", campus.buildings);
       const feed = snapshot.feed.some((f) => f.sha === sha) ? snapshot.feed : [...snapshot.feed, item];
-      return { snapshot: { ...snapshot, feed }, fx: [{ kind: "commit", agent, building }] };
+      return { snapshot: withReplay({ ...snapshot, feed }), fx: [{ kind: "commit", agent, building }] };
     }
     case "undo":
-      return { snapshot, fx: [{ kind: "undo", agent: envelope.data.agent }] };
+      return { snapshot: withReplay(snapshot), fx: [{ kind: "undo", agent: envelope.data.agent }] };
     case "merge": {
       const { agent, sha, intent = "" } = envelope.data;
       const worktree = snapshot.data.worktrees.find((w) => w.agent === agent);
@@ -95,19 +100,19 @@ export function reduce(snapshot: Snapshot, envelope: Envelope): { snapshot: Snap
         at: Date.now(),
       };
       const merges = [card, ...snapshot.merges.filter((m) => m.id !== id)];
-      return { snapshot: { ...snapshot, merges }, fx: [{ kind: "merge", agent }] };
+      return { snapshot: withReplay({ ...snapshot, merges }), fx: [{ kind: "merge", agent }] };
     }
     case "check": {
       const checks = [envelope.data, ...snapshot.checks].slice(0, MAX_CHECKS);
-      return { snapshot: { ...snapshot, checks }, fx: [] };
+      return { snapshot: withReplay({ ...snapshot, checks }), fx: [] };
     }
     case "plan":
-      return { snapshot: { ...snapshot, plan: envelope.data }, fx: [] };
+      return { snapshot: withReplay({ ...snapshot, plan: envelope.data }), fx: [] };
     case "hook": {
       const entry = parseHookLog(envelope.data);
-      if (!entry) return { snapshot, fx: [] };
+      if (!entry) return { snapshot: withReplay(snapshot), fx: [] };
       const hooks = [entry, ...snapshot.hooks].slice(0, MAX_HOOKS);
-      return { snapshot: { ...snapshot, hooks }, fx: [] };
+      return { snapshot: withReplay({ ...snapshot, hooks }), fx: [] };
     }
   }
 }

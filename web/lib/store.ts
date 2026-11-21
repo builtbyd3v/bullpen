@@ -1,8 +1,16 @@
 import { reduce, type Snapshot } from "./reduce.ts";
-import type { Envelope, Fx, Plan, UiState } from "./types.ts";
+import type { Envelope, Fx, HealthState, Plan, UiState } from "./types.ts";
 
-export type StoreState = Snapshot & { ui: UiState };
+export type StoreState = Snapshot & { ui: UiState; health: HealthState };
 export type Store = ReturnType<typeof createStore>;
+
+const INITIAL_HEALTH: HealthState = {
+  server: "checking",
+  ws: "checking",
+  jetson: "checking",
+  model: "checking",
+  claude: "checking",
+};
 
 export function createStore() {
   let state: StoreState = {
@@ -12,6 +20,8 @@ export function createStore() {
     checks: [],
     plan: null,
     hooks: [],
+    replaying: false,
+    health: INITIAL_HEALTH,
     ui: { tab: "main", selected: null, zoomedBuildingId: null, selectedRoomPath: null },
   };
   const listeners = new Set<() => void>();
@@ -35,11 +45,15 @@ export function createStore() {
         snapshot.merges !== state.merges ||
         snapshot.checks !== state.checks ||
         snapshot.plan !== state.plan ||
-        snapshot.hooks !== state.hooks
+        snapshot.hooks !== state.hooks ||
+        snapshot.replaying !== state.replaying
       ) {
         set({ ...state, ...snapshot });
       }
       fx.forEach((f) => fxListeners.forEach((l) => l(f)));
+    },
+    setHealth(partial: Partial<HealthState>) {
+      set({ ...state, health: { ...state.health, ...partial } });
     },
     dismissMerge(id: string) {
       const merges = state.merges.filter((m) => m.id !== id);

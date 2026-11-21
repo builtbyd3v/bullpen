@@ -17,6 +17,7 @@ import { act, askWhy, connect, isFake, orchestrate } from "@/lib/server.ts";
 import { createStore, type Store, type StoreState } from "@/lib/store.ts";
 import type { CheckDecision, Status } from "@/lib/types.ts";
 import { BuildingInteriorDrawer, BuildingInteriorHeader } from "./BuildingInteriorPanel";
+import { HealthStrip } from "./HealthStrip";
 import { ProblemOpener } from "./ProblemOpener";
 
 const Campus = dynamic(() => import("./Campus"), { ssr: false });
@@ -664,13 +665,23 @@ function SidePanel() {
   );
 }
 
+function TopHealthStrip() {
+  const store = useStore();
+  const health = useBullpen((s) => s.health);
+  const replaying = useBullpen((s) => s.replaying);
+  return <HealthStrip store={store} health={health} replaying={replaying} />;
+}
+
 export default function Bullpen() {
   return (
     <BullpenProvider>
-      <main className="flex h-screen">
-        <CampusPane />
-        <SidePanel />
-      </main>
+      <div className="flex h-screen flex-col">
+        <TopHealthStrip />
+        <main className="flex min-h-0 flex-1">
+          <CampusPane />
+          <SidePanel />
+        </main>
+      </div>
     </BullpenProvider>
   );
 }

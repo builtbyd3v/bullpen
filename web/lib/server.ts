@@ -1,9 +1,10 @@
 import { FAKE_CHECKS, FAKE_HOOKS, FAKE_STATE, fakeAsk, fakeDiff, fakeOrchestrate, fakeServer } from "./fake.ts";
 import type { Store } from "./store.ts";
-import type { Action, BullpenState, Envelope, Plan } from "./types.ts";
+import type { Action, BullpenState, Envelope, HealthState, Plan } from "./types.ts";
 
 const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:8600";
 const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "http://localhost:8650";
+const DEFAULT_JETSON_URL = process.env.NEXT_PUBLIC_JETSON_URL ?? "http://192.168.55.1:8700";
 const TYPES = new Set(["hook", "state", "commit", "undo", "merge", "check", "plan"]);
 
 export const isFake = () => new URLSearchParams(window.location.search).has("fake");
@@ -19,23 +20,96 @@ function isEnvelope(msg: unknown): msg is Envelope {
   return typeof msg === "object" && msg !== null && "type" in msg && TYPES.has(String(msg.type));
 }
 
+async function fetchJson(url: string, timeoutMs = 2500): Promise<Record<string, unknown> | null> {
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) return null;
+    const body = (await res.json()) as unknown;
+    return typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+  } catch {
+    return null;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 export function connect(store: Store): () => void {
   if (isFake()) {
     store.dispatch({ type: "state", data: FAKE_STATE });
     [...FAKE_CHECKS].reverse().forEach((c) => store.dispatch({ type: "check", data: c }));
     [...FAKE_HOOKS].reverse().forEach((h) => store.dispatch({ type: "hook", data: h }));
+    store.setHealth({
+      server: "ok",
+      ws: "ok",
+      jetson: "ok",
+      model: "ok",
+      modelName: "llama3.2:3b",
+      claude: "ok",
+    });
     return () => {};
   }
+
   let closed = false;
   let ws: WebSocket | undefined;
+  let jetsonUrl = DEFAULT_JETSON_URL;
+
+  const pollHealth = async () => {
+    const serverBody = await fetchJson(`${SERVER_URL.replace(/\/$/, "")}/health`);
+    if (closed) return;
+    const serverOk = Boolean(serverBody && serverBody.ok !== false);
+    if (serverBody && typeof serverBody.jetson === "string" && serverBody.jetson) {
+      jetsonUrl = serverBody.jetson;
+    }
+
+    const [jetsonBody, orchBody] = await Promise.all([
+      fetchJson(`${jetsonUrl.replace(/\/$/, "")}/health`),
+      fetchJson(`${ORCHESTRATOR_URL.replace(/\/$/, "")}/health`),
+    ]);
+    if (closed) return;
+
+    const jetsonOk = Boolean(jetsonBody && jetsonBody.ok !== false);
+    let model: HealthState["model"] = "down";
+    let modelName: string | undefined;
+    if (jetsonOk) {
+      if (jetsonBody?.model_loaded === false) {
+        model = "down";
+      } else {
+        model = "ok";
+        if (typeof jetsonBody?.model === "string" && jetsonBody.model) {
+          modelName = jetsonBody.model;
+        } else if (Array.isArray(jetsonBody?.models) && typeof jetsonBody.models[0] === "string") {
+          modelName = jetsonBody.models[0];
+        } else if (Array.isArray(jetsonBody?.warmed) && typeof jetsonBody.warmed[0] === "string") {
+          modelName = jetsonBody.warmed[0];
+        }
+      }
+    }
+
+    const claudeOk = Boolean(orchBody && orchBody.ok !== false);
+    store.setHealth({
+      server: serverOk ? "ok" : "down",
+      jetson: jetsonOk ? "ok" : "down",
+      model,
+      modelName,
+      claude: claudeOk ? "ok" : "down",
+    });
+  };
+
+  void pollHealth();
+  const healthTimer = window.setInterval(() => void pollHealth(), 5000);
+
   const open = () => {
     ws = new WebSocket(`${SERVER_URL.replace(/^http/, "ws")}/ws`);
     // Refetch on every (re)connect so a restarted server or a missed message cannot leave stale state.
-    ws.onopen = () =>
+    ws.onopen = () => {
+      store.setHealth({ ws: "ok" });
       fetch(`${SERVER_URL}/state`)
         .then((r) => r.json() as Promise<unknown>)
         .then((data) => closed || dispatch({ type: "state", data }))
         .catch((e: unknown) => console.warn("[bullpen] /state failed", e));
+    };
     ws.onmessage = (m: MessageEvent<string>) => {
       try {
         dispatch(JSON.parse(m.data));
@@ -43,7 +117,14 @@ export function connect(store: Store): () => void {
         console.warn("[bullpen] bad ws message", e);
       }
     };
-    ws.onclose = () => closed || setTimeout(open, 1000);
+    ws.onerror = () => {
+      if (!closed) store.setHealth({ ws: "down" });
+    };
+    ws.onclose = () => {
+      if (closed) return;
+      store.setHealth({ ws: "down" });
+      setTimeout(open, 1000);
+    };
   };
   const dispatch = (msg: unknown) => {
     if (!isEnvelope(msg)) return;
@@ -53,8 +134,20 @@ export function connect(store: Store): () => void {
   open();
   return () => {
     closed = true;
+    window.clearInterval(healthTimer);
     ws?.close();
   };
+}
+
+export function triggerReplay(store: Store): void {
+  if (isFake()) {
+    const currentlyReplaying = store.getState().replaying;
+    store.dispatch({ type: "state", data: store.getState().data, replay: !currentlyReplaying });
+    return;
+  }
+  fetch(`${SERVER_URL.replace(/\/$/, "")}/replay`).catch((e: unknown) =>
+    console.warn("[bullpen] GET /replay failed", e),
+  );
 }
 
 export function act(store: Store, action: Action): void {

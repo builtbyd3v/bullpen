@@ -78,7 +78,7 @@ export type HookLog = {
   at: string;
 };
 
-export type Envelope =
+export type EnvelopeBody =
   | { type: "hook"; data: Record<string, unknown> }
   | { type: "state"; data: BullpenState }
   | { type: "commit"; data: { agent: string } & Commit }
@@ -86,6 +86,19 @@ export type Envelope =
   | { type: "merge"; data: { agent: string; sha: string; intent?: string } }
   | { type: "check"; data: CheckEvent }
   | { type: "plan"; data: Plan };
+
+export type Envelope = EnvelopeBody & { replay?: boolean };
+
+export type HealthStatus = "checking" | "ok" | "down";
+
+export type HealthState = {
+  server: HealthStatus;
+  ws: HealthStatus;
+  jetson: HealthStatus;
+  model: HealthStatus;
+  modelName?: string;
+  claude: HealthStatus;
+};
 
 export type MergeCard = {
   id: string;
