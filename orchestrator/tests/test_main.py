@@ -223,3 +223,33 @@ def test_missing_demo_repo_still_plans(client, fake_dir):
     r = client.post("/orchestrate", json={"ask": "add login"})
     assert r.status_code == 200
     assert r.json()["source"] == "claude"
+
+
+def test_reset_runs_the_reset_command(client, monkeypatch, tmp_path):
+    marker = tmp_path / "reset_ran"
+    monkeypatch.setenv("DEMO_RESET_CMD", f"touch {marker}")
+    r = client.post("/reset")
+    assert r.status_code == 200
+    assert r.json()["ok"] is True and isinstance(r.json()["seconds"], float)
+    assert marker.exists()
+
+
+def test_reset_releases_each_agent_on_the_server(client, calls, monkeypatch):
+    monkeypatch.setenv("DEMO_RESET_CMD", "true")
+    r = client.post("/reset")
+    assert r.json()["released"] == ["api", "web", "db"]
+    assert [q.url.path for q in calls.requests if q.method == "POST"] == ["/undo/api", "/undo/web", "/undo/db"]
+
+
+def test_reset_still_ok_when_server_is_down(client, calls, monkeypatch):
+    monkeypatch.setenv("DEMO_RESET_CMD", "true")
+    calls.server_up = False
+    r = client.post("/reset")
+    assert r.status_code == 200 and r.json()["released"] == []
+
+
+def test_reset_failure_is_502(client, monkeypatch):
+    monkeypatch.setenv("DEMO_RESET_CMD", "false")
+    r = client.post("/reset")
+    assert r.status_code == 502
+    assert "error" in r.json()

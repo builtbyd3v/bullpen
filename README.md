@@ -78,7 +78,7 @@ Every request, response and event is specified in [`shared/events.md`](shared/ev
 | Jetson | 8700 | Deploy and start per [`jetson/README.md`](jetson/README.md). `JETSON_URL=http://192.168.55.1:8700` |
 | Hook and demo repo | none | `./scripts/make_demo.sh` creates a demo repo with 3 worktrees and wires the hook into each. `scripts/demo_reset.sh` resets it between runs, `scripts/demo_start.sh` starts the agents |
 
-- The web app runs without a server at http://localhost:5173/?fake. "Play demo" runs a scripted sequence.
+- The web app runs without a server at http://localhost:5173/campus?fake. "Play demo" runs a scripted sequence.
 - Copy `.env.example` to `.env` for `SERVER_URL` and `JETSON_URL`.
 - Start an agent in a worktree with `BULLPEN_AGENT=api claude` (or `web`, `db`).
 

@@ -9,6 +9,7 @@ import shlex
 import signal
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import Annotated
 
@@ -264,6 +265,29 @@ def ask_context() -> str:
             break
         kept.append(line)
     return "\n".join(reversed(kept))
+
+
+@app.post("/reset")
+def reset():
+    """Run the demo reset script, then undo each agent on the server so stale leases from killed agents
+    (which never sent Stop) are released. The server keeps running and broadcasts undo + state."""
+    cmd = shlex.split(env("DEMO_RESET_CMD", str(REPO / "scripts" / "demo_reset.sh")))
+    start = time.monotonic()
+    try:
+        done = subprocess.run(cmd, capture_output=True, text=True, timeout=30, env=child_env())
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return error(502, f"reset failed: {e}")
+    if done.returncode != 0:
+        return error(502, f"reset exited {done.returncode}: {done.stderr.strip()[-300:]}")
+    released = []
+    for agent in AGENTS:
+        try:
+            r = http.post(env("SERVER_URL", "http://localhost:8600").rstrip("/") + f"/undo/{agent}", timeout=5)
+            if r.is_success:
+                released.append(agent)
+        except httpx.HTTPError:
+            pass
+    return {"ok": True, "seconds": round(time.monotonic() - start, 1), "released": released}
 
 
 @app.post("/ask")

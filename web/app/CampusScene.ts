@@ -26,14 +26,19 @@ const hitsBuilding = (b: Building, x: number, y: number) =>
   buildings.some((o) => o !== b && o.id !== "bullrunner" && x > o.x - 20 && x < o.x + o.w + 20 && y + 24 > o.y && y - 24 < o.y + o.h);
 const bullY = (b: Building) => {
   const cx = b.x + b.w / 2;
-  const below = b.y + b.h + (labelBelow(b, buildings) ? 72 : 44);
+  const below = b.y + b.h + (labelBelow(b, buildings) ? 96 : 52);
   if (!hitsBuilding(b, cx, below)) return below;
   if (b.y > 80 && !hitsBuilding(b, cx, b.y - 52)) return b.y - 52;
   return b.y + b.h - 20;
 };
 // The door sits at the middle of the building's bottom edge. The line forms to its right, past the agent slots.
 const door = (b: Building) => ({ x: b.x + b.w / 2, y: b.y + b.h });
-const queueX = (b: Building, pos: number) => b.x + b.w / 2 + 96 + (pos - 1) * 52;
+// The line forms to the right of the door, or to the left when another building is in the way.
+const queueX = (b: Building, pos: number) => {
+  const step = 96 + (pos - 1) * 52;
+  const right = b.x + b.w / 2 + step;
+  return hitsBuilding(b, right, bullY(b)) ? b.x + b.w / 2 - step : right;
+};
 // 5x7 pixel hourglass (2px cells), one frame per quarter turn of the sand: caps, glass, sand.
 const HOURGLASS_FRAMES = [0, 1, 2, 3].map((phase) => {
   const rows = ["ccccc", ".gGg.", ".gGg.", "..g..", ".ggg.", ".ggg.", "ccccc"].map((r) => [...r]);
@@ -72,6 +77,10 @@ export class CampusScene extends Phaser.Scene {
   private scaffolds = new Map<string, Phaser.GameObjects.Graphics>();
   private barriers = new Map<string, Phaser.GameObjects.Graphics>();
   private locks = new Map<string, Phaser.GameObjects.Text>();
+  // Caua's construction site (design/js/sprites.js): cones and a crane on a building while an agent holds a lock there.
+  private sites = new Map<string, Phaser.GameObjects.Container>();
+  // Last referee check seen per agent, so each new deny kicks the Bull out once.
+  private seenCheck = new Map<string, string>();
   private referee!: Phaser.GameObjects.Container;
   private dusk!: Phaser.GameObjects.Rectangle;
   private selection!: Phaser.GameObjects.Graphics;
@@ -177,6 +186,23 @@ export class CampusScene extends Phaser.Scene {
     }
     this.sync(this.locks, locks, (k) => this.lock(k), (o, k) => o.setData(k));
 
+    const sites = new Map<string, Building>();
+    for (const l of data.leases ?? []) {
+      const b = byId.get(buildingForFile(l.file, buildings));
+      if (b && b.id !== "bullrunner") sites.set(b.id, b);
+    }
+    this.sync(this.sites, sites, (b) => this.site(b), noop);
+
+    // Kicked out (Caua's 'kicked' state): a new referee deny for this agent.
+    for (const w of ws) {
+      const last = checks.find((c) => c.agent === w.agent);
+      if (!last) continue;
+      const key = `${last.at}|${last.file}|${last.decision}`;
+      const seen = this.seenCheck.get(w.agent);
+      this.seenCheck.set(w.agent, key);
+      if (seen !== undefined && seen !== key && last.decision === "deny") this.kick(w.agent);
+    }
+
     const flags = new Map<string, Placed>();
     for (const w of ws) {
       for (const id of w.claims) {
@@ -209,7 +235,12 @@ export class CampusScene extends Phaser.Scene {
       (o.getByName("mark") as Phaser.GameObjects.Text).setText(mark).setColor(markColor);
       (o.getByName("badge") as Phaser.GameObjects.Text).setText(`WAIT #${s.wait}`).setVisible(s.wait > 0);
       (o.getByName("hourglass") as Phaser.GameObjects.Graphics).setVisible(s.wait > 0);
-      o.setData({ wait: s.wait, door: s.door });
+      // A held lease means the agent is editing that file; a waiting Bull edits nothing.
+      const file = s.wait ? undefined : (data.leases ?? []).find((l) => l.agent === s.agent)?.file;
+      const editing = file !== undefined;
+      this.say(o.getByName("bubble") as Phaser.GameObjects.Container, editing ? (file.split("/").pop() ?? file) : null);
+      (o.getByName("hammer") as Phaser.GameObjects.Graphics).setVisible(editing);
+      o.setData({ wait: s.wait, door: s.door, editing });
       (o.getByName("ring") as Phaser.GameObjects.Ellipse).setVisible(sel?.kind === "bull" && sel.agent === s.agent);
       return this.walk(o, s);
     };
@@ -259,12 +290,19 @@ export class CampusScene extends Phaser.Scene {
       label.setText(`🔒 ${label.getData("holder")} · ${sec}s`).setColor(label.getData("color") as string);
     }
     const phase = Math.floor(time / 250) % 4;
+    const swing = Math.floor(time / 200) % 2;
+    for (const site of this.sites.values()) {
+      (site.getByName("trolley") as Phaser.GameObjects.Graphics).x = Math.round(Math.sin(time / 600) * 14);
+    }
     this.tethers.clear();
     for (const bull of this.bulls.values()) {
       const body = bull.getByName("body") as Phaser.GameObjects.Graphics;
       const wait = bull.getData("wait") as number | undefined;
+      if (bull.getData("anim")) continue; // a kick or celebration tween owns the body
+      (bull.getByName("hammer") as Phaser.GameObjects.Graphics).setAngle(bull.getData("editing") ? (swing ? 30 : -40) : 0);
       if (!wait) {
-        body.y = 0;
+        // Walking legs (Caua's 'walking' state): a two-step gait only while the Bull is moving.
+        body.y = bull.getData("walking") ? (Math.floor(time / 120) % 2 ? -2 : 0) : 0;
         continue;
       }
       body.y = phase % 2 ? -2 : 0;
@@ -315,9 +353,10 @@ export class CampusScene extends Phaser.Scene {
       this.tweens.add({ targets: plus, y: plus.y - 60, alpha: 0, delay: 150, duration: 1000, onComplete: () => plus.destroy() });
       return;
     }
+    if (fx.kind === "undo") this.kick(fx.agent);
+    else this.celebrate(fx.agent);
     this.exiting.set(fx.agent, fx.kind === "undo" ? "collapse" : "fade");
     this.time.delayedCall(2000, () => this.exiting.delete(fx.agent));
-    if (fx.kind === "undo") this.time.delayedCall(350, () => this.cameras.main.shake(450, 0.012));
   }
 
   // Keys hold agent names ("api|enb", "enb|api,web"); an exiting agent in the key picks the exit animation.
@@ -336,7 +375,7 @@ export class CampusScene extends Phaser.Scene {
       }
       return;
     }
-    this.tweens.add({ targets: o, y: o.y + 24, scaleY: 0.05, alpha: 0, angle: Phaser.Math.Between(-8, 8), duration: 450, ease: "Back.easeIn", onComplete: destroy });
+    this.tweens.add({ targets: o, y: o.y + 24, scaleY: 0.05, alpha: 0, duration: 450, ease: "Back.easeIn", onComplete: destroy });
     if (!b) return;
     for (let i = 0; i < 6; i++) {
       const puff = this.add.circle(b.x + (b.w * (i + 0.5)) / 6, b.y + b.h, 10, 0xd8c8a8).setDepth(3).setAlpha(0);
@@ -359,11 +398,83 @@ export class CampusScene extends Phaser.Scene {
     else this.retween(o, "fade", { alpha, duration: 200 });
   }
 
+  // Kicked out (referee deny or undo): the Bull spins off its spot and lands back, as in Caua's prototype.
+  private kick(agent: string) {
+    const bull = this.bulls.get(agent);
+    if (!bull) return;
+    const body = bull.getByName("body") as Phaser.GameObjects.Graphics;
+    this.tweens.killTweensOf(body);
+    body.setAngle(0);
+    bull.setData("anim", true);
+    this.tweens.add({ targets: body, angle: 360, y: -28, duration: 350, ease: "Quad.easeOut", yoyo: true, onComplete: () => (body.setAngle(0).setY(0), bull.setData("anim", false)) });
+    const mark = this.add.text(bull.x, bull.y - 60, "KICKED", { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#ffffff", backgroundColor: "#c8373b", padding: { x: 4, y: 2 } }).setOrigin(0.5).setDepth(6);
+    this.tweens.add({ targets: mark, y: mark.y - 20, alpha: 0, delay: 600, duration: 700, onComplete: () => mark.destroy() });
+  }
+
+  // Celebrating on merge: two hops and a burst of USF gold confetti.
+  private celebrate(agent: string) {
+    const bull = this.bulls.get(agent);
+    if (!bull) return;
+    const body = bull.getByName("body") as Phaser.GameObjects.Graphics;
+    bull.setData("anim", true);
+    this.tweens.add({ targets: body, y: -16, duration: 180, ease: "Quad.easeOut", yoyo: true, repeat: 1, onComplete: () => (body.setY(0), bull.setData("anim", false)) });
+    for (let i = 0; i < 10; i++) {
+      const bit = this.add.rectangle(bull.x, bull.y - 30, 4, 4, i % 2 ? 0xcfc493 : 0xdbe442).setDepth(6);
+      this.tweens.add({ targets: bit, x: bit.x + Phaser.Math.Between(-40, 40), y: bit.y - Phaser.Math.Between(20, 50), alpha: 0, duration: 900, onComplete: () => bit.destroy() });
+    }
+  }
+
+  // Construction site: orange cones at the door and a gold tower crane whose trolley travels while the lock is held.
+  private site(b: Building) {
+    const g = this.add.graphics();
+    const cone = (x: number, y: number) => {
+      g.fillStyle(0xe86a17).fillTriangle(x, y, x + 4, y - 10, x + 8, y);
+      g.fillStyle(0xffffff).fillRect(x + 2, y - 5, 4, 2);
+      g.fillStyle(0x0d231b).fillRect(x - 1, y, 10, 2);
+    };
+    cone(b.x + 4, b.y + b.h + 10);
+    cone(b.x + b.w - 12, b.y + b.h + 10);
+    const cx = b.x + b.w + 6;
+    const top = b.y - 10;
+    g.fillStyle(0x466069).fillRect(cx - 4, b.y + b.h - 4, 14, 6);
+    g.fillStyle(0xf2b705).fillRect(cx, top, 6, b.h + 6);
+    g.fillStyle(0x0d231b);
+    for (let y = top + 4; y < b.y + b.h; y += 8) g.fillRect(cx, y, 6, 2);
+    g.fillStyle(0xf2b705).fillRect(cx - 34, top, 52, 4);
+    g.fillStyle(0x29afce).fillRect(cx - 2, top + 6, 10, 6);
+    const trolley = this.add.graphics({ x: 0 }).setName("trolley");
+    trolley.fillStyle(0x0d231b).fillRect(cx - 16, top + 4, 6, 3).fillRect(cx - 14, top + 7, 2, 14);
+    trolley.fillStyle(0xe86a17).fillRect(cx - 16, top + 21, 6, 4);
+    return this.add.container(0, 0, [g, trolley]).setDepth(3.3);
+  }
+
   private walk(bull: Phaser.GameObjects.Container, { x, y }: Placed) {
     if (bull.getData("x") === x && bull.getData("y") === y) return bull;
     bull.setData({ x, y });
-    this.retween(bull, "walk", { x, y, duration: 900, ease: "Sine.easeInOut" });
+    this.retween(bull, "walk", {
+      x,
+      y,
+      duration: 900,
+      ease: "Sine.easeInOut",
+      onStart: () => bull.setData("walking", true),
+      onComplete: () => bull.setData("walking", false),
+    });
     return bull;
+  }
+
+  // White rounded bubble with a tail, sized to its text; null hides it.
+  private say(bubble: Phaser.GameObjects.Container, text: string | null) {
+    bubble.setVisible(text !== null);
+    if (text === null) return;
+    const t = bubble.getByName("t") as Phaser.GameObjects.Text;
+    if (t.text === text) return;
+    t.setText(text);
+    const w = t.width + 12;
+    (bubble.getByName("g") as Phaser.GameObjects.Graphics)
+      .clear()
+      .fillStyle(0xffffff)
+      .fillRoundedRect(-w / 2, -20, w, 20, 5)
+      .fillTriangle(-4, 0, 4, 0, 0, 6);
   }
 
   private bull({ agent, color }: BullSpec) {
@@ -372,6 +483,14 @@ export class CampusScene extends Phaser.Scene {
         this.add.ellipse(4, -2, 48, 40).setStrokeStyle(3, 0xffe066).setVisible(false).setName("ring"),
         ...makeBull(this, color).map((o, i) => (i === 0 ? o.setName("body") : o)),
         this.add.graphics({ x: 28, y: -18 }).setVisible(false).setName("hourglass"),
+        this.hammer(),
+        this.add
+          .container(2, -36, [
+            this.add.graphics().setName("g"),
+            this.add.text(0, -10, "", { fontFamily: "monospace", fontSize: "12px", color: "#0d231b" }).setOrigin(0.5).setName("t"),
+          ])
+          .setVisible(false)
+          .setName("bubble"),
         this.add
           .text(2, -26, "", {
             fontFamily: "monospace",
@@ -387,7 +506,7 @@ export class CampusScene extends Phaser.Scene {
         this.add
           .text(0, 10, agent, {
             fontFamily: "monospace",
-            fontSize: "12px",
+            fontSize: "14px",
             fontStyle: "bold",
             color: "#ffffff",
             stroke: "#0d231b",
@@ -403,10 +522,23 @@ export class CampusScene extends Phaser.Scene {
           .setName("mark"),
       ])
       .setDepth(4)
+      .setScale(1.5)
       .setSize(44, 36)
       .setInteractive({ useHandCursor: true })
       .on("pointerdown", () => this.store.setUi({ selected: { kind: "bull", agent } }));
     return bull;
+  }
+
+  // Pivot is the handle base, so rotating the Graphics swings the head.
+  private hammer() {
+    return this.add
+      .graphics({ x: -30, y: 2 })
+      .fillStyle(0x8b5a2b)
+      .fillRect(0, -14, 2, 14)
+      .fillStyle(0xcfc493)
+      .fillRect(-4, -20, 10, 6)
+      .setVisible(false)
+      .setName("hammer");
   }
 
   // Branch changes on a building: a see-through grid in the agent's color, offset per agent so layers stay visible.

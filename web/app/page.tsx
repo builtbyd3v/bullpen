@@ -1,5 +1,5 @@
-import Bullpen from "./Bullpen";
+import Landing from "./Landing";
 
 export default function Page() {
-  return <Bullpen />;
+  return <Landing />;
 }
