@@ -16,7 +16,7 @@ function Slate({ slot }: { slot: Slot }) {
   return (
     <AbsoluteFill style={{ background: "#000", color: "#fff", fontFamily: MONO, padding: 140, justifyContent: "center", gap: 32 }}>
       <div style={{ fontSize: 64, lineHeight: 1.3, maxWidth: 1500 }}>
-        {slot.irl ? "IRL CLIP" : "APP CLIP"}: {slot.shot}, {slot.dur}s
+        APP CLIP: {slot.shot}, {slot.dur}s
       </div>
       <div style={{ fontSize: 34, opacity: 0.7 }}>save as raw/{slot.id}.mp4</div>
     </AbsoluteFill>

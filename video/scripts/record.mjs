@@ -2,6 +2,7 @@
 // Records the web app in Chrome at 1920x1080 and writes a sidecar log next to the take.
 // Usage: node scripts/record.mjs fake    scripted demo in ?fake mode, no server needed
 //        node scripts/record.mjs live    real mode: types one ask and drives the demo beats on the running stack
+//        UNPLUG=1 node scripts/record.mjs live    the same, then waits 14 s for a person to pull the Jetson's cable
 // Output: raw/take-<mode>.webm, and raw/take-<mode>.json with
 //   marks: [{ t, label }]   beat times, set by this script
 //   notes: [{ t, freq, len, wave }]   every note the app played (the recording itself has no sound)
@@ -135,6 +136,14 @@ if (mode === "fake") {
   mark("referee");
   await page.getByRole("heading", { name: /referee/i }).scrollIntoViewIfNeeded();
   await pause(9);
+  // 8. Optional: UNPLUG=1 waits for a person to pull the Jetson's cable, with the Referee panel and the health strip on screen.
+  if (process.env.UNPLUG) {
+    mark("unplug");
+    console.log("\n>>> PULL THE JETSON CABLE NOW. Plug it back in when this script says so.\n\u0007");
+    await pause(14);
+    console.log("\n>>> PLUG THE CABLE BACK IN.\n\u0007");
+    await pause(4);
+  }
   mark("end");
 }
 
