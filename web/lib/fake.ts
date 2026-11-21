@@ -395,6 +395,12 @@ function fakeHandOver(file: string): Envelope[] {
 }
 
 // "Play demo" in ?fake mode: about 15 seconds of envelopes, fed through store.dispatch like the live socket.
+// The referee answering one edit; rule "offline" is the Jetson unplugged (fail closed).
+const fakeCheck = (agent: string, file: string, decision: "allow" | "deny", rule: string): Envelope => ({
+  type: "check",
+  data: { agent, tool: "Edit", file, decision, rule, latency_ms: rule === "offline" ? 0 : 3, model: rule === "offline" ? "" : "rules", at: new Date().toISOString() },
+});
+
 export const DEMO: { at: number; run: () => Envelope[] }[] = [
   { at: 1500, run: () => fakeCommit("api", { sha: "b7c8d9e", message: "Test users route", files: ["tests/test_users.py"] }) },
   { at: 4000, run: () => fakeCommit("web", { sha: "e1f2a3b", message: "Fetch users from API", files: ["web/api.ts"] }) },
@@ -405,4 +411,6 @@ export const DEMO: { at: number; run: () => Envelope[] }[] = [
   { at: 9800, run: () => fakeHandOver("api/users.ts") },
   { at: 11000, run: () => fakeServer({ kind: "merge", agent: "api" }) },
   { at: 14000, run: () => fakeServer({ kind: "undo", agent: "web" }) },
+  { at: 16000, run: () => [fakeCheck("web", "web/.env", "deny", "secrets")] },
+  { at: 19000, run: () => [fakeCheck("api", "api/users.ts", "deny", "offline")] },
 ];
