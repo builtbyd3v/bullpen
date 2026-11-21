@@ -3,6 +3,7 @@ import campus from "../../campus/campus.json" with { type: "json" };
 import { layersByBuilding, waitQueue } from "@/lib/campus.ts";
 import type { Store, StoreState } from "@/lib/store.ts";
 import type { Building, Fx, Status } from "@/lib/types.ts";
+import { drawCampusGround, makeBuilding } from "./buildingSprite";
 import { makeBull } from "./bullSprite";
 
 const buildings: Building[] = campus.buildings;
@@ -76,30 +77,15 @@ export class CampusScene extends Phaser.Scene {
   }
 
   create() {
+    drawCampusGround(this, campus.width, campus.height, buildings);
     for (const b of buildings) {
-      this.add
-        .rectangle(b.x, b.y, b.w, b.h, b.guarded ? 0x5a1f1f : 0x1f3a2e)
-        .setOrigin(0)
-        .setStrokeStyle(2, b.guarded ? 0xff6b6b : 0x7fd1a8)
-        .setInteractive({ useHandCursor: true })
-        .on("pointerdown", () =>
-          this.store.setUi({
-            selected: { kind: "building", id: b.id },
-            zoomedBuildingId: b.id,
-            selectedRoomPath: null,
-          }),
-        );
-      const d = door(b);
-      this.add.rectangle(d.x, d.y, 18, 14, 0x0d1b14).setOrigin(0.5, 1).setStrokeStyle(2, b.guarded ? 0xff6b6b : 0x7fd1a8).setDepth(1.2);
-      const folder = b.folder === null ? "unmapped" : b.folder || "/";
-      this.add
-        .text(b.x + 8, b.y + 8, `${b.name}\n${folder}`, {
-          fontFamily: "monospace",
-          fontSize: "14px",
-          color: "#ffffff",
-          wordWrap: { width: b.w - 16 },
-        })
-        .setDepth(2);
+      makeBuilding(this, b, () =>
+        this.store.setUi({
+          selected: { kind: "building", id: b.id },
+          zoomedBuildingId: b.id,
+          selectedRoomPath: null,
+        }),
+      );
     }
     // Branch tab: dusk over the campus in the agent's color, under that agent's layers.
     this.dusk = this.add.rectangle(0, 0, campus.width, campus.height, 0x000000, 1).setOrigin(0).setDepth(0.5).setAlpha(0);
@@ -312,7 +298,16 @@ export class CampusScene extends Phaser.Scene {
           .setOrigin(0.5, 1)
           .setVisible(false)
           .setName("badge"),
-        this.add.text(0, 10, agent, { fontFamily: "monospace", fontSize: "11px", color: "#ffffff" }).setOrigin(0.5, 0),
+        this.add
+          .text(0, 10, agent, {
+            fontFamily: "monospace",
+            fontSize: "11px",
+            fontStyle: "bold",
+            color: "#ffffff",
+            stroke: "#07120d",
+            strokeThickness: 3,
+          })
+          .setOrigin(0.5, 0),
         this.add
           .text(4, -20, "", { fontFamily: "monospace", fontSize: "18px", fontStyle: "bold", color: "#ffffff" })
           .setOrigin(0.5, 1)
