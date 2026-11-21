@@ -11,13 +11,14 @@ function duck(t: number, voices: [number, number][], full: number, under: number
   return full + (under - full) * dip;
 }
 
-// Shown until the team drops the recording into video/raw/.
+// Shown until the recording exists: black slate, white text, the exact shot to record.
 function Slate({ slot }: { slot: Slot }) {
   return (
-    <AbsoluteFill style={{ background: C.ink, color: C.sand, fontFamily: MONO, padding: 120, justifyContent: "center", gap: 28 }}>
-      <div style={{ fontSize: 30, color: C.gold }}>PLACEHOLDER, {slot.dur} s</div>
-      <div style={{ fontSize: 72 }}>raw/{slot.id}.mp4</div>
-      <div style={{ fontSize: 36, lineHeight: 1.4, maxWidth: 1400 }}>{slot.shot}</div>
+    <AbsoluteFill style={{ background: "#000", color: "#fff", fontFamily: MONO, padding: 140, justifyContent: "center", gap: 32 }}>
+      <div style={{ fontSize: 64, lineHeight: 1.3, maxWidth: 1500 }}>
+        {slot.irl ? "IRL CLIP" : "APP CLIP"}: {slot.shot}, {slot.dur}s
+      </div>
+      <div style={{ fontSize: 34, opacity: 0.7 }}>save as raw/{slot.id}.mp4</div>
     </AbsoluteFill>
   );
 }
