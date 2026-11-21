@@ -1,0 +1,17 @@
+{
+  "ask": "Add login with roles: API checks the role, web shows it, and the db stores it.",
+  "tasks": [
+    {
+      "agent": "api",
+      "task": "In shared/auth.ts add `export function hasRole(token: string, role: string): boolean` (token \"demo-admin\" has role admin). Edit shared/auth.ts FIRST. Then use it in api/users.ts to reject non-admins. Keep it under 20 lines. If an edit is denied or you are told to wait, do not retry in a loop: work on your other files (api/), then try again once at the end."
+    },
+    {
+      "agent": "web",
+      "task": "In shared/auth.ts add `export function roleLabel(token: string): string` (returns \"Admin\" or \"Member\"). Edit shared/auth.ts FIRST. Then show it in web/Header.tsx. Keep it under 20 lines. If an edit is denied or you are told to wait, do not retry in a loop: work on web/Header.tsx and web/login.tsx first, then try shared/auth.ts again once at the end."
+    },
+    {
+      "agent": "db",
+      "task": "Add a `role TEXT NOT NULL DEFAULT 'member'` column to the users table: edit db/schema.sql. If that edit is denied or needs approval, do not retry in a loop: instead write the migration plan (the ALTER TABLE statement and why) to docs/migration-plan.md and stop. Keep it short."
+    }
+  ]
+}
