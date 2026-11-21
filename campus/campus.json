@@ -1,15 +1,292 @@
 {
+  "repo": "demo",
   "width": 960,
   "height": 640,
   "buildings": [
-    { "id": "msc", "name": "Marshall Student Center", "folder": "web/", "x": 380, "y": 60, "w": 200, "h": 110, "guarded": false },
-    { "id": "library", "name": "Library", "folder": "docs/", "x": 120, "y": 60, "w": 180, "h": 110, "guarded": false },
-    { "id": "enb", "name": "ENB", "folder": "api/", "x": 660, "y": 60, "w": 180, "h": 110, "guarded": false },
-    { "id": "enc", "name": "ENC", "folder": "tests/", "x": 660, "y": 260, "w": 180, "h": 110, "guarded": false },
-    { "id": "muma", "name": "Muma Business", "folder": "config/", "x": 120, "y": 260, "w": 180, "h": 110, "guarded": false },
-    { "id": "cooper", "name": "Cooper Hall", "folder": "scripts/", "x": 120, "y": 460, "w": 180, "h": 110, "guarded": false },
-    { "id": "sundome", "name": "Sun Dome", "folder": "db/", "x": 660, "y": 460, "w": 180, "h": 110, "guarded": true },
-    { "id": "juniper", "name": "Juniper-Poplar", "folder": null, "x": 380, "y": 460, "w": 200, "h": 110, "guarded": false },
-    { "id": "bullrunner", "name": "Bull Runner stop", "folder": "", "x": 400, "y": 270, "w": 160, "h": 90, "guarded": false }
+    {
+      "id": "msc",
+      "name": "Marshall Student Center",
+      "folder": "web/",
+      "guarded": false,
+      "x": 380,
+      "y": 60,
+      "w": 200,
+      "h": 110,
+      "files": 7,
+      "rooms": [
+        {
+          "name": "session.ts",
+          "path": "web/session.ts",
+          "files": 1
+        },
+        {
+          "name": "login.tsx",
+          "path": "web/login.tsx",
+          "files": 1
+        },
+        {
+          "name": "TaskList.tsx",
+          "path": "web/TaskList.tsx",
+          "files": 1
+        },
+        {
+          "name": "App.tsx",
+          "path": "web/App.tsx",
+          "files": 1
+        },
+        {
+          "name": "Header.tsx",
+          "path": "web/Header.tsx",
+          "files": 1
+        },
+        {
+          "name": "index.html",
+          "path": "web/index.html",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "library",
+      "name": "Library",
+      "folder": "shared/",
+      "guarded": false,
+      "x": 120,
+      "y": 60,
+      "w": 180,
+      "h": 110,
+      "files": 6,
+      "rooms": [
+        {
+          "name": "auth.ts",
+          "path": "shared/auth.ts",
+          "files": 1
+        },
+        {
+          "name": "session.ts",
+          "path": "shared/session.ts",
+          "files": 1
+        },
+        {
+          "name": "types.ts",
+          "path": "shared/types.ts",
+          "files": 1
+        },
+        {
+          "name": "errors.ts",
+          "path": "shared/errors.ts",
+          "files": 1
+        },
+        {
+          "name": "roles.ts",
+          "path": "shared/roles.ts",
+          "files": 1
+        },
+        {
+          "name": "log.ts",
+          "path": "shared/log.ts",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "enb",
+      "name": "ENB",
+      "folder": "api/",
+      "guarded": false,
+      "x": 660,
+      "y": 60,
+      "w": 180,
+      "h": 110,
+      "files": 5,
+      "rooms": [
+        {
+          "name": "users.ts",
+          "path": "api/users.ts",
+          "files": 1
+        },
+        {
+          "name": "tasks.ts",
+          "path": "api/tasks.ts",
+          "files": 1
+        },
+        {
+          "name": "router.ts",
+          "path": "api/router.ts",
+          "files": 1
+        },
+        {
+          "name": "index.ts",
+          "path": "api/index.ts",
+          "files": 1
+        },
+        {
+          "name": "login.ts",
+          "path": "api/login.ts",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "enc",
+      "name": "ENC",
+      "folder": "tests/",
+      "guarded": false,
+      "x": 660,
+      "y": 260,
+      "w": 180,
+      "h": 110,
+      "files": 4,
+      "rooms": [
+        {
+          "name": "auth.test.ts",
+          "path": "tests/auth.test.ts",
+          "files": 1
+        },
+        {
+          "name": "tasks.test.ts",
+          "path": "tests/tasks.test.ts",
+          "files": 1
+        },
+        {
+          "name": "users.test.ts",
+          "path": "tests/users.test.ts",
+          "files": 1
+        },
+        {
+          "name": "session.test.ts",
+          "path": "tests/session.test.ts",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "muma",
+      "name": "Muma Business",
+      "folder": "config/",
+      "guarded": false,
+      "x": 120,
+      "y": 260,
+      "w": 180,
+      "h": 110,
+      "files": 3,
+      "rooms": [
+        {
+          "name": "app.json",
+          "path": "config/app.json",
+          "files": 1
+        },
+        {
+          "name": "roles.json",
+          "path": "config/roles.json",
+          "files": 1
+        },
+        {
+          "name": "auth.json",
+          "path": "config/auth.json",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "cooper",
+      "name": "Cooper Hall",
+      "folder": "docs/",
+      "guarded": false,
+      "x": 120,
+      "y": 460,
+      "w": 180,
+      "h": 110,
+      "files": 2,
+      "rooms": [
+        {
+          "name": "architecture.md",
+          "path": "docs/architecture.md",
+          "files": 1
+        },
+        {
+          "name": "api.md",
+          "path": "docs/api.md",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "rec",
+      "name": "Recreation Center",
+      "folder": "scripts/",
+      "guarded": false,
+      "x": 380,
+      "y": 175,
+      "w": 200,
+      "h": 85,
+      "files": 1,
+      "rooms": [
+        {
+          "name": "build.sh",
+          "path": "scripts/build.sh",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "sundome",
+      "name": "Sun Dome",
+      "folder": "db/",
+      "guarded": true,
+      "x": 660,
+      "y": 460,
+      "w": 180,
+      "h": 110,
+      "files": 2,
+      "rooms": [
+        {
+          "name": "schema.sql",
+          "path": "db/schema.sql",
+          "files": 1
+        },
+        {
+          "name": "seed.sql",
+          "path": "db/seed.sql",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "juniper",
+      "name": "Juniper-Poplar",
+      "folder": null,
+      "guarded": false,
+      "x": 380,
+      "y": 460,
+      "w": 200,
+      "h": 110,
+      "files": 1,
+      "rooms": [
+        {
+          "name": ".claude",
+          "path": ".claude/",
+          "files": 1
+        }
+      ]
+    },
+    {
+      "id": "bullrunner",
+      "name": "Bull Runner stop",
+      "folder": "",
+      "guarded": false,
+      "x": 400,
+      "y": 270,
+      "w": 160,
+      "h": 90,
+      "files": 1,
+      "rooms": [
+        {
+          "name": "README.md",
+          "path": "README.md",
+          "files": 1
+        }
+      ]
+    }
   ]
 }
