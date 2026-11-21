@@ -532,6 +532,19 @@ class MergeGuardTests(ServerCase):
         self.assertIn("unmerged changes on agent/db", reply["reason"])
 
 
+class MergeEndsGuardWaitTests(ServerCase):
+    """Its own server, so no queue spot from another test keeps web waiting."""
+
+    def test_merge_clears_the_guard_wait_right_away(self):
+        self.edit_and_commit("api", "shared/m1.ts", "api\n")
+        self.assertEqual(self.checkout("web", "shared/m1.ts")["decision"], "wait")
+        self.assertEqual(self.worktree("web")["status"], "waiting")
+        status, reply = self.server.call("POST", "/merge/api")
+        self.assertEqual(status, 200, reply)
+        self.assertEqual(self.worktree("web")["status"], "working")  # no stale "waiting" until expiry
+        self.assertEqual(self.checkout("web", "shared/m1.ts")["decision"], "allow")
+
+
 class GuardOffTests(ServerCase):
     """BULLPEN_BLOCK_UNMERGED=0: the old behaviour, where a conflict can only show up at merge time."""
 

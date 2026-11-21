@@ -116,6 +116,17 @@ class LeaseLogicTests(unittest.TestCase):
         self.assertEqual(list(r.leases), ["c"])
         self.assertNotIn("api", r.waiters["c"])
 
+    def test_drop_waiters_clears_guard_queues_but_keeps_queues_behind_a_held_lease(self):
+        r = Referee()
+        r.waiters["merged.ts"] = {"web": time.time()}  # merge-guard wait: no lease on the file
+        r.claim("held.ts", "api")
+        r.claim("held.ts", "db")  # db waits behind api's live lease
+        r.drop_waiters(["merged.ts", "held.ts", "untouched.ts"])
+        self.assertNotIn("merged.ts", r.waiters)
+        self.assertEqual(list(r.waiters["held.ts"]), ["db"])
+        self.assertEqual(r.status("web"), "working")
+        self.assertEqual(r.status("db"), "waiting")
+
     def test_expire_drops_expired_leases_and_stale_waiters(self):
         r = Referee()
         with Clock() as clock:

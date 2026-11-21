@@ -124,6 +124,12 @@ class Referee:
             queue.pop(agent, None)
         return released
 
+    def drop_waiters(self, files: list[str]) -> None:
+        """Clear the wait queue of each file nobody holds a lease on (merge-guard waits end at the merge)."""
+        for file in files:
+            if file not in self.leases:
+                self.waiters.pop(file, None)
+
     def expire(self) -> list[Lease]:
         now = time.time()
         expired = [self.leases.pop(f) for f, lease in list(self.leases.items()) if lease.expires <= now]
