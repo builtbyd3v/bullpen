@@ -21,6 +21,7 @@ import { Alerts } from "./Alerts";
 import { BuildingInteriorDrawer, BuildingInteriorHeader } from "./BuildingInteriorPanel";
 import { HealthStrip } from "./HealthStrip";
 import { ProblemOpener } from "./ProblemOpener";
+import "./bp.css";
 
 const Campus = dynamic(() => import("./Campus"), { ssr: false });
 
@@ -362,88 +363,36 @@ function OrchestratorBox() {
   };
 
   return (
-    <Section title="Orchestrator" src="POST :8650/orchestrate">
-      <form onSubmit={handleOrchestrate} className="flex gap-2">
-        <input
-          type="text"
-          value={askInput}
-          onChange={(e) => setAskInput(e.target.value)}
-          placeholder="Tell Bullpen what to build..."
-          aria-label="Orchestrate task"
-          className="min-w-0 flex-1 rounded-md border border-white/15 bg-black/30 px-2.5 py-1.5 text-sm text-white placeholder:text-white/40 focus:border-emerald-400 focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={orchestrating || !askInput.trim()}
-          className={`${BUTTON} shrink-0 bg-emerald-600 text-white hover:bg-emerald-500 disabled:opacity-40`}
-        >
-          {orchestrating ? "Planning..." : "Run"}
-        </button>
-      </form>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {SUGGESTED_ASKS.map((ask) => (
-          <button
-            key={ask}
-            type="button"
-            onClick={() => setAskInput(ask)}
-            className="rounded-full border border-[#cfc493]/40 bg-[#005432]/40 px-2.5 py-1 text-left text-xs text-[#edebd1] hover:bg-[#005432]"
-          >
-            {ask}
-          </button>
-        ))}
-      </div>
-      {orchError && <p className="mt-1.5 text-xs text-red-300">{orchError}</p>}
-
-      {plan && (
-        <div className="mt-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/25 p-2.5">
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <span className="font-semibold text-emerald-300">Plan: {plan.ask}</span>
-            {plan.source && (
-              <span className="font-mono text-[10px] text-white/50">
-                {plan.source === "canned" ? "Orchestrator (canned)" : "Orchestrator"}
-              </span>
-            )}
+    <section className="card">
+      <h2>Orchestrator <span className="src">POST :8650/orchestrate</span></h2>
+      <div className="ask">
+        <form onSubmit={handleOrchestrate}>
+          <input value={askInput} onChange={(e) => setAskInput(e.target.value)} placeholder="Tell Bullpen what to build..." aria-label="Orchestrate task" />
+          <button className="btn primary" type="submit" disabled={orchestrating || !askInput.trim()}>{orchestrating ? "Planning..." : "Run"}</button>
+        </form>
+        {!plan && (
+          <div className="flex flex-wrap gap-1.5">
+            {SUGGESTED_ASKS.slice(0, 2).map((q) => (
+              <button key={q} type="button" className="btn" onClick={() => setAskInput(q)}>{q}</button>
+            ))}
           </div>
-          <ul className="mt-2 space-y-1.5">
-            {plan.tasks.map((t) => {
-              const color = colorFor(t.agent);
-              return (
-                <li key={t.agent} style={agentColor(color)} className="flex items-start gap-2 text-xs">
-                  <Dot color={color} />
-                  <span className="shrink-0 font-mono font-bold text-(--agent)">{t.agent}</span>
-                  <span className="text-white/85">{t.task}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      <form onSubmit={handleAsk} className="mt-3 flex gap-2">
-        <input
-          type="text"
-          value={questionInput}
-          onChange={(e) => setQuestionInput(e.target.value)}
-          placeholder="Ask why (e.g. Why is db blocked?)"
-          aria-label="Ask why"
-          className="min-w-0 flex-1 rounded-md border border-white/15 bg-black/30 px-2.5 py-1.5 text-sm text-white placeholder:text-white/40 focus:border-sky-400 focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={asking || !questionInput.trim()}
-          className={`${BUTTON} shrink-0 bg-white/10 text-white hover:bg-white/20 disabled:opacity-40`}
-        >
-          {asking ? "..." : "Ask"}
-        </button>
-      </form>
-      {askError && <p className="mt-1.5 text-xs text-red-300">{askError}</p>}
-      {answer && (
-        <div className="mt-2 rounded-md border border-sky-400/30 bg-sky-950/30 p-2.5 text-xs leading-relaxed text-sky-100">
-          <span className="mr-1.5 font-mono font-bold text-sky-300">JETSON:</span>
-          {answer}
-        </div>
-      )}
-    </Section>
+        )}
+        {orchError && <p className="text-[13px] text-(--red)">{orchError}</p>}
+        {plan && (
+          <div className="plan">
+            {plan.tasks.map((t) => (
+              <div key={t.agent}><span className="dot" style={{ background: colorFor(t.agent) }} /><b>{t.agent}</b>{t.task}</div>
+            ))}
+          </div>
+        )}
+        <form onSubmit={handleAsk}>
+          <input value={questionInput} onChange={(e) => setQuestionInput(e.target.value)} placeholder="Ask why (e.g. Why is db blocked?)" aria-label="Ask why" />
+          <button className="btn" type="submit" disabled={asking || !questionInput.trim()}>{asking ? "Asking..." : "Ask"}</button>
+        </form>
+        {askError && <p className="text-[13px] text-(--red)">{askError}</p>}
+        {answer && <p className="text-[13px] text-(--ink-2)"><b className="mono">Jetson:</b> {answer}</p>}
+      </div>
+    </section>
   );
 }
 
@@ -905,17 +854,257 @@ function TopHealthStrip() {
   return <HealthStrip store={store} health={health} latestCheck={latestCheck} replaying={replaying} />;
 }
 
+
+// ===================== mockups-v3 screens: /campus (design/mockups-v3/screens/dashboard.html) =====================
+function useSearch() {
+  return useSyncExternalStore(noSubscribe, () => window.location.search, () => "");
+}
+
+function TopBar() {
+  const health = useBullpen((s) => s.health);
+  const check = useBullpen((s) => s.checks[0]);
+  const branches = useBullpen((s) => s.data.worktrees.length);
+  const search = useSearch();
+  const jetsonDown = check?.rule === "offline";
+  const pill = (label: string, value: string, ok: boolean) => (
+    <span className="pill">
+      <i style={ok ? undefined : { background: "#e5484d" }} />
+      {label} <b>{value}</b>
+    </span>
+  );
+  return (
+    <div className="top">
+      <a className="brand" href={`/${search}`}>
+        <img src="/logo.svg" alt="" width={24} height={24} className="[image-rendering:pixelated]" />
+        Bullpen
+      </a>
+      <span className="crumb">
+        {campus.repo} <span className="muted">/</span> <b>main</b> <span className="tag mute">{branches} agent branches</span>
+      </span>
+      <div className="health" role="status" aria-label="System health">
+        {pill("Server", ":8600", health.server !== "down")}
+        {pill("WebSocket", health.ws === "ok" ? "live" : health.ws, health.ws !== "down")}
+        {pill("Jetson", jetsonDown ? "offline" : `${check?.latency_ms ?? 0} ms`, !jetsonDown)}
+        {pill("Referee", check?.model || "rules", !jetsonDown)}
+        {pill("Orchestrator", ":8650", health.orchestrator !== "down")}
+      </div>
+    </div>
+  );
+}
+
+function ViewNav({ current }: { current: "campus" | "prs" }) {
+  const conflicts = overlaps(useBullpen((s) => s.data.worktrees)).length;
+  const search = useSearch();
+  return (
+    <nav className="nav" aria-label="Views">
+      <a href={`/campus${search}`} aria-current={current === "campus" ? "page" : undefined}>Campus</a>
+      <a href={`/prs${search}`} aria-current={current === "prs" ? "page" : undefined}>
+        Pull requests {conflicts > 0 && <span className="n bad">{conflicts} conflict{conflicts > 1 ? "s" : ""}</span>}
+      </a>
+      <a href={`/campus${search}#history`}>History</a>
+      <a href={`/settings${search}`}>Settings</a>
+    </nav>
+  );
+}
+
+function CampusCard() {
+  const store = useStore();
+  const state = useBullpen((s) => s);
+  const { worktrees, leases = [], approvals = [] } = state.data;
+  useEffect(() => {
+    if (!state.ui.zoomedBuildingId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") store.setUi({ zoomedBuildingId: null, selectedRoomPath: null });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [store, state.ui.zoomedBuildingId]);
+  const where = (id: string) => campus.buildings.find((b) => b.id === id)?.name ?? id;
+  const line = (agent: string, status: Status, building: string) => {
+    const held = leases.find((l) => l.agent === agent);
+    const waiting = leases.find((l) => l.waiters.includes(agent));
+    const asks = approvals.find((a) => a.agent === agent);
+    if (held) return `${agent} edits ${held.file} in ${where(building)}`;
+    if (waiting) return `${agent} waits at the door for ${waiting.file}`;
+    if (asks) return `${agent} needs approval for ${asks.target}`;
+    return `${agent} is ${status === "done" ? "done" : "idle"}`;
+  };
+  return (
+    <section className="card campus-card" aria-label="Campus">
+      <div className="tabs" role="group" aria-label="Branch view">
+        <button className="tab" type="button" aria-pressed={state.ui.tab === "main"} onClick={() => store.setUi({ tab: "main" })}>main</button>
+        {worktrees.map((w) => (
+          <button key={w.agent} className="tab" type="button" aria-pressed={state.ui.tab === w.agent} onClick={() => store.setUi({ tab: w.agent })}>
+            <span className="dot" style={{ background: w.color }} />
+            {w.branch} <small>+{w.ahead}</small>
+          </button>
+        ))}
+        <span className="muted" style={{ marginLeft: "auto", fontSize: 13 }}>Hover a building for who is there. Click to open it.</span>
+      </div>
+      <BuildingInteriorHeader store={store} state={state} />
+      <div className="stage">
+        <div className="aspect-[960/640] w-full">
+          <Campus store={store} />
+        </div>
+      </div>
+      <BuildingInteriorDrawer store={store} state={state} />
+      <div className="foot">
+        {worktrees.length === 0 ? (
+          <span>No agents yet. Send the orchestrator an ask.</span>
+        ) : (
+          worktrees.map((w) => (
+            <span key={w.agent}>
+              <span className="dot" style={{ background: w.color }} />
+              {line(w.agent, w.status, w.building)}
+            </span>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function RefereeCard() {
+  const checks = useBullpen((s) => s.checks);
+  const tag = { allow: "ok", ask: "warn", deny: "bad" } as const;
+  return (
+    <section className="card">
+      <h2>Referee <span className="src">Jetson /check</span></h2>
+      <div className="ref">
+        {checks.length === 0 && <div><span className="tag mute">idle</span><span className="muted">No checks yet.</span><span /></div>}
+        {checks.slice(0, 6).map((c, i) => (
+          <div key={`${c.at}-${i}`}>
+            <span className={`tag ${c.rule === "offline" ? "bad" : tag[c.decision]}`}>{c.rule === "offline" ? "offline" : c.decision}</span>
+            <span><b>{c.agent}</b> {c.tool} <span className="mono">{c.file}</span></span>
+            <span className="r">{c.rule === "offline" ? "fail closed" : `${c.rule} · ${c.latency_ms} ms`}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SideColumn() {
+  const store = useStore();
+  const { worktrees, leases = [], approvals = [] } = useBullpen((s) => s.data);
+  const search = useSearch();
+  const now = useNowTick(leases.length > 0 || approvals.length > 0);
+  const clashes = overlaps(worktrees);
+  const clashing = new Set(clashes.flatMap((o) => o.agents));
+  const color = (a: string) => worktrees.find((w) => w.agent === a)?.color ?? "#CFC493";
+  const pairs = worktrees.flatMap((a, i) => worktrees.slice(i + 1).map((b) => [a, b] as const));
+  const commits = worktrees
+    .flatMap((w) => w.commits.map((c) => ({ ...c, agent: w.agent, color: w.color, task: c.task ?? w.task })))
+    .sort((x, y) => (y.at ?? "").localeCompare(x.at ?? ""));
+  const secs = (iso?: string) => (iso && now ? Math.max(0, Math.ceil((Date.parse(iso) - now) / 1000)) : null);
+  return (
+    <aside className="side" aria-label="Source control">
+      {clashes.map((o) => (
+        <div key={o.file} className="alert">
+          <span className="tag bad">conflict</span>
+          <b>{o.agents.map((a) => `agent/${a}`).join(" and ")} both change {o.file}</b>
+          <p>Each branch merges cleanly into main. Together they do not.</p>
+          <span className="act"><a className="btn" href={`/prs${search}`}>Review</a></span>
+        </div>
+      ))}
+      {approvals.map((a) => (
+        <div key={a.id} className="alert ask">
+          <span className="tag warn">approval</span>
+          <b>{a.agent} wants to edit {a.target}</b>
+          <p>{a.reason}. No answer in {secs(a.expires_at) ?? 60} s means deny.</p>
+          <span className="act">
+            <button className="btn primary" type="button" onClick={() => act(store, { kind: "approve", id: a.id, decision: "allow" })}>Approve</button>
+            <button className="btn danger" type="button" onClick={() => act(store, { kind: "approve", id: a.id, decision: "deny" })}>Deny</button>
+          </span>
+        </div>
+      ))}
+      <section className="card">
+        <header><h2>Branches</h2><span className="src">vs main</span></header>
+        <table className="br">
+          <thead><tr><th>Branch</th><th>Ahead</th><th>Files</th><th>Merge</th><th /></tr></thead>
+          <tbody>
+            {worktrees.length === 0 && <tr><td colSpan={5} className="muted">No agent branches yet.</td></tr>}
+            {worktrees.map((w) => (
+              <tr key={w.agent}>
+                <td><div className="bname"><span className="dot" style={{ background: w.color }} /><span>{w.branch}<small>{w.task || "No task yet"}</small></span></div></td>
+                <td className="ab"><span className="up">↑{w.ahead}</span> <span className="down">↓0</span></td>
+                <td className="mono">{w.changed_files.length}</td>
+                <td><span className={`tag ${clashing.has(w.agent) ? "bad" : w.ahead > 0 ? "ok" : "mute"}`}>{clashing.has(w.agent) ? "blocked" : w.ahead > 0 ? "clean" : "empty"}</span></td>
+                <td>
+                  <div className="acts">
+                    <button className="btn" type="button" onClick={() => act(store, { kind: "undo", agent: w.agent })}>Undo</button>
+                    <button className={`btn ${clashing.has(w.agent) ? "" : "primary"}`} type="button" onClick={() => act(store, { kind: "merge", agent: w.agent })}>Merge to main</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+      <section className="card">
+        <header><h2>Cross-branch check</h2><span className="src">changed files per branch</span></header>
+        <div className="pairs">
+          {pairs.length === 0 && <div className="pair"><span className="tag mute">idle</span><span className="what">Needs two agent branches.</span><span /></div>}
+          {pairs.map(([a, b]) => {
+            const hit = clashes.find((o) => o.agents.includes(a.agent) && o.agents.includes(b.agent));
+            return (
+              <div key={a.agent + b.agent} className={`pair ${hit ? "bad" : ""}`}>
+                <span className={`tag ${hit ? "bad" : "ok"}`}>{hit ? "overlap" : "clean"}</span>
+                <span><span className="who">{a.agent} × {b.agent}</span> <span className="what">{hit ? hit.file : "no shared files"}</span></span>
+                {hit ? <a className="btn" href={`/prs${search}`}>Open</a> : <span />}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+      <section className="card">
+        <header><h2>File locks</h2><span className="src">90 s, renewed by the holder</span></header>
+        {leases.length === 0 && <div className="lease"><span className="muted">No file is locked.</span></div>}
+        {leases.map((l) => {
+          const left = secs(l.expires_at);
+          return (
+            <div key={l.file} className="lease">
+              <span className="f"><span className="dot" style={{ background: color(l.agent) }} />{l.file}</span>
+              <span className="t">{left === null ? "" : `${left} s`}</span>
+              <div className="bar"><i style={{ width: `${Math.min(100, ((left ?? 90) / 90) * 100)}%`, background: color(l.agent) }} /></div>
+              <div className="q">Held by <b style={{ color: color(l.agent) }}>{l.agent}</b>{l.waiters.length ? ` · ${l.waiters.map((w, i) => `#${i + 1} ${w} waiting`).join(", ")}` : " · no queue"}</div>
+            </div>
+          );
+        })}
+      </section>
+      <section className="card" id="history">
+        <header><h2>Commits</h2><span className="src">auto-commit per edit</span></header>
+        <ul className="log">
+          {commits.length === 0 && <li><i /><span className="m muted">No agent commits yet.</span><span /></li>}
+          {commits.slice(0, 8).map((c) => (
+            <li key={c.sha}><i style={{ background: c.color }} /><span className="m">{c.message}<small>Bullpen-Agent: {c.agent} · Bullpen-Task: {c.task}</small></span><span className="sha">{c.sha.slice(0, 7)}</span></li>
+          ))}
+        </ul>
+      </section>
+    </aside>
+  );
+}
+
 export default function Bullpen() {
   return (
     <BullpenProvider>
-      <div className="flex h-screen flex-col">
-        <TopHealthStrip />
-        <main className="flex min-h-0 flex-1">
-          <CampusPane />
-          <SidePanel />
-        </main>
-        <AlertsHost />
+      <div className="bp">
+        <div className="app">
+          <TopBar />
+          <ViewNav current="campus" />
+          <div className="dash-main">
+            <div>
+              <CampusCard />
+              <div className="under">
+                <OrchestratorBox />
+                <RefereeCard />
+              </div>
+            </div>
+            <SideColumn />
+          </div>
+        </div>
       </div>
+      <AlertsHost />
     </BullpenProvider>
   );
 }

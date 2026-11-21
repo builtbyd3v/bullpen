@@ -1,34 +1,33 @@
 "use client";
 
+import "./bp.css";
+import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { AppNav } from "./AppNav";
-import { HealthStrip } from "./HealthStrip";
+import campus from "../../campus/campus.json" with { type: "json" };
 import { hunkRanges, intersect, overlaps, type LineRange, type Overlap } from "@/lib/overlap.ts";
 import { act, connect, fetchDiff } from "@/lib/server.ts";
 import { createStore, type Store, type StoreState } from "@/lib/store.ts";
-import type { Worktree } from "@/lib/types.ts";
+import type { HealthStatus, Worktree } from "@/lib/types.ts";
 
-const time = (at: string) => new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+const time = (at: string) => new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 const fmtRanges = (r: LineRange[]) => r.map((x) => (x.start === x.end ? `${x.start}` : `${x.start}-${x.end}`)).join(", ");
 const inRanges = (n: number, r: LineRange[]) => r.some((x) => n >= x.start && n <= x.end);
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const lastTouch = (w: Worktree | undefined, file: string) =>
   Math.max(0, ...(w?.commits ?? []).filter((c) => c.files.includes(file) && c.at).map((c) => Date.parse(c.at!)));
-
-function Dot({ color }: { color: string }) {
-  return <span aria-hidden="true" className="inline-block size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />;
-}
+const noSubscribe = () => () => {};
 
 // Land first: the lease holder on the file, else the branch whose latest commit on it is older.
 function landOrder(state: StoreState, ov: Overlap): { first: string; other: string; why: string } {
   const [a, b] = ov.agents;
   const holder = state.data.leases?.find((l) => l.file === ov.file && ov.agents.includes(l.agent))?.agent;
   const byAgent = (x: string) => state.data.worktrees.find((w) => w.agent === x);
-  if (holder) return { first: holder, other: holder === a ? b : a, why: `${holder} holds the lease on ${ov.file}` };
+  if (holder) return { first: holder, other: holder === a ? b : a, why: `${holder} holds the lease on ${ov.file}.` };
   const first = lastTouch(byAgent(b), ov.file) < lastTouch(byAgent(a), ov.file) ? b : a;
-  return { first, other: first === a ? b : a, why: `${first} changed ${ov.file} first` };
+  return { first, other: first === a ? b : a, why: `${first} changed ${ov.file} first.` };
 }
 
-type Row = { kind: "hunk" | "ctx" | "add" | "del"; text: string; old?: number; new?: number; hot: boolean };
+type Row = { kind: "hunk" | "ctx" | "add" | "del"; text: string; ln?: number; hot: boolean };
 
 function parseDiff(diff: string, hot: LineRange[]): Row[] {
   const rows: Row[] = [];
@@ -40,129 +39,92 @@ function parseDiff(diff: string, hot: LineRange[]): Row[] {
       o = Number(h[1]);
       n = Number(h[2]);
       rows.push({ kind: "hunk", text: line, hot: false });
-    } else if (line.startsWith("+")) rows.push({ kind: "add", text: line.slice(1), new: n, hot: inRanges(n++, hot) });
-    else if (line.startsWith("-")) rows.push({ kind: "del", text: line.slice(1), old: o++, hot: inRanges(n, hot) });
-    else rows.push({ kind: "ctx", text: line.slice(1), old: o++, new: n++, hot: false });
+    } else if (line.startsWith("+")) rows.push({ kind: "add", text: line.slice(1), ln: n, hot: inRanges(n++, hot) });
+    else if (line.startsWith("-")) rows.push({ kind: "del", text: line.slice(1), ln: o++, hot: inRanges(n, hot) });
+    else {
+      rows.push({ kind: "ctx", text: line.slice(1), ln: n++, hot: false });
+      o++;
+    }
   }
   return rows;
 }
 
-const ROW_CLASS: Record<Row["kind"], string> = {
-  hunk: "bg-white/5 text-white/70",
-  ctx: "text-white/75",
-  add: "bg-emerald-500/15 text-emerald-100",
-  del: "bg-red-500/15 text-red-100",
-};
-
 function DiffTable({ diff, hot }: { diff: string | undefined; hot: LineRange[] }) {
-  if (diff === undefined) return <p className="px-4 py-3 text-[13px] text-white/70">Loading diff…</p>;
-  if (!diff) return <p className="px-4 py-3 text-[13px] text-white/70">No diff on this branch.</p>;
+  if (diff === undefined) return <div className="note">Loading diff…</div>;
+  if (!diff) return <div className="note">No diff on this branch.</div>;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse font-mono text-[13px] leading-6">
-        <tbody>
-          {parseDiff(diff, hot).map((r, i) => (
-            <tr key={i} className={r.hot ? "bg-amber-400/25 text-amber-50" : ROW_CLASS[r.kind]}>
-              <td className="w-10 px-2 text-right text-white/60 select-none">{r.old ?? ""}</td>
-              <td className="w-10 px-2 text-right text-white/60 select-none">{r.new ?? ""}</td>
-              <td className={`w-4 select-none ${r.hot ? "border-l-2 border-amber-400" : ""}`}>
-                {r.kind === "add" ? "+" : r.kind === "del" ? "-" : ""}
-              </td>
-              <td className="pr-4 whitespace-pre">{r.text}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <table>
+      <tbody>
+        {parseDiff(diff, hot).map((r, i) => (
+          <tr key={i} className={r.hot ? `${r.kind} hot` : r.kind}>
+            <td className="ln">{r.ln ?? ""}</td>
+            <td className="code">{r.text}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
-type CardProps = {
-  state: StoreState;
-  w: Worktree;
-  overlap?: { other: Worktree; file: string; diff: string | undefined; hot: LineRange[] };
-};
+type CardProps = { state: StoreState; w: Worktree; other: Worktree; file: string; diff: string | undefined; hot: LineRange[] };
 
-function PrCard({ state, w, overlap }: CardProps) {
+function PrCard({ state, w, other, file, diff, hot }: CardProps) {
   const allowed = state.checks.filter((c) => c.agent === w.agent && c.decision === "allow").length;
   return (
-    <article className="min-w-0 rounded-lg border border-white/10 bg-[#0d231b]">
-      <header className="border-b border-white/10 px-4 py-3">
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <Dot color={w.color} />
-          {w.task || w.branch}
-        </h3>
-        <p className="mt-1 font-mono text-[13px] text-white/70">
-          {w.branch} → main · {w.commits.length} commit{w.commits.length === 1 ? "" : "s"} · {w.changed_files.length} file
-          {w.changed_files.length === 1 ? "" : "s"}
-        </p>
+    <section className="card pr" aria-label={`Pull request ${w.branch}`}>
+      <header>
+        <span className="dot" style={{ background: w.color }} />
+        <span className="num">{w.branch}</span>
+        <span className="title">{w.task || w.branch}</span>
+        <span className="tag bad ml-auto">blocked</span>
       </header>
-      <ul className="space-y-1.5 px-4 py-3 text-[13px]">
-        <li className="flex gap-2 text-white/85">
-          <span className="text-emerald-300">✓</span>Clean against main
-          <span className="font-mono text-white/70">({w.branch})</span>
-        </li>
-        <li className="flex gap-2 text-white/85">
-          <span className="text-emerald-300">✓</span>Referee: {allowed} check{allowed === 1 ? "" : "s"} allowed
-        </li>
-        {overlap && (
-          <li className="flex gap-2 font-semibold text-red-300">
-            <span>✕</span>Overlaps {overlap.other.branch} in <span className="font-mono">{overlap.file}</span>
-          </li>
-        )}
-      </ul>
-      {overlap && (
-        <div className="border-t border-white/10">
-          <p className="px-4 pt-3 pb-1 font-mono text-[13px] text-white/70">{overlap.file}</p>
-          <DiffTable diff={overlap.diff} hot={overlap.hot} />
+      <div className="meta">
+        <code>{w.branch}</code> → <code>main</code> · {plural(w.commits.length, "commit")} · {plural(w.changed_files.length, "file")}
+      </div>
+      <div className="checks">
+        <div className="ok"><span className="ic">✓</span><span>Clean against main</span><small>{w.branch}</small></div>
+        <div className="ok"><span className="ic">✓</span><span>Referee: {plural(allowed, "check")} allowed</span><small>Jetson /check</small></div>
+        <div className="bad">
+          <span className="ic">✗</span>
+          <span>Overlaps {other.branch} in {file}</span>
+          {hot.length > 0 && <small>L{fmtRanges(hot)}</small>}
         </div>
-      )}
-    </article>
+      </div>
+      <div className="diff">
+        <div className="fh">{file} <span className="tag warn">overlaps {other.branch}</span></div>
+        <DiffTable diff={diff} hot={hot} />
+      </div>
+    </section>
   );
 }
 
-function Caught({ state, ov }: { state: StoreState; ov: Overlap }) {
-  const events = [
+type TlItem = { at: string; agent: string; what: string; detail: string };
+
+function timeline(state: StoreState, ov: Overlap): TlItem[] {
+  return [
     ...state.data.worktrees
       .filter((w) => ov.agents.includes(w.agent))
-      .flatMap((w) => w.commits.filter((c) => c.files.includes(ov.file) && c.at).map((c) => ({ at: c.at!, agent: w.agent, what: `committed ${c.sha.slice(0, 7)} "${c.message}"` }))),
+      .flatMap((w) =>
+        w.commits
+          .filter((c) => c.files.includes(ov.file) && c.at)
+          .map((c) => ({ at: c.at!, agent: w.agent, what: `${w.agent} commits "${c.message}"`, detail: `${c.sha.slice(0, 7)} on ${w.branch}` })),
+      ),
     ...state.checks
       .filter((c) => c.file === ov.file && ov.agents.includes(c.agent))
-      .map((c) => ({ at: c.at, agent: c.agent, what: `referee ${c.decision} (rule ${c.rule}, ${c.latency_ms} ms)` })),
+      .map((c) => ({ at: c.at, agent: c.agent, what: `referee ${c.decision} for ${c.agent}`, detail: `rule ${c.rule}, ${c.latency_ms} ms` })),
     ...state.hooks
       .filter((h) => h.target === ov.file && ov.agents.includes(h.agent))
-      .map((h) => ({ at: h.at, agent: h.agent, what: `${h.event} ${h.tool}` })),
+      .map((h) => ({ at: h.at, agent: h.agent, what: `${h.agent} ${h.event}`, detail: h.tool })),
   ].sort((x, y) => Date.parse(x.at) - Date.parse(y.at));
-  const lease = state.data.leases?.find((l) => l.file === ov.file);
-  const color = (a: string) => state.data.worktrees.find((w) => w.agent === a)?.color ?? "#888";
+}
+
+function Pill({ label, status, detail }: { label: string; status: HealthStatus; detail: string }) {
+  const color = status === "ok" ? undefined : status === "down" ? "var(--red)" : "var(--ink-3)";
   return (
-    <section className="rounded-lg border border-white/10 bg-[#0d231b] px-4 py-3">
-      <h2 className="mb-2 text-base font-semibold">How it was caught</h2>
-      <ol className="space-y-1.5 text-[13px]">
-        {events.map((e, i) => (
-          <li key={i} className="flex items-center gap-3">
-            <span className="w-20 shrink-0 font-mono text-white/70">{time(e.at)}</span>
-            <Dot color={color(e.agent)} />
-            <span className="font-mono">{e.agent}</span>
-            <span className="text-white/85">{e.what}</span>
-          </li>
-        ))}
-        {lease && (
-          <li className="flex items-center gap-3">
-            <span className="w-20 shrink-0 font-mono text-white/70">now</span>
-            <Dot color={color(lease.agent)} />
-            <span className="font-mono">{lease.agent}</span>
-            <span className="text-white/85">
-              holds the lease{lease.waiters.length ? `, ${lease.waiters.join(", ")} waiting` : ""}
-            </span>
-          </li>
-        )}
-        <li className="flex items-center gap-3 font-semibold text-red-300">
-          <span className="w-20 shrink-0 font-mono">now</span>
-          Bullpen found both branches changing {ov.file}
-        </li>
-      </ol>
-    </section>
+    <span className="pill">
+      <i style={color ? { background: color } : undefined} />
+      {label} <b>{status === "ok" ? detail : status === "down" ? "offline" : "checking"}</b>
+    </span>
   );
 }
 
@@ -170,6 +132,7 @@ export default function PullRequests() {
   const [store] = useState<Store>(createStore);
   useEffect(() => connect(store), [store]);
   const state = useSyncExternalStore(store.subscribe, store.getState, store.getState);
+  const q = useSyncExternalStore(noSubscribe, () => (new URLSearchParams(window.location.search).has("fake") ? "?fake" : ""), () => "");
   const found = overlaps(state.data.worktrees);
   const ov = found[0];
   const [a, b] = ov?.agents ?? [];
@@ -195,71 +158,146 @@ export default function PullRequests() {
   const hot = da && db ? intersect(hunkRanges(da), hunkRanges(db)) : [];
   const order = ov ? landOrder(state, ov) : null;
   const rest = state.data.worktrees.filter((w) => w.ahead > 0 && w.agent !== a && w.agent !== b);
+  const events = ov ? timeline(state, ov) : [];
+  const caughtAt = events.at(-1)?.at;
+  const lease = ov ? state.data.leases?.find((l) => l.file === ov.file) : undefined;
+  const color = (x: string) => state.data.worktrees.find((w) => w.agent === x)?.color ?? "var(--ink-3)";
+  const check = state.checks[0];
+  const jetson: HealthStatus = !check ? "checking" : check.rule === "offline" ? "down" : "ok";
+  const span = hot.length ? { start: Math.min(...hot.map((r) => r.start)), end: Math.max(...hot.map((r) => r.end)) } : null;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#06140e] text-[15px] text-[#EDEBD1]">
-      <HealthStrip store={store} health={state.health} latestCheck={state.checks[0]} replaying={state.replaying} />
-      <AppNav conflicts={found.length} />
-      <main className="mx-auto w-full max-w-7xl space-y-5 px-4 py-6">
-        <h1 className="text-xl font-bold">Pull requests</h1>
+    <div className="bp">
+      <div className="app">
+        <div className="top">
+          <Link className="brand" href={`/${q}`}>
+            <img src="/logo.svg" alt="" width={24} height={24} className="[image-rendering:pixelated]" />
+            Bullpen
+          </Link>
+          <span className="crumb">
+            {campus.repo} <span className="muted">/</span> <b>pull requests</b>
+          </span>
+          <div className="health" role="status" aria-label="System health">
+            <Pill label="Server" status={state.health.server} detail=":8600" />
+            <Pill label="WebSocket" status={state.health.ws} detail="live" />
+            <Pill label="Jetson" status={jetson} detail={`${check?.latency_ms ?? 0} ms`} />
+            <Pill label="Orchestrator" status={state.health.orchestrator} detail=":8650" />
+          </div>
+        </div>
+        <nav className="nav" aria-label="Views">
+          <Link href={`/campus${q}`}>Campus</Link>
+          <Link href={`/prs${q}`} aria-current="page">
+            Pull requests {found.length > 0 && <span className="n bad">{plural(found.length, "conflict")}</span>}
+          </Link>
+          <a href="#">History</a>
+          <Link href={`/settings${q}`}>Settings</Link>
+        </nav>
 
-        {ov && wa && wb && order ? (
-          <>
-            <section className="rounded-lg border border-white/10 border-l-4 border-l-red-500 bg-[#0d231b] px-5 py-4">
-              <h2 className="text-lg font-bold">
-                {wa.branch} and {wb.branch} both change <span className="font-mono">{ov.file}</span>
-              </h2>
-              <p className="mt-1 text-white/85">
-                {hot.length ? (
-                  <>
-                    Both rewrite lines <span className="font-mono">{fmtRanges(hot)}</span>.{" "}
-                  </>
-                ) : null}
-                Each branch merges into main cleanly on its own, but together they collide.
-              </p>
-              <p className="mt-2 text-white/85">
-                Land <span className="font-mono">{order.first}</span> first: {order.why}. Then{" "}
-                <span className="font-mono">{order.other}</span> rebases on top, or undo it and let it redo the edit.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => act(store, { kind: "merge", agent: order.first })}
-                  className="rounded-md bg-[#006747] px-4 py-2 text-sm font-semibold text-white hover:bg-[#00805a]"
-                >
-                  Land {order.first} first
-                </button>
-                <button
-                  type="button"
-                  onClick={() => act(store, { kind: "undo", agent: order.other })}
-                  className="rounded-md border border-white/20 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/10"
-                >
-                  Undo {order.other}
-                </button>
+        <div className="wrapx">
+          {ov && wa && wb && order ? (
+            <>
+              <section className="verdict" aria-label="Bullpen verdict">
+                <div className="l">
+                  <span>
+                    <span className="tag bad">cross-PR conflict</span>{" "}
+                    {caughtAt && <span className="muted mono text-[12.5px]">caught {time(caughtAt)}</span>}
+                  </span>
+                  <h1>
+                    {wa.branch} and {wb.branch} both change <span className="mono">{ov.file}</span>
+                    {span && (span.start === span.end ? ` line ${span.start}` : ` lines ${span.start} to ${span.end}`)}
+                  </h1>
+                  <p>
+                    Each branch merges cleanly into <span className="mono">main</span> on its own, so both look green. Merge either
+                    one and the other breaks: both rewrite the same lines of <span className="mono">{ov.file}</span>.
+                  </p>
+                </div>
+                <div className="r">
+                  <h2>Bullpen recommends</h2>
+                  <span className="big">
+                    Land {order.first} first. Then {order.other} rebases on top.
+                  </span>
+                  <span className="muted text-[13px]">{order.why}</span>
+                  <button className="btn primary" type="button" onClick={() => act(store, { kind: "merge", agent: order.first })}>
+                    Land {order.first} first
+                  </button>
+                  <button className="btn" type="button" onClick={() => act(store, { kind: "undo", agent: order.other })}>
+                    Undo {order.other}
+                  </button>
+                </div>
+              </section>
+
+              <div className="prs">
+                <PrCard state={state} w={wa} other={wb} file={ov.file} diff={da} hot={hot} />
+                <PrCard state={state} w={wb} other={wa} file={ov.file} diff={db} hot={hot} />
+              </div>
+            </>
+          ) : (
+            <section className="verdict" aria-label="Bullpen verdict">
+              <div className="l">
+                <span><span className="tag ok">no conflicts</span></span>
+                <h1>No two agent branches touch the same file</h1>
               </div>
             </section>
+          )}
 
-            <div className="grid gap-4 lg:grid-cols-2">
-              <PrCard state={state} w={wa} overlap={{ other: wb, file: ov.file, diff: da, hot }} />
-              <PrCard state={state} w={wb} overlap={{ other: wa, file: ov.file, diff: db, hot }} />
-            </div>
-
-            <Caught state={state} ov={ov} />
-          </>
-        ) : (
-          <section className="rounded-lg border border-white/10 bg-[#0d231b] px-5 py-4 text-white/85">
-            No two agent branches touch the same file.
-          </section>
-        )}
-
-        {rest.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {rest.map((w) => (
-              <PrCard key={w.agent} state={state} w={w} />
-            ))}
+          <div className="lower">
+            <section className="card" aria-label="Other branches">
+              <header><h2>Other branches</h2><span className="src">git worktrees</span></header>
+              {rest.length ? (
+                <ul className="tl">
+                  {rest.map((w) => (
+                    <li key={w.agent}>
+                      <span className="t">{w.branch}</span>
+                      <i style={{ background: w.color }} />
+                      <span>
+                        {w.task || w.branch}
+                        <small>{plural(w.commits.length, "commit")} · {plural(w.changed_files.length, "file")}</small>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="muted px-4 py-3 text-[13px]">No other branches ahead of main.</p>
+              )}
+            </section>
+            {ov && (
+              <section className="card" aria-label="How it was caught">
+                <header><h2>How Bullpen caught it</h2><span className="src">hook events + git</span></header>
+                <ul className="tl">
+                  {events.map((e, i) => (
+                    <li key={i}>
+                      <span className="t">{time(e.at)}</span>
+                      <i style={{ background: color(e.agent) }} />
+                      <span>{e.what}<small>{e.detail}</small></span>
+                    </li>
+                  ))}
+                  {lease && (
+                    <li>
+                      <span className="t">now</span>
+                      <i style={{ background: color(lease.agent) }} />
+                      <span>
+                        {lease.agent} holds the lease on {ov.file}
+                        <small>{lease.waiters.length ? `${lease.waiters.join(", ")} waiting` : "no waiters"}</small>
+                      </span>
+                    </li>
+                  )}
+                  <li className="hit">
+                    <span className="t">{caughtAt ? time(caughtAt) : "now"}</span>
+                    <i style={{ background: "var(--red)" }} />
+                    <span>
+                      <b>Cross-branch check fails</b>
+                      <small>
+                        {wa?.branch} and {wb?.branch} both change {ov.file}
+                        {hot.length ? `, L${fmtRanges(hot)}` : ""}
+                      </small>
+                    </span>
+                  </li>
+                </ul>
+              </section>
+            )}
           </div>
-        )}
-      </main>
+        </div>
+      </div>
     </div>
   );
 }
