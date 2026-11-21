@@ -42,7 +42,7 @@ Several Claude Code agents work in parallel git worktrees. A hook on every tool 
 
 Owners:
 - `server/` Monisha: FastAPI referee and event hub, port 8600.
-- `web/` Caua: Vite + React + Phaser campus view, port 5173.
+- `web/` Caua: Next.js + React + Phaser campus view, port 5173.
 - `jetson/`, `hooks/` Dev: local-model service on the Jetson (port 8700) and the Claude Code hook.
 
 Shared files:
