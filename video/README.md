@@ -69,5 +69,5 @@ The build stops with a clear message when a voiceover take is longer than its sl
 - ffmpeg.
 - macOS `say` for placeholder voiceover only.
 - playwright-core 1.65.1, to drive Chrome and record the app.
-- ElevenLabs text to speech for the voiceover (stock library voice "Misa", model eleven_multilingual_v2).
+- ElevenLabs text to speech for the voiceover (stock voice "Jessica", model eleven_multilingual_v2).
 - Bull sprite: the team's own pixel art from `web/app/bullSprite.ts`. Title lettering is drawn in code. Text uses the system monospace font (Menlo).

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // ElevenLabs voiceover. The key comes from the environment or from video/.env (gitignored), never from the repo.
 //   node scripts/voice.mjs list    your voices, cloned ones first
-//   node scripts/voice.mjs make    one take per slot into raw/vo/<slot id>.mp3, using ELEVENLABS_VOICE_ID
-// video/.env:  ELEVENLABS_API_KEY=...   ELEVENLABS_VOICE_ID=...
+//   node scripts/voice.mjs make    one take per slot into raw/vo/<slot id>.mp3, with the voice in timeline.json
+// video/.env:  ELEVENLABS_API_KEY=...
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,14 +31,17 @@ if (mode === "list") {
   const rank = (v) => (v.category === "cloned" || v.category === "professional" ? 0 : v.category === "generated" ? 1 : 2);
   for (const v of voices.sort((a, b) => rank(a) - rank(b))) console.log(`${(v.category ?? "").padEnd(13)} ${v.name.padEnd(36)} ${v.voice_id}`);
 } else if (mode === "make") {
-  const voice = process.env.ELEVENLABS_VOICE_ID;
+  // The film's voice and its settings live in timeline.json ("voice"). The environment overrides them, for samples.
+  const timeline = JSON.parse(readFileSync(join(root, "timeline.json"), "utf8"));
+  const voice = process.env.ELEVENLABS_VOICE_ID ?? timeline.voice?.id;
+  const settings = process.env.VOICE_SETTINGS ? JSON.parse(process.env.VOICE_SETTINGS) : (timeline.voice?.settings ?? {});
   if (!voice) {
-    console.error("No ELEVENLABS_VOICE_ID. Run `node scripts/voice.mjs list`, then add the id to video/.env.");
+    console.error("No voice. Run `node scripts/voice.mjs list`, then set \"voice\" in timeline.json.");
     process.exit(1);
   }
   const only = process.argv.slice(3);
   mkdirSync(process.env.VOICE_OUT ?? join(root, "raw/vo"), { recursive: true });
-  for (const slot of JSON.parse(readFileSync(join(root, "timeline.json"), "utf8")).slots) {
+  for (const slot of timeline.slots) {
     if (!slot.vo || (only.length && !only.includes(slot.id))) continue;
     // The file name is read letter by letter, so it is spelled the way it should sound.
     const text = slot.vo.replaceAll("auth.ts", "auth dot T S");
@@ -46,7 +49,7 @@ if (mode === "list") {
       method: "POST",
       // VOICE_SETTINGS is JSON, for example {"stability":0.3,"style":0.45,"speed":1.1}.
       // Lower stability gives more emotion, style exaggerates the delivery, speed runs from 0.7 to 1.2.
-      body: JSON.stringify({ text, model_id: process.env.ELEVENLABS_MODEL ?? "eleven_multilingual_v2", voice_settings: JSON.parse(process.env.VOICE_SETTINGS ?? "{}") }),
+      body: JSON.stringify({ text, model_id: process.env.ELEVENLABS_MODEL ?? "eleven_multilingual_v2", voice_settings: settings }),
     });
     // VOICE_OUT picks another folder, for samples that must not replace the takes in the film.
     const file = join(process.env.VOICE_OUT ?? join(root, "raw/vo"), `${slot.id}.mp3`);

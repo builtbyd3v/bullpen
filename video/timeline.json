@@ -1,5 +1,14 @@
 {
   "fps": 30,
+  "voice": {
+    "name": "Jessica",
+    "id": "cgSgspJ2msm6clMCkdW9",
+    "settings": {
+      "stability": 0.3,
+      "similarity_boost": 0.75,
+      "style": 0.45
+    }
+  },
   "mix": {
     "voice": 1,
     "app": 0.8,

@@ -37,6 +37,6 @@ Beats 1 to 6 can be one continuous run cut into six files, or one long file: set
 ## Voice (ElevenLabs)
 
 1. The key is `ELEVENLABS_API_KEY` in your shell, or in `video/.env` (gitignored). Never commit it.
-2. `node scripts/voice.mjs list` shows your voices. The film uses Misa: `XlDdozLmuTofIxK4BjPD`.
-3. `ELEVENLABS_VOICE_ID=XlDdozLmuTofIxK4BjPD node scripts/voice.mjs make` writes all 13 takes into `raw/vo/`. Add slot ids to redo single lines, for example `make 08-unplug`.
+2. The voice and its settings are in `timeline.json` under `voice` (Jessica, stability 0.3, style 0.45). `node scripts/voice.mjs list` shows the other voices.
+3. `node scripts/voice.mjs make` writes all 13 takes into `raw/vo/`. Add slot ids to redo single lines, for example `make 08-unplug`.
 4. `npm run render`. If it says a take is too long for its slot, cut a word in `timeline.json` or raise that slot's `dur`.
