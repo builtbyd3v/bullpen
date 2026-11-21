@@ -322,7 +322,11 @@ function OrchestratorBox() {
         <div className="mt-2.5 rounded-lg border border-emerald-500/30 bg-emerald-950/25 p-2.5">
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="font-semibold text-emerald-300">Plan: {plan.ask}</span>
-            {plan.source && <span className="font-mono text-[10px] text-white/50">{plan.source}</span>}
+            {plan.source && (
+              <span className="font-mono text-[10px] text-white/50">
+                {plan.source === "canned" ? "Orchestrator (canned)" : "Orchestrator"}
+              </span>
+            )}
           </div>
           <ul className="mt-2 space-y-1.5">
             {plan.tasks.map((t) => {
@@ -451,6 +455,8 @@ function LeasesAndApprovals() {
         <div className="mb-3 space-y-2">
           {approvals.map((a) => {
             const ttl = formatTtl(a.expires_at, now);
+            // The server denies at expiry; the card stays until its `denied` event arrives.
+            const expired = ttl === "expired";
             return (
               <div
                 key={a.id}
@@ -464,7 +470,7 @@ function LeasesAndApprovals() {
                   </p>
                   {ttl && (
                     <span className="ml-auto rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[11px] text-amber-200">
-                      {ttl}
+                      {expired ? "expired: denied" : ttl}
                     </span>
                   )}
                 </div>
@@ -472,15 +478,17 @@ function LeasesAndApprovals() {
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    disabled={expired}
                     onClick={() => act(store, { kind: "approve", id: a.id, decision: "allow" })}
-                    className={`${BUTTON} bg-emerald-600 hover:bg-emerald-500`}
+                    className={`${BUTTON} bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40`}
                   >
                     Approve
                   </button>
                   <button
                     type="button"
+                    disabled={expired}
                     onClick={() => act(store, { kind: "approve", id: a.id, decision: "deny" })}
-                    className={`${BUTTON} bg-white/10 hover:bg-white/20`}
+                    className={`${BUTTON} bg-white/10 hover:bg-white/20 disabled:opacity-40`}
                   >
                     Deny
                   </button>
