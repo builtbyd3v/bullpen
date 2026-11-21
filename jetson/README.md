@@ -14,6 +14,7 @@ curl http://192.168.55.1:8700/health
 - Runs in the `~/hackkit` env, so no `uv sync` on the Jetson. Log: `~/app/server.log`.
 - Use `cd ~/app;`, not `cd ~/app &&`: with `&&` the backgrounded list keeps the ssh session open.
 - Pre-warms every model on startup in a background thread. Startup does not wait for it or fail without Ollama.
+- Requests send no `keep_alive`, so Ollama's own setting applies (forever on the Jetson).
 
 Env:
 - `OLLAMA_URL` (default `http://localhost:11434`)
@@ -23,7 +24,7 @@ Env:
 Endpoints:
 - `GET /health` -> `{"ok": true}`
 - `POST /check` `{"agent", "tool_name", "file"?, "command"?}` -> `{"decision", "reason", "rule", "model"}`. Rules only, `model` is `"rules"`. A `file` under a guarded folder (relative, `./`, or absolute with `/db/`) or a Bash `command` that names a guarded path -> `ask`, rule `db/**`. Never `deny`: the deny comes from the server approval timeout. Else `allow`, rule `default`. Bad body -> 422.
-- `POST /scan` `{"diff"}` -> `{"ok", "findings": [{"file", "line", "kind"}]}`. Regex only, added lines only, `line` is the new-file line. Kinds: `aws_access_key`, `github_token`, `anthropic_key`, `openai_key`, `slack_token`, `private_key`, `env_value` (secret-named `NAME=value` in a `.env*` file), `generic_secret` (long quoted literal assigned to a secret/token/password/api_key name). Placeholders, empty values and env reads are skipped. The secret value is never returned.
+- `POST /scan` `{"diff"}` -> `{"ok", "findings": [{"file", "line", "kind"}]}`. Regex only, added lines only, `line` is the new-file line. Kinds: `aws_access_key`, `github_token`, `anthropic_key`, `openai_key`, `slack_token`, `private_key`, `env_value` (secret-named `NAME=value` in a `.env*` file), `generic_secret` (a quoted literal of 16+ chars that mixes letters and digits, with no `/` or `:`, assigned to a secret/token/password/api_key name). Placeholders, empty values and env reads are skipped. The secret value is never returned.
 - `POST /commit_msg` `{"diff", "agent"?}` -> `{"message"}`: one line, max 72 chars. Diff is cut to 12,000 chars. Model: `COMMIT_MODEL`.
 - `POST /summarize` `{"agent", "branch", "diff", "commits"}` -> `{"intent"}`: max 2 sentences on what the branch set out to do. Model: `SUMMARIZE_MODEL`.
 - `POST /ask` `{"question", "context"?}` -> `{"answer"}`: max 2 sentences. Context over 3,000 chars is ranked line by line by `EMBED_MODEL` similarity to the question; on an embed failure it keeps the last 12,000 chars. Model: `ASK_MODEL`.

@@ -166,6 +166,11 @@ def test_scan_clean_diff_ok():
         (".env", "SECRET_TOKEN=${SECRET_TOKEN}"),
         (".env", "PORT=8600"),
         (".env.example", "API_KEY=your_api_key_here"),
+        ("api/auth.ts", 'const TOKEN_HEADER = "x-access-token";'),
+        ("api/auth.ts", 'const tokenUrl = "https://auth.usf.edu/oauth/token";'),
+        ("api/auth.ts", 'secretsPath = "/var/run/secrets/app"'),
+        ("api/cfg.json", '"tokenizer": "bert-base-uncased",'),
+        ("web/login.ts", 'const passwordField = "input[name=password]";'),
     ],
 )
 def test_scan_placeholders_ignored(path, line):
@@ -293,6 +298,24 @@ def test_ask_embed_failure_falls_back_to_tail(monkeypatch):
     r = client.post("/ask", json={"question": "what happened?", "context": context})
     assert r.status_code == 200
     assert "event 499 happened" in seen[0]["messages"][-1]["content"]
+
+
+def test_ask_single_long_line_keeps_context(calls):
+    calls.reply[0] = "Ok."
+    context = "x" * 4000 + " auth.ts held by api"
+    client.post("/ask", json={"question": "who holds auth.ts?", "context": context})
+    prompt = [b for u, b in calls if u.endswith("/api/chat")][0]["messages"][-1]["content"]
+    assert "auth.ts held by api" in prompt
+
+
+def test_startup_does_not_wait_for_warm(monkeypatch):
+    import threading
+
+    gate = threading.Event()
+    monkeypatch.setattr(main, "warm", gate.wait)
+    with TestClient(main.app) as c:
+        assert c.get("/health").json() == {"ok": True}
+    gate.set()
 
 
 def test_reset_ok_when_ollama_down(ollama_down):

@@ -29,7 +29,7 @@ def warm() -> list[str]:
         # A chat call with no messages only loads the model.
         try:
             httpx.post(
-                f"{OLLAMA_URL}/api/chat", json={"model": model, "messages": [], "keep_alive": "60m"}, timeout=60
+                f"{OLLAMA_URL}/api/chat", json={"model": model, "messages": [], "stream": False}, timeout=60
             ).raise_for_status()
             warmed.append(model)
         except httpx.HTTPError:
@@ -67,7 +67,6 @@ def chat(model: str, system: str, user: str, max_tokens: int) -> str:
             json={
                 "model": model,
                 "stream": False,
-                "keep_alive": "60m",
                 "options": {"num_ctx": 8192, "num_predict": max_tokens, "temperature": 0.2},
                 "messages": [
                     {"role": "system", "content": system},
@@ -90,7 +89,7 @@ def embed(texts: list[str]) -> list[list[float]]:
     try:
         r = httpx.post(
             f"{OLLAMA_URL}/api/embed",
-            json={"model": EMBED_MODEL, "input": texts, "keep_alive": "60m"},
+            json={"model": EMBED_MODEL, "input": texts},
             timeout=20,
         )
         r.raise_for_status()
@@ -159,7 +158,7 @@ SECRET_PATTERNS = [
 ENV_LINE = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$")
 SECRET_NAME = re.compile(r"KEY|TOKEN|SECRET|PASSWORD|PASSWD", re.I)
 GENERIC_SECRET = re.compile(
-    r"(?i)[\w.-]*(?:secret|token|password|passwd|api_?key)[\w.-]*[\"']?\s*(?::\s*[\w<>\[\]|]+\s*)?(?::|=|:=)\s*[\"']([^\"'\s]{12,})[\"']"
+    r"(?i)(?:secret|token|password|passwd|api_?key)[\w.-]*[\"']?\s*(?::\s*[\w<>\[\]|]+\s*)?(?::|=|:=)\s*[\"']([^\"'\s]{16,})[\"']"
 )
 PLACEHOLDER = re.compile(r"(?i)changeme|change_me|placeholder|example|your[_ -]|xxxx|dummy|redacted|^<.*>$|^\$\{?\w+\}?$")
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
@@ -180,7 +179,10 @@ def line_kinds(path: str, text: str) -> list[str]:
             return ["env_value"]
         return []
     m = GENERIC_SECRET.search(text)
-    return ["generic_secret"] if m and is_secret_value(m[1]) else []
+    # Real secrets mix letters and digits; URLs, paths and header names do not count.
+    if m and is_secret_value(m[1]) and re.search(r"\d", m[1]) and re.search(r"[A-Za-z]", m[1]) and not re.search(r"[/:]", m[1]):
+        return ["generic_secret"]
+    return []
 
 
 class ScanIn(BaseModel):
@@ -266,9 +268,11 @@ def relevant_context(question: str, context: str) -> str:
     keep, size = set(), 0
     for i in ranked:
         if size + len(lines[i]) + 1 > ASK_CONTEXT_CHARS:
-            break
+            continue
         keep.add(i)
         size += len(lines[i]) + 1
+    if not keep:
+        return context[-MAX_INPUT_CHARS:]
     return "\n".join(lines[i] for i in sorted(keep))
 
 
