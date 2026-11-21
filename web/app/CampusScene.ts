@@ -3,7 +3,7 @@ import campus from "../../campus/campus.json" with { type: "json" };
 import { buildingForFile, layersByBuilding, waitQueue } from "@/lib/campus.ts";
 import type { Store, StoreState } from "@/lib/store.ts";
 import type { Building, Fx, Status } from "@/lib/types.ts";
-import { drawCampusGround, makeBuilding } from "./buildingSprite";
+import { drawCampusGround, labelBelow, makeBuilding } from "./buildingSprite";
 import { makeBull } from "./bullSprite";
 
 const buildings: Building[] = campus.buildings;
@@ -26,14 +26,14 @@ const hitsBuilding = (b: Building, x: number, y: number) =>
   buildings.some((o) => o !== b && o.id !== "bullrunner" && x > o.x - 20 && x < o.x + o.w + 20 && y + 24 > o.y && y - 24 < o.y + o.h);
 const bullY = (b: Building) => {
   const cx = b.x + b.w / 2;
-  if (!hitsBuilding(b, cx, b.y + b.h + 44)) return b.y + b.h + 44;
-  if (b.y > 56 && !hitsBuilding(b, cx, b.y - 30)) return b.y - 30;
-  if (b.y >= 50) return b.y - 24;
+  const below = b.y + b.h + (labelBelow(b, buildings) ? 72 : 44);
+  if (!hitsBuilding(b, cx, below)) return below;
+  if (b.y > 80 && !hitsBuilding(b, cx, b.y - 52)) return b.y - 52;
   return b.y + b.h - 20;
 };
 // The door sits at the middle of the building's bottom edge. The line forms to its right, past the agent slots.
 const door = (b: Building) => ({ x: b.x + b.w / 2, y: b.y + b.h });
-const queueX = (b: Building, pos: number) => b.x + b.w / 2 + 96 + (pos - 1) * 40;
+const queueX = (b: Building, pos: number) => b.x + b.w / 2 + 96 + (pos - 1) * 52;
 // 5x7 pixel hourglass (2px cells), one frame per quarter turn of the sand: caps, glass, sand.
 const HOURGLASS_FRAMES = [0, 1, 2, 3].map((phase) => {
   const rows = ["ccccc", ".gGg.", ".gGg.", "..g..", ".ggg.", ".ggg.", "ccccc"].map((r) => [...r]);
@@ -85,12 +85,17 @@ export class CampusScene extends Phaser.Scene {
     super("campus");
   }
 
+  preload() {
+    this.load.image("ground", "/sprites/campus-ground.png");
+    for (const id of [...buildings.map((b) => b.id), "mlk-plaza"]) this.load.image(id, `/sprites/${id}.png`);
+  }
+
   init(data: { store: Store }) {
     this.store = data.store;
   }
 
   create() {
-    drawCampusGround(this, campus.width, campus.height, buildings);
+    drawCampusGround(this, campus.width, campus.height);
     for (const b of buildings) {
       makeBuilding(
         this,
@@ -105,6 +110,7 @@ export class CampusScene extends Phaser.Scene {
           this.hovered = over ? b : this.hovered === b ? null : this.hovered;
           this.showTooltip(this.store.getState());
         },
+        buildings,
       );
     }
     // Branch tab: dusk over the campus in the agent's color, under that agent's layers.
@@ -423,8 +429,8 @@ export class CampusScene extends Phaser.Scene {
 
   private lock({ b, ...data }: LockSpec) {
     const label = this.add
-      .text(b.x + b.w / 2 + 16, b.y + b.h - 4, "", { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#ffffff", backgroundColor: "#0d231b", padding: { x: 4, y: 2 } })
-      .setOrigin(0, 1)
+      .text(b.x + b.w / 2, b.y + b.h - 24, "", { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#ffffff", backgroundColor: "#0d231b", padding: { x: 4, y: 2 } })
+      .setOrigin(0.5, 1)
       .setDepth(3.7);
     return label.setData(data);
   }

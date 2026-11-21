@@ -1,17 +1,17 @@
 {
   "repo": "demo",
-  "width": 960,
-  "height": 640,
+  "width": 1160,
+  "height": 728,
   "buildings": [
     {
       "id": "msc",
       "name": "Marshall Student Center",
       "folder": "web/",
       "guarded": false,
-      "x": 380,
-      "y": 60,
-      "w": 200,
-      "h": 110,
+      "x": 316,
+      "y": 48,
+      "w": 136,
+      "h": 88,
       "files": 7,
       "rooms": [
         {
@@ -51,10 +51,10 @@
       "name": "Library",
       "folder": "shared/",
       "guarded": false,
-      "x": 120,
-      "y": 60,
-      "w": 180,
-      "h": 110,
+      "x": 412,
+      "y": 356,
+      "w": 104,
+      "h": 84,
       "files": 6,
       "rooms": [
         {
@@ -94,10 +94,10 @@
       "name": "ENB",
       "folder": "api/",
       "guarded": false,
-      "x": 660,
-      "y": 60,
-      "w": 180,
-      "h": 110,
+      "x": 192,
+      "y": 424,
+      "w": 144,
+      "h": 92,
       "files": 5,
       "rooms": [
         {
@@ -132,10 +132,10 @@
       "name": "ENC",
       "folder": "tests/",
       "guarded": false,
-      "x": 660,
-      "y": 260,
-      "w": 180,
-      "h": 110,
+      "x": 248,
+      "y": 216,
+      "w": 104,
+      "h": 76,
       "files": 4,
       "rooms": [
         {
@@ -165,10 +165,10 @@
       "name": "Muma Business",
       "folder": "config/",
       "guarded": false,
-      "x": 120,
-      "y": 260,
-      "w": 180,
-      "h": 110,
+      "x": 540,
+      "y": 424,
+      "w": 112,
+      "h": 104,
       "files": 3,
       "rooms": [
         {
@@ -193,10 +193,10 @@
       "name": "Cooper Hall",
       "folder": "docs/",
       "guarded": false,
-      "x": 120,
-      "y": 460,
-      "w": 180,
-      "h": 110,
+      "x": 540,
+      "y": 348,
+      "w": 100,
+      "h": 52,
       "files": 2,
       "rooms": [
         {
@@ -216,10 +216,10 @@
       "name": "Recreation Center",
       "folder": "scripts/",
       "guarded": false,
-      "x": 380,
-      "y": 175,
-      "w": 200,
-      "h": 85,
+      "x": 696,
+      "y": 264,
+      "w": 132,
+      "h": 76,
       "files": 1,
       "rooms": [
         {
@@ -234,10 +234,10 @@
       "name": "Sun Dome",
       "folder": "db/",
       "guarded": true,
-      "x": 660,
-      "y": 460,
-      "w": 180,
-      "h": 110,
+      "x": 740,
+      "y": 384,
+      "w": 152,
+      "h": 124,
       "files": 2,
       "rooms": [
         {
@@ -257,10 +257,10 @@
       "name": "Juniper-Poplar",
       "folder": null,
       "guarded": false,
-      "x": 380,
-      "y": 460,
-      "w": 200,
-      "h": 110,
+      "x": 36,
+      "y": 348,
+      "w": 88,
+      "h": 76,
       "files": 1,
       "rooms": [
         {
@@ -275,10 +275,10 @@
       "name": "Bull Runner stop",
       "folder": "",
       "guarded": false,
-      "x": 400,
-      "y": 270,
-      "w": 160,
-      "h": 90,
+      "x": 408,
+      "y": 160,
+      "w": 88,
+      "h": 52,
       "files": 1,
       "rooms": [
         {

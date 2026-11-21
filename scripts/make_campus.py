@@ -7,18 +7,21 @@ import subprocess
 import sys
 from collections import Counter
 
-# Fixed slots: id -> name and position on the 960x640 map. Never change these per repo.
+# Fixed slots: id -> name and position on the 1160x728 map, which is Caua's USF campus
+# (design/js/campusData.js, 580x364) at 2x. Sizes are the design/mockups-v3 sprites at 2x.
+# Never change these per repo.
+WIDTH, HEIGHT = 1160, 728
 SLOTS = {
-    "msc": {"name": "Marshall Student Center", "x": 380, "y": 60, "w": 200, "h": 110},
-    "library": {"name": "Library", "x": 120, "y": 60, "w": 180, "h": 110},
-    "enb": {"name": "ENB", "x": 660, "y": 60, "w": 180, "h": 110},
-    "enc": {"name": "ENC", "x": 660, "y": 260, "w": 180, "h": 110},
-    "muma": {"name": "Muma Business", "x": 120, "y": 260, "w": 180, "h": 110},
-    "cooper": {"name": "Cooper Hall", "x": 120, "y": 460, "w": 180, "h": 110},
-    "rec": {"name": "Recreation Center", "x": 380, "y": 175, "w": 200, "h": 85},
-    "sundome": {"name": "Sun Dome", "x": 660, "y": 460, "w": 180, "h": 110},
-    "juniper": {"name": "Juniper-Poplar", "x": 380, "y": 460, "w": 200, "h": 110},
-    "bullrunner": {"name": "Bull Runner stop", "x": 400, "y": 270, "w": 160, "h": 90},
+    "msc": {"name": "Marshall Student Center", "x": 316, "y": 48, "w": 136, "h": 88},
+    "library": {"name": "Library", "x": 412, "y": 356, "w": 104, "h": 84},
+    "enb": {"name": "ENB", "x": 192, "y": 424, "w": 144, "h": 92},
+    "enc": {"name": "ENC", "x": 248, "y": 216, "w": 104, "h": 76},
+    "muma": {"name": "Muma Business", "x": 540, "y": 424, "w": 112, "h": 104},
+    "cooper": {"name": "Cooper Hall", "x": 540, "y": 348, "w": 100, "h": 52},
+    "rec": {"name": "Recreation Center", "x": 696, "y": 264, "w": 132, "h": 76},
+    "sundome": {"name": "Sun Dome", "x": 740, "y": 384, "w": 152, "h": 124},
+    "juniper": {"name": "Juniper-Poplar", "x": 36, "y": 348, "w": 88, "h": 76},
+    "bullrunner": {"name": "Bull Runner stop", "x": 408, "y": 160, "w": 88, "h": 52},
 }
 FILL_ORDER = ["msc", "library", "enb", "enc", "muma", "cooper", "rec"]
 MAX_ROOMS = 6
@@ -99,7 +102,7 @@ def build(repo, guarded=("db/",)):
     h = building("bullrunner", "", False, repo, root)
     h["rooms"] = rooms_for(repo, "", root)
     out.append(h)
-    return {"repo": os.path.basename(repo), "width": 960, "height": 640, "buildings": out}
+    return {"repo": os.path.basename(repo), "width": WIDTH, "height": HEIGHT, "buildings": out}
 
 
 def main(argv=None):

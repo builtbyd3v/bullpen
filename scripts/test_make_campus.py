@@ -130,8 +130,8 @@ class MakeCampusTest(unittest.TestCase):
         layout = make_campus.build(make_repo(spread("web", 2)))
         b = by_id(layout)
         self.assertNotIn("library", b)
-        self.assertEqual((b["msc"]["x"], b["msc"]["y"], b["msc"]["w"], b["msc"]["h"]), (380, 60, 200, 110))
-        self.assertEqual((layout["width"], layout["height"]), (960, 640))
+        self.assertEqual((b["msc"]["x"], b["msc"]["y"], b["msc"]["w"], b["msc"]["h"]), (316, 48, 136, 88))
+        self.assertEqual((layout["width"], layout["height"]), (1160, 728))
         for k in ("juniper", "bullrunner"):
             self.assertIn(k, b)
 
