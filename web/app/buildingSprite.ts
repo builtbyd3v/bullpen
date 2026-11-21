@@ -50,12 +50,14 @@ function rect(
 
 // Caua's terrain bakes in district labels; "CENTRAL CAMPUS" sits here at 2x.
 const RESERVED = [{ x: 200, y: 156, w: 150, h: 36 }];
-const LABEL_W = 170;
 const LABEL_H = 30;
 
 // True when the name plate above `b` would cover another building or a baked-in map label.
 export function labelBelow(b: Building, all: Building[]) {
-  const box = { x: b.x + b.w / 2 - LABEL_W / 2, y: b.y - LABEL_H, w: LABEL_W, h: LABEL_H };
+  // Plate width from the text: 13px bold mono is ~8px a glyph.
+  const folder = `${b.folder ?? "unmapped"}${b.guarded ? " · guarded" : ""}`;
+  const w = Math.max(b.name.length * 8, folder.length * 7) + 12;
+  const box = { x: b.x + b.w / 2 - w / 2, y: b.y - LABEL_H, w, h: LABEL_H };
   const hit = (o: { x: number; y: number; w: number; h: number }) =>
     box.x < o.x + o.w && box.x + box.w > o.x && box.y < o.y + o.h && box.y + box.h > o.y;
   return all.some((o) => o !== b && hit(o)) || RESERVED.some(hit);

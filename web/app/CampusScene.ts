@@ -26,14 +26,19 @@ const hitsBuilding = (b: Building, x: number, y: number) =>
   buildings.some((o) => o !== b && o.id !== "bullrunner" && x > o.x - 20 && x < o.x + o.w + 20 && y + 24 > o.y && y - 24 < o.y + o.h);
 const bullY = (b: Building) => {
   const cx = b.x + b.w / 2;
-  const below = b.y + b.h + (labelBelow(b, buildings) ? 72 : 44);
+  const below = b.y + b.h + (labelBelow(b, buildings) ? 96 : 52);
   if (!hitsBuilding(b, cx, below)) return below;
   if (b.y > 80 && !hitsBuilding(b, cx, b.y - 52)) return b.y - 52;
   return b.y + b.h - 20;
 };
 // The door sits at the middle of the building's bottom edge. The line forms to its right, past the agent slots.
 const door = (b: Building) => ({ x: b.x + b.w / 2, y: b.y + b.h });
-const queueX = (b: Building, pos: number) => b.x + b.w / 2 + 96 + (pos - 1) * 52;
+// The line forms to the right of the door, or to the left when another building is in the way.
+const queueX = (b: Building, pos: number) => {
+  const step = 96 + (pos - 1) * 52;
+  const right = b.x + b.w / 2 + step;
+  return hitsBuilding(b, right, bullY(b)) ? b.x + b.w / 2 - step : right;
+};
 // 5x7 pixel hourglass (2px cells), one frame per quarter turn of the sand: caps, glass, sand.
 const HOURGLASS_FRAMES = [0, 1, 2, 3].map((phase) => {
   const rows = ["ccccc", ".gGg.", ".gGg.", "..g..", ".ggg.", ".ggg.", "ccccc"].map((r) => [...r]);

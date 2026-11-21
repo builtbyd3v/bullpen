@@ -49,5 +49,5 @@ Move the pointer slowly. Pause one second before and after each click. Leave the
 
 ## Fallbacks
 
-- A live beat fails on camera: record that beat from http://localhost:5173/?fake with "Play demo", or from the server's `GET /replay`.
+- A live beat fails on camera: record that beat from http://localhost:5173/campus?fake with "Play demo", or from the server's `GET /replay`.
 - A real run is too slow for its slot: set `rate` to 2 or 3 for that slot, or raise `start` to skip the wait.

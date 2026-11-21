@@ -62,7 +62,7 @@ export default function Landing() {
             </Link>
           </div>
           <img
-            src="/sprites/campus-ground.png"
+            src="/campus-hero.png"
             alt="The Bullpen pixel campus"
             className="w-full rounded-lg border border-[#CFC493] [image-rendering:pixelated]"
           />
