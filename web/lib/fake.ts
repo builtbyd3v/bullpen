@@ -1,3 +1,5 @@
+import campus from "../../campus/campus.json" with { type: "json" };
+import { buildingForFile } from "./campus.ts";
 import type { Action, BullpenState, CheckEvent, Commit, Envelope, Plan, Worktree } from "./types.ts";
 
 const futureIso = (seconds: number) => new Date(Date.now() + seconds * 1000).toISOString();
@@ -175,6 +177,9 @@ export const FAKE_HOOKS: Record<string, unknown>[] = [
 
 let data = FAKE_STATE;
 
+// Tests share this module; start a scripted run from the initial state.
+export const resetFake = () => void (data = FAKE_STATE);
+
 const reset = (w: Worktree): Worktree => ({
   ...w,
   changed_files: [],
@@ -232,7 +237,10 @@ export function fakeServer(action: Action): Envelope[] {
     worktrees: data.worktrees.map((w) =>
       w.agent !== action.agent ? w : action.kind === "merge" ? { ...reset(w), status: "done" } : reset(w),
     ),
-    leases: (data.leases ?? []).filter((l) => l.agent !== action.agent),
+    // Like the server's release_agent: drop the agent's leases and its places in every wait queue.
+    leases: (data.leases ?? [])
+      .filter((l) => l.agent !== action.agent)
+      .map((l) => ({ ...l, waiters: l.waiters.filter((a) => a !== action.agent) })),
   };
   const first: Envelope =
     action.kind === "merge"
@@ -350,12 +358,51 @@ function fakeCommit(agent: string, commit: Commit): Envelope[] {
   ];
 }
 
+const setAgent = (agent: string, patch: Partial<Worktree>) =>
+  data.worktrees.map((w) => (w.agent === agent ? { ...w, ...patch } : w));
+
+// `agent` asks for a file another agent leases: it joins the back of the line outside that building's door.
+function fakeWait(agent: string, file: string): Envelope[] {
+  const building = buildingForFile(file, campus.buildings);
+  const lease = data.leases?.find((l) => l.file === file);
+  if (!lease) return [];
+  data = {
+    ...data,
+    worktrees: setAgent(agent, { status: "waiting", building }),
+    leases: (data.leases ?? []).map((l) => (l === lease ? { ...l, waiters: [...l.waiters, agent] } : l)),
+  };
+  return [{ type: "claim_wait", data: { agent, file, building, holder: lease.agent } }, { type: "state", data }];
+}
+
+// The holder commits and lets go; the first in line gets the lease and walks in.
+function fakeHandOver(file: string): Envelope[] {
+  const lease = data.leases?.find((l) => l.file === file);
+  const [next, ...waiters] = lease?.waiters ?? [];
+  if (!lease || !next) return [];
+  const building = buildingForFile(file, campus.buildings);
+  const expires_at = futureIso(90);
+  const stillWaiting = (a: string) => (data.leases ?? []).some((l) => l.file !== file && l.waiters.includes(a));
+  data = {
+    ...data,
+    worktrees: setAgent(next, { status: stillWaiting(next) ? "waiting" : "working", building }),
+    leases: (data.leases ?? []).map((l) => (l === lease ? { file, agent: next, expires_at, waiters } : l)),
+  };
+  return [
+    { type: "claim_released", data: { agent: lease.agent, file, building, text: "commit" } },
+    { type: "claim_granted", data: { agent: next, file, building, expires_at } },
+    { type: "state", data },
+  ];
+}
+
 // "Play demo" in ?fake mode: about 15 seconds of envelopes, fed through store.dispatch like the live socket.
 export const DEMO: { at: number; run: () => Envelope[] }[] = [
   { at: 1500, run: () => fakeCommit("api", { sha: "b7c8d9e", message: "Test users route", files: ["tests/test_users.py"] }) },
   { at: 4000, run: () => fakeCommit("web", { sha: "e1f2a3b", message: "Fetch users from API", files: ["web/api.ts"] }) },
+  { at: 5000, run: () => fakeHandOver("shared/auth.ts") },
+  { at: 6000, run: () => fakeWait("web", "api/users.ts") },
   { at: 7000, run: () => fakeServer({ kind: "approve", id: "ap1", decision: "allow" }) },
   { at: 8500, run: () => fakeCommit("db", { sha: "c4d5e6f", message: "Add users table", files: ["db/schema.sql"] }) },
+  { at: 9800, run: () => fakeHandOver("api/users.ts") },
   { at: 11000, run: () => fakeServer({ kind: "merge", agent: "api" }) },
   { at: 14000, run: () => fakeServer({ kind: "undo", agent: "web" }) },
 ];

@@ -1,4 +1,4 @@
-import type { Building, Worktree } from "./types.ts";
+import type { Building, Lease, Worktree } from "./types.ts";
 
 // Longest non-empty folder prefix wins. Root files go to folder "", the rest to folder null.
 export function buildingForFile(path: string, buildings: Building[]): string {
@@ -21,4 +21,18 @@ export function layersByBuilding(worktrees: Worktree[], buildings: Building[]): 
     }
   }
   return layers;
+}
+
+export type QueueSpot = { file: string; building: string; pos: number };
+
+// Each waiting agent's place in line outside the door of the leased file's building.
+// `pos` is 1-based, oldest first. An agent queued for several files stands in the first line only.
+export function waitQueue(leases: Lease[], buildings: Building[]): Map<string, QueueSpot> {
+  const spots = new Map<string, QueueSpot>();
+  for (const l of leases) {
+    l.waiters.forEach((agent, i) => {
+      if (!spots.has(agent)) spots.set(agent, { file: l.file, building: buildingForFile(l.file, buildings), pos: i + 1 });
+    });
+  }
+  return spots;
 }

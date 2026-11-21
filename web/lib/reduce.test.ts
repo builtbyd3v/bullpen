@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DEMO, FAKE_STATE, fakeServer, withCommit } from "./fake.ts";
+import { waitQueue } from "./campus.ts";
+import { DEMO, FAKE_STATE, fakeServer, resetFake, withCommit } from "./fake.ts";
 import { reduce, type Snapshot } from "./reduce.ts";
-import type { Fx } from "./types.ts";
+import type { BullpenState, Envelope, Fx } from "./types.ts";
+import campus from "../../campus/campus.json" with { type: "json" };
 
 const start: Snapshot = {
   data: { main: "main", worktrees: [], approvals: [], leases: [] },
@@ -11,6 +13,7 @@ const start: Snapshot = {
   checks: [],
   plan: null,
   hooks: [],
+  notice: null,
   replaying: false,
 };
 
@@ -174,6 +177,144 @@ test("merge handles empty intent string cleanly", () => {
   assert.equal(snapshot.merges[0].agent, "web");
   assert.equal(snapshot.merges[0].intent, "");
   assert.equal(snapshot.merges[0].commits.length, 1);
+});
+
+// ---- section 4 envelopes from the real server (issue #17) ----
+
+const wt = (agent: string) => ({ ...FAKE_STATE.worktrees[0], agent, building: "bullrunner", claims: [], status: "working" as const });
+const live: BullpenState = { main: "main", worktrees: [wt("api"), wt("web"), wt("db")], approvals: [], leases: [] };
+const run = (envelopes: Envelope[], from: Snapshot = reduce(start, { type: "state", data: live }).snapshot) =>
+  envelopes.reduce((s, e) => reduce(s, e).snapshot, from);
+
+test("claim_wait queues the agent behind the holder and moves it to the file's building", () => {
+  const s = run([
+    { type: "claim_granted", data: { agent: "api", file: "shared/auth.ts", building: "library", expires_at: "2026-11-21T19:00:00Z" } },
+    { type: "claim_wait", data: { agent: "web", file: "shared/auth.ts", building: "library", holder: "api" } },
+    { type: "claim_wait", data: { agent: "db", file: "shared/auth.ts", building: "library", holder: "api" } },
+    { type: "claim_wait", data: { agent: "web", file: "shared/auth.ts", building: "library", holder: "api" } },
+  ]);
+  assert.deepEqual(s.data.leases, [
+    { file: "shared/auth.ts", agent: "api", expires_at: "2026-11-21T19:00:00Z", waiters: ["web", "db"] },
+  ]);
+  assert.equal(s.data.worktrees.find((w) => w.agent === "web")?.building, "library");
+});
+
+test("claim_wait without a known lease records the holder from the event", () => {
+  const s = run([{ type: "claim_wait", data: { agent: "web", file: "api/a.py", building: "enb", holder: "api" } }]);
+  assert.deepEqual(s.data.leases, [{ file: "api/a.py", agent: "api", expires_at: "", waiters: ["web"] }]);
+});
+
+test("claim_released then claim_granted hands the file to the waiter and takes it out of the line", () => {
+  const s = run([
+    { type: "claim_granted", data: { agent: "api", file: "shared/auth.ts", building: "library", expires_at: "t1" } },
+    { type: "claim_wait", data: { agent: "web", file: "shared/auth.ts", building: "library", holder: "api" } },
+    { type: "claim_wait", data: { agent: "db", file: "shared/auth.ts", building: "library", holder: "api" } },
+    { type: "claim_released", data: { agent: "api", file: "shared/auth.ts", building: "library", text: "commit" } },
+    { type: "claim_granted", data: { agent: "web", file: "shared/auth.ts", building: "library", expires_at: "t2" } },
+  ]);
+  // The release dropped the lease with its line; the server's next `state` restores db's spot.
+  assert.deepEqual(s.data.leases, [{ file: "shared/auth.ts", agent: "web", expires_at: "t2", waiters: [] }]);
+  const kept = run([
+    { type: "claim_granted", data: { agent: "api", file: "f", building: "library", expires_at: "t1" } },
+    { type: "claim_wait", data: { agent: "web", file: "f", building: "library", holder: "api" } },
+    { type: "claim_wait", data: { agent: "db", file: "f", building: "library", holder: "api" } },
+    { type: "claim_granted", data: { agent: "web", file: "f", building: "library", expires_at: "t2" } },
+  ]);
+  assert.deepEqual(kept.data.leases?.[0].waiters, ["db"]);
+});
+
+test("claim_released only drops a lease the releasing agent holds", () => {
+  const s = run([
+    { type: "claim_granted", data: { agent: "api", file: "f", building: "library", expires_at: "t1" } },
+    { type: "claim_released", data: { agent: "web", file: "f", building: "library", text: "stop" } },
+  ]);
+  assert.equal(s.data.leases?.length, 1);
+});
+
+test("approval_needed adds a card once; approved and denied remove it", () => {
+  const ap = { id: "ap7", agent: "db", tool: "Edit", target: "db/schema.sql", reason: "Sun Dome is guarded", expires_at: "2026-11-21T19:01:00Z" };
+  const needed = run([
+    { type: "approval_needed", data: ap },
+    { type: "approval_needed", data: ap },
+    { type: "approval_needed", data: { ...ap, id: "ap8" } },
+  ]);
+  assert.deepEqual(needed.data.approvals.map((a) => a.id), ["ap7", "ap8"]);
+  assert.equal(needed.data.approvals[0].expires_at, ap.expires_at);
+  const done = run(
+    [
+      { type: "denied", data: { id: "ap7", agent: "db", text: "human" } },
+      { type: "approved", data: { id: "ap8", agent: "db" } },
+    ],
+    needed,
+  );
+  assert.deepEqual(done.data.approvals, []);
+});
+
+test("the next state replaces everything the events patched", () => {
+  const patched = run([
+    { type: "approval_needed", data: { id: "ap1", agent: "db", tool: "Edit", target: "db/x.sql", reason: "" } },
+    { type: "claim_wait", data: { agent: "web", file: "f", building: "library", holder: "api" } },
+  ]);
+  const s = reduce(patched, { type: "state", data: live }).snapshot;
+  assert.equal(s.data, live);
+});
+
+test("secret_blocked sets a visible notice", () => {
+  const s = run([{ type: "secret_blocked", data: { agent: "api", file: "api/.env", kind: "aws_key" } }]);
+  assert.equal(s.notice, "Secret guard blocked api's edit to api/.env (aws_key).");
+});
+
+test("commit and undo and merge from the server keep working with the new fields", () => {
+  const { fx } = reduce(run([]), {
+    type: "commit",
+    data: { agent: "api", sha: "abc", message: "Edit x", files: ["shared/auth.ts"], task: "t", at: "2026-11-21T19:00:00Z" },
+  });
+  assert.deepEqual(fx, [{ kind: "commit", agent: "api", building: "library" }]);
+  assert.deepEqual(reduce(start, { type: "undo", data: { agent: "web" } }).fx, [{ kind: "undo", agent: "web" }]);
+});
+
+test("unknown envelope types change nothing", () => {
+  const from = run([]);
+  const { snapshot, fx } = reduce(from, { type: "future_thing", data: {} } as unknown as Envelope);
+  assert.equal(snapshot, from);
+  assert.deepEqual(fx, []);
+});
+
+test("replayed envelopes render like live ones", () => {
+  const s = run([
+    { type: "claim_granted", data: { agent: "api", file: "f", building: "library", expires_at: "t" }, replay: true },
+    { type: "approval_needed", data: { id: "ap1", agent: "db", tool: "Edit", target: "db/x.sql", reason: "" }, replay: true },
+  ]);
+  assert.equal(s.data.leases?.length, 1);
+  assert.equal(s.data.approvals.length, 1);
+  assert.deepEqual(reduce(start, { type: "state", data: live, replay: true }).snapshot.data, live);
+});
+
+test("waitQueue gives each waiter its 1-based place, oldest first, at the file's building", () => {
+  const q = waitQueue(
+    [
+      { file: "shared/auth.ts", agent: "api", expires_at: "", waiters: ["web", "db"] },
+      { file: "api/users.py", agent: "api", expires_at: "", waiters: ["db"] },
+    ],
+    campus.buildings,
+  );
+  assert.deepEqual(q.get("web"), { file: "shared/auth.ts", building: "library", pos: 1 });
+  assert.deepEqual(q.get("db"), { file: "shared/auth.ts", building: "library", pos: 2 });
+  assert.equal(q.has("api"), false);
+});
+
+test("the demo shows a wait queue, then hands the file over and ends with nobody in line", () => {
+  resetFake();
+  let snapshot = reduce(start, { type: "state", data: FAKE_STATE }).snapshot;
+  const queues: string[] = [];
+  for (const step of DEMO) {
+    for (const envelope of step.run()) snapshot = reduce(snapshot, envelope).snapshot;
+    const q = waitQueue(snapshot.data.leases ?? [], campus.buildings);
+    queues.push([...q].map(([a, s]) => `${a}@${s.building}#${s.pos}`).sort().join(" "));
+  }
+  assert.ok(queues.includes("db@enb#1 web@enb#2"), queues.join(" | "));
+  assert.ok(queues.includes("web@enb#1"), queues.join(" | "));
+  assert.equal(queues.at(-1), "");
 });
 
 test("envelopes with replay: true set replaying and live envelopes clear it", () => {

@@ -45,6 +45,8 @@ export type BullpenState = {
   worktrees: Worktree[];
   approvals: Approval[];
   leases?: Lease[];
+  // Set by the server when it cannot read the demo repo; worktrees is then empty.
+  error?: string;
 };
 
 export type CheckDecision = "allow" | "ask" | "deny";
@@ -78,16 +80,25 @@ export type HookLog = {
   at: string;
 };
 
-export type EnvelopeBody =
+// Section 4. Replayed envelopes carry `replay: true` and render like live ones.
+export type Envelope = { replay?: boolean } & (
   | { type: "hook"; data: Record<string, unknown> }
   | { type: "state"; data: BullpenState }
+  | { type: "claim_granted"; data: { agent: string; file: string; building: string; expires_at: string } }
+  | { type: "claim_wait"; data: { agent: string; file: string; building: string; holder: string } }
+  | { type: "claim_released"; data: { agent: string; file: string; building: string; text: string } }
+  | { type: "approval_needed"; data: Approval }
+  | { type: "approved"; data: { id: string; agent: string } }
+  | { type: "denied"; data: { id: string; agent: string; text: string } }
   | { type: "commit"; data: { agent: string } & Commit }
   | { type: "undo"; data: { agent: string } }
   | { type: "merge"; data: { agent: string; sha: string; intent?: string } }
   | { type: "check"; data: CheckEvent }
-  | { type: "plan"; data: Plan };
+  | { type: "plan"; data: Plan }
+  | { type: "secret_blocked"; data: { agent: string; file: string; kind: string } }
+);
 
-export type Envelope = EnvelopeBody & { replay?: boolean };
+export type Conn = "connecting" | "live" | "offline";
 
 export type HealthStatus = "checking" | "ok" | "down";
 
@@ -119,6 +130,7 @@ export type Action =
   | { kind: "approve"; id: string; decision: "allow" | "deny" };
 
 export type UiState = {
+  conn: Conn;
   tab: "main" | string;
   selected: { kind: "building"; id: string } | { kind: "bull"; agent: string } | null;
   zoomedBuildingId: string | null;

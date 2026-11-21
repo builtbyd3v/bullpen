@@ -2,13 +2,28 @@ import { FAKE_CHECKS, FAKE_HOOKS, FAKE_STATE, fakeAsk, fakeDiff, fakeOrchestrate
 import type { Store } from "./store.ts";
 import type { Action, BullpenState, Envelope, Plan } from "./types.ts";
 
-const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:8600";
+export const SERVER_URL = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:8600";
 const ORCHESTRATOR_URL = process.env.NEXT_PUBLIC_ORCHESTRATOR_URL ?? "http://localhost:8650";
-const TYPES = new Set(["hook", "state", "commit", "undo", "merge", "check", "plan"]);
+// Section 4 types the UI uses. Anything else is dropped (clients ignore unknown types).
+const TYPES = new Set([
+  "hook",
+  "state",
+  "claim_granted",
+  "claim_wait",
+  "claim_released",
+  "approval_needed",
+  "approved",
+  "denied",
+  "check",
+  "commit",
+  "undo",
+  "merge",
+  "plan",
+  "secret_blocked",
+]);
 
 export const isFake = () => new URLSearchParams(window.location.search).has("fake");
 
-// The server still sends some bare hook bodies (events.md section 4 TODO); drop anything without a known type.
 function isState(data: unknown): data is BullpenState {
   if (typeof data !== "object" || data === null) return false;
   const d = data as { worktrees?: unknown; approvals?: unknown };
@@ -45,6 +60,12 @@ export function connect(store: Store): () => void {
 
   let closed = false;
   let ws: WebSocket | undefined;
+  let retry: ReturnType<typeof setTimeout> | undefined;
+  const loadState = () =>
+    fetch(`${SERVER_URL}/state`)
+      .then((r) => r.json() as Promise<unknown>)
+      .then((data) => closed || dispatch({ type: "state", data }))
+      .catch((e: unknown) => console.warn("[bullpen] /state failed", e));
   // Jetson status comes from `check` events (the browser cannot reach the Jetson: no CORS there).
   const pollHealth = async () => {
     const [serverBody, orchBody] = await Promise.all([
@@ -62,14 +83,14 @@ export function connect(store: Store): () => void {
   const healthTimer = window.setInterval(() => void pollHealth(), 5000);
 
   const open = () => {
+    // /state loads on its own too, so the campus fills even if the socket cannot connect.
+    loadState();
     ws = new WebSocket(`${SERVER_URL.replace(/^http/, "ws")}/ws`);
-    // Refetch on every (re)connect so a restarted server or a missed message cannot leave stale state.
+    // Refetch once the socket is up, so nothing sent between the fetch and the connect is missed.
     ws.onopen = () => {
+      store.setUi({ conn: "live" });
       store.setHealth({ ws: "ok" });
-      fetch(`${SERVER_URL}/state`)
-        .then((r) => r.json() as Promise<unknown>)
-        .then((data) => closed || dispatch({ type: "state", data }))
-        .catch((e: unknown) => console.warn("[bullpen] /state failed", e));
+      loadState();
     };
     ws.onmessage = (m: MessageEvent<string>) => {
       try {
@@ -83,8 +104,9 @@ export function connect(store: Store): () => void {
     };
     ws.onclose = () => {
       if (closed) return;
+      store.setUi({ conn: "offline" });
       store.setHealth({ ws: "down" });
-      setTimeout(open, 1000);
+      retry = setTimeout(open, 1500);
     };
   };
   const dispatch = (msg: unknown) => {
@@ -95,6 +117,7 @@ export function connect(store: Store): () => void {
   open();
   return () => {
     closed = true;
+    clearTimeout(retry);
     window.clearInterval(healthTimer);
     ws?.close();
   };
@@ -117,13 +140,21 @@ export function act(store: Store, action: Action): void {
     return;
   }
   const path = action.kind === "approve" ? `/approve/${action.id}` : `/${action.kind}/${action.agent}`;
+  const label = action.kind === "approve" ? `${action.decision === "allow" ? "Approve" : "Deny"} ${action.id}` : `${action.kind[0].toUpperCase()}${action.kind.slice(1)} ${action.agent}`;
   fetch(`${SERVER_URL}${path}`, {
     method: "POST",
     ...(action.kind === "approve" && {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ decision: action.decision }),
     }),
-  }).catch((e: unknown) => console.warn(`[bullpen] POST ${path} failed`, e));
+  })
+    .then(async (r) => {
+      if (r.ok) return;
+      // FastAPI errors are {"detail": str}; a 409 on merge is a conflict the user should see.
+      const body = (await r.json().catch(() => ({}))) as { detail?: unknown };
+      store.notify(`${label} failed: ${typeof body.detail === "string" ? body.detail : `HTTP ${r.status}`}`);
+    })
+    .catch(() => store.notify(`${label} failed: server offline`));
 }
 
 export async function orchestrate(store: Store, ask: string): Promise<Plan> {
