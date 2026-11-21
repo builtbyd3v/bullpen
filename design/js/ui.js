@@ -1,13 +1,13 @@
 /* ============================================================================
    BULLPEN — Interactive Pixel-Art UI Controller
-   Handles Hover Tooltips, Building Change Inspector, Options Menu (View Toggle,
-   Time Limit, & Folder Mapping), The Oracle Feed, Announcements, & Main Loop.
+   Includes Pre-Map Repository Analyzer (local folder scan, presets, live crop
+   preview), Hover Tooltips, Building Inspector, Options, & The Oracle Feed.
    ============================================================================ */
 
 (function () {
   const { CLAUDE_MODELS } = window.BullpenPalette;
   const Data = window.BullpenCampusData;
-  const { state, tick, startOpeningScene } = window.BullpenState;
+  const { state, tick } = window.BullpenState;
   const { CampusMapRenderer } = window.BullpenMapRenderer;
   const TraditionalView = window.BullpenTraditionalView;
 
@@ -28,6 +28,24 @@
   const oracleListEl = document.getElementById('oracleList');
   const legendEl = document.getElementById('modelLegend');
   const rootChipEl = document.getElementById('headerRootFolder');
+  const cropChipEl = document.getElementById('headerCropChip');
+
+  // Pre-Map Repository Analyzer
+  const analyzerOverlay = document.getElementById('repoAnalyzerOverlay');
+  const localRepoInput = document.getElementById('localRepoInput');
+  const btnPickLocalRepo = document.getElementById('btnPickLocalRepo');
+  const localScanStatus = document.getElementById('localScanStatus');
+  const analyzerPresetsEl = document.getElementById('analyzerPresets');
+  const analyzerRootInput = document.getElementById('analyzerRootInput');
+  const analyzerFoldersInput = document.getElementById('analyzerFoldersInput');
+  const analyzerCountBadge = document.getElementById('analyzerCountBadge');
+  const analyzerFolderChips = document.getElementById('analyzerFolderChips');
+  const analyzerCropSummary = document.getElementById('analyzerCropSummary');
+  const analyzerScanBarWrap = document.getElementById('analyzerScanBarWrap');
+  const analyzerScanMsg = document.getElementById('analyzerScanMsg');
+  const analyzerScanFill = document.getElementById('analyzerScanFill');
+  const btnLaunchCampus = document.getElementById('btnLaunchCampus');
+  const btnOpenAnalyzer = document.getElementById('btnOpenAnalyzer');
 
   // Drawer & Options Modal
   const buildingDrawerEl = document.getElementById('buildingDrawer');
@@ -35,6 +53,8 @@
   const optionsModalEl = document.getElementById('optionsModal');
   const optionsRootInput = document.getElementById('optionsRootInput');
   const optionsTimeLimitInput = document.getElementById('optionsTimeLimitInput');
+  const optionsAddFolderInput = document.getElementById('optionsAddFolderInput');
+  const btnAddFolder = document.getElementById('btnAddFolder');
   const optionsMappingsList = document.getElementById('optionsMappingsList');
 
   // Buttons & Controls
@@ -58,6 +78,155 @@
   const btnResetCampus = document.getElementById('btnResetCampus');
 
   const renderer = new CampusMapRenderer(canvas);
+
+  // ==========================================================================
+  // 0. PRE-MAP REPOSITORY ANALYZER (Runs BEFORE showing the campus map!)
+  // ==========================================================================
+  const IGNORED_DIRS = new Set([
+    '.git', 'node_modules', '.venv', 'venv', '__pycache__', '.next', '.nuxt',
+    'dist', 'build', 'out', '.idea', '.vscode', '.cache', 'coverage', '.DS_Store', 'target'
+  ]);
+
+  let selectedPresetId = 'bullpen';
+
+  function parseFoldersText(str) {
+    return String(str || '')
+      .split(/[\n,;]+/)
+      .map(s => Data.normalizeFolder(s))
+      .filter(Boolean);
+  }
+
+  function renderAnalyzerPresets() {
+    analyzerPresetsEl.innerHTML = Data.REPO_PRESETS.map(p => `
+      <button type="button" class="preset-card ${selectedPresetId === p.id ? 'active' : ''}" data-preset-id="${p.id}">
+        <div class="preset-title">${escapeHtml(p.label)}</div>
+        <div class="preset-desc">${escapeHtml(p.desc)}</div>
+      </button>
+    `).join('');
+
+    analyzerPresetsEl.querySelectorAll('[data-preset-id]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const preset = Data.REPO_PRESETS.find(p => p.id === btn.dataset.presetId);
+        if (!preset) return;
+        selectedPresetId = preset.id;
+        analyzerRootInput.value = preset.root;
+        analyzerFoldersInput.value = preset.folders.join(', ');
+        localScanStatus.textContent = `Loaded preset: ${preset.label}`;
+        localScanStatus.classList.remove('success');
+        renderAnalyzerPresets();
+        updateAnalyzerPreview();
+      });
+    });
+  }
+
+  function updateAnalyzerPreview() {
+    const folders = parseFoldersText(analyzerFoldersInput.value);
+    const previewBuildings = Data.buildBuildingsForFolders(folders);
+    const previewCrop = Data.computeCropRect(previewBuildings);
+    const count = previewBuildings.length;
+    const maxCap = Data.BUILDING_CATALOG.length;
+
+    analyzerCountBadge.textContent = `${count} FOLDER${count === 1 ? '' : 'S'}`;
+
+    analyzerFolderChips.innerHTML = previewBuildings.map(b => `
+      <span class="analyzer-chip ${b.guarded ? 'guarded' : ''}">
+        ${b.guarded ? '🛡️ ' : ''}${escapeHtml(Data.getFolderLabel(b.folder))}
+      </span>
+    `).join('');
+
+    const extraNote = folders.length > maxCap
+      ? ` (capped to ${maxCap} campus buildings)`
+      : '';
+
+    analyzerCropSummary.innerHTML = `
+      <strong>${previewCrop.tierLabel}</strong> —
+      Showing <strong>${count} building${count === 1 ? '' : 's'}</strong> inside a
+      <strong>${previewCrop.w}×${previewCrop.h}</strong> cropped USF Campus viewport so all ${count} folder${count === 1 ? '' : 's'} fit cleanly on screen${extraNote}.
+    `;
+  }
+
+  // Real client-side local repository directory scanner (HTML5 webkitdirectory)
+  btnPickLocalRepo.addEventListener('click', () => localRepoInput.click());
+  localRepoInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const firstRel = files[0].webkitRelativePath || '';
+    const rootName = firstRel.split('/')[0] || 'local-repo';
+    const topFolders = new Set();
+
+    files.forEach(file => {
+      const parts = (file.webkitRelativePath || '').split('/');
+      if (parts.length >= 3) {
+        const dir = parts[1];
+        if (dir && !dir.startsWith('.') && !IGNORED_DIRS.has(dir.toLowerCase())) {
+          topFolders.add('/' + dir);
+        }
+      }
+    });
+
+    const sorted = Array.from(topFolders).sort();
+    selectedPresetId = null;
+    analyzerRootInput.value = rootName + '/';
+    analyzerFoldersInput.value = sorted.length ? sorted.join(', ') : '/src';
+    localScanStatus.textContent = sorted.length
+      ? `Scanned "${rootName}/" — detected ${sorted.length} top-level folder${sorted.length === 1 ? '' : 's'}!`
+      : `Scanned "${rootName}/" — no subdirectories found (defaulted to /src).`;
+    localScanStatus.classList.add('success');
+
+    renderAnalyzerPresets();
+    updateAnalyzerPreview();
+    localRepoInput.value = '';
+  });
+
+  analyzerFoldersInput.addEventListener('input', () => {
+    selectedPresetId = null;
+    renderAnalyzerPresets();
+    updateAnalyzerPreview();
+  });
+
+  // Launch analysis scan animation -> dynamically crop & reveal the USF Campus!
+  let isScanning = false;
+  btnLaunchCampus.addEventListener('click', () => {
+    if (isScanning) return;
+    isScanning = true;
+
+    const root = analyzerRootInput.value.trim() || 'bullpen/';
+    const folders = parseFoldersText(analyzerFoldersInput.value);
+    const previewBuildings = Data.buildBuildingsForFolders(folders);
+    const previewCrop = Data.computeCropRect(previewBuildings);
+
+    btnLaunchCampus.disabled = true;
+    analyzerScanBarWrap.classList.remove('hidden');
+    analyzerScanFill.style.width = '20%';
+    analyzerScanMsg.textContent = `Scanning ${root} — found ${previewBuildings.length} folders...`;
+
+    setTimeout(() => {
+      analyzerScanFill.style.width = '65%';
+      analyzerScanMsg.textContent = `Cropping USF Campus to ${previewCrop.tierLabel} (${previewCrop.w}x${previewCrop.h})...`;
+    }, 240);
+
+    setTimeout(() => {
+      analyzerScanFill.style.width = '100%';
+      analyzerScanMsg.textContent = `Mapping all ${previewBuildings.length} buildings — launching campus!`;
+    }, 520);
+
+    setTimeout(() => {
+      isScanning = false;
+      btnLaunchCampus.disabled = false;
+      analyzerScanBarWrap.classList.add('hidden');
+      analyzerScanFill.style.width = '0%';
+      state.analyzeRepository(root, folders);
+    }, 760);
+  });
+
+  btnOpenAnalyzer.addEventListener('click', () => {
+    analyzerRootInput.value = state.rootFolder;
+    analyzerFoldersInput.value = state.buildings.map(b => b.folder).join(', ');
+    renderAnalyzerPresets();
+    updateAnalyzerPreview();
+    state.openRepoAnalyzer();
+  });
 
   // ==========================================================================
   // 1. CLAUDE MODEL COLOR LEGEND (Header)
@@ -85,6 +254,7 @@
   let lastPointer = { x: 0, y: 0 };
 
   canvas.addEventListener('mousemove', (e) => {
+    if (!state.repoAnalyzed) return;
     const world = renderer.clientToWorld(e.clientX, e.clientY);
     const hit = renderer.hitTestBuilding(state.buildings, world.x, world.y);
     lastPointer = { x: e.clientX, y: e.clientY };
@@ -106,6 +276,7 @@
   });
 
   canvas.addEventListener('click', (e) => {
+    if (!state.repoAnalyzed) return;
     const world = renderer.clientToWorld(e.clientX, e.clientY);
     const hit = renderer.hitTestBuilding(state.buildings, world.x, world.y);
     if (hit) {
@@ -172,10 +343,10 @@
   }
 
   // ==========================================================================
-  // 3. BUILDING INSPECTOR DRAWER (Exact Agent Changes + Summary + Queue)
+  // 3. BUILDING INSPECTOR DRAWER
   // ==========================================================================
   function renderBuildingDrawer() {
-    if (!state.selectedBuildingId) {
+    if (!state.selectedBuildingId || !state.repoAnalyzed) {
       buildingDrawerEl.classList.add('hidden');
       return;
     }
@@ -264,7 +435,7 @@
             </article>
           `;
         }).join('')
-      : `<div class="empty-changes">No agent commits recorded in <code>${escapeHtml(b.folder)}</code> yet. Dispatch a Claude Bull to see live construction &amp; diffs!</div>`;
+      : `<div class="empty-changes">No agent commits recorded in <code>${escapeHtml(b.folder)}</code> yet.</div>`;
 
     const folderTag = Data.getFolderLabel(b.folder);
     buildingDrawerBody.innerHTML = `
@@ -313,7 +484,7 @@
   btnCloseDrawer.addEventListener('click', () => state.selectBuilding(null));
 
   // ==========================================================================
-  // 4. OPTIONS MENU (View Toggle, Time Limit, & Building -> Folder Mapping)
+  // 4. OPTIONS MENU (View Toggle, Time Limit, & Dynamic Building Mapping)
   // ==========================================================================
   function renderOptionsModal() {
     optionsRootInput.value = state.rootFolder;
@@ -322,6 +493,7 @@
     optModePixel.classList.toggle('active', state.viewMode === 'pixel');
     optModeTrad.classList.toggle('active', state.viewMode === 'traditional');
 
+    const canRemove = state.buildings.length > 1;
     optionsMappingsList.innerHTML = state.buildings.map(b => `
       <div class="opt-map-row">
         <div class="opt-bldg-info">
@@ -339,18 +511,34 @@
           <input type="checkbox" data-guard-bldg="${b.id}" ${b.guarded ? 'checked' : ''} />
           <span>🛡️ Guarded</span>
         </label>
+        <button
+          type="button"
+          class="pixel-btn danger opt-remove-btn"
+          data-remove-bldg="${b.id}"
+          title="Remove folder and tighten campus crop"
+          ${canRemove ? '' : 'disabled'}
+        >✕</button>
       </div>
     `).join('');
 
     optionsMappingsList.querySelectorAll('[data-map-bldg]').forEach(input => {
       input.addEventListener('change', (e) => {
         state.updateBuildingFolder(e.target.dataset.mapBldg, e.target.value);
+        renderOptionsModal();
       });
     });
 
     optionsMappingsList.querySelectorAll('[data-guard-bldg]').forEach(chk => {
       chk.addEventListener('change', (e) => {
         state.toggleBuildingGuarded(e.target.dataset.guardBldg);
+      });
+    });
+
+    optionsMappingsList.querySelectorAll('[data-remove-bldg]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (state.removeFolderBuilding(btn.dataset.removeBldg)) {
+          renderOptionsModal();
+        }
       });
     });
   }
@@ -370,6 +558,14 @@
   optionsTimeLimitInput.addEventListener('change', (e) => {
     state.setTimeLimit(e.target.value);
     optionsTimeLimitInput.value = String(state.timeLimitSec);
+  });
+  btnAddFolder.addEventListener('click', () => {
+    const val = optionsAddFolderInput.value.trim();
+    if (!val) return;
+    if (state.addFolderBuilding(val)) {
+      optionsAddFolderInput.value = '';
+      renderOptionsModal();
+    }
   });
   btnResetMappings.addEventListener('click', () => {
     state.resetBuildingMappings();
@@ -422,7 +618,7 @@
   }
 
   // ==========================================================================
-  // 6. ANNOUNCEMENT BANNER (Ribbon-Cutting & Dramatic Kick-Out!)
+  // 6. ANNOUNCEMENT BANNER
   // ==========================================================================
   function renderAnnouncement() {
     if (!state.announcement) {
@@ -454,11 +650,15 @@
       return `<option value="${a.id}">${escapeHtml(a.shortLabel)} (${escapeHtml(m.shortName)})</option>`;
     }).join('');
 
-    const prevB = demoBuildingSelect.value || 'ENB';
+    const prevB = demoBuildingSelect.value;
     demoBuildingSelect.innerHTML = state.buildings.map(b =>
       `<option value="${b.id}">${escapeHtml(Data.getFolderLabel(b.folder))} — ${escapeHtml(b.name)}</option>`
     ).join('');
-    demoBuildingSelect.value = prevB;
+    if (state.buildings.some(b => b.id === prevB)) {
+      demoBuildingSelect.value = prevB;
+    } else if (state.buildings[0]) {
+      demoBuildingSelect.value = state.buildings[0].id;
+    }
   }
 
   btnAutoDemo.addEventListener('click', () => state.toggleAutoDemo());
@@ -466,10 +666,10 @@
     state.dispatchAgent(demoAgentSelect.value, demoBuildingSelect.value, { duration: 10 });
   });
   btnTestQueue.addEventListener('click', () => {
-    state.testQueueDemo(demoBuildingSelect.value || 'ENB');
+    state.testQueueDemo(demoBuildingSelect.value);
   });
   btnTestKickOut.addEventListener('click', () => {
-    state.testKickOutDemo(demoBuildingSelect.value || 'ENB');
+    state.testKickOutDemo(demoBuildingSelect.value);
   });
   btnFinishActive.addEventListener('click', () => state.finishActiveWork());
   btnResetCampus.addEventListener('click', () => state.resetCampus());
@@ -479,10 +679,14 @@
   // ==========================================================================
   function syncUI(reason) {
     rootChipEl.textContent = state.rootFolder;
+    cropChipEl.textContent = `${state.buildings.length} FOLDER${state.buildings.length === 1 ? '' : 'S'} • ${state.cropRect.tierLabel}`;
+
+    // Show Pre-Map Repository Analyzer until repository has been analyzed!
+    analyzerOverlay.classList.toggle('hidden', state.repoAnalyzed);
 
     const isPixel = state.viewMode === 'pixel';
-    mapStage.classList.toggle('hidden', !isPixel);
-    tradViewEl.classList.toggle('hidden', isPixel);
+    mapStage.classList.toggle('hidden', !state.repoAnalyzed || !isPixel);
+    tradViewEl.classList.toggle('hidden', !state.repoAnalyzed || isPixel);
     btnViewPixel.classList.toggle('active', isPixel);
     btnViewTrad.classList.toggle('active', !isPixel);
     optModePixel.classList.toggle('active', isPixel);
@@ -495,13 +699,14 @@
     renderOracleFeed();
     renderAnnouncement();
 
-    if (reason === 'options' || reason === 'reset') {
+    if (reason === 'options' || reason === 'reset' || reason === 'analyze') {
+      renderer.applyCrop(state.cropRect);
       populateDemoSelectors();
     }
     if (reason === 'selection' || reason === 'ribbon' || reason === 'kickout' || reason === 'options' || state.selectedBuildingId) {
       renderBuildingDrawer();
     }
-    if (!isPixel) {
+    if (state.repoAnalyzed && !isPixel) {
       TraditionalView.render(tradViewEl, state);
     }
   }
@@ -521,11 +726,11 @@
 
     tick(dt);
 
-    if (state.viewMode === 'pixel') {
+    if (state.repoAnalyzed && state.viewMode === 'pixel') {
       renderer.render(state, sec);
     }
 
-    if (ts - lastSlowSync > 250) {
+    if (state.repoAnalyzed && ts - lastSlowSync > 250) {
       lastSlowSync = ts;
       renderModelLegend();
       if (state.viewMode === 'traditional') {
@@ -545,9 +750,10 @@
     requestAnimationFrame(frame);
   }
 
-  // Boot!
+  // Boot directly into the Pre-Map Repository Analyzer!
+  renderAnalyzerPresets();
+  updateAnalyzerPreview();
   populateDemoSelectors();
   syncUI('init');
-  startOpeningScene();
   requestAnimationFrame(frame);
 })();

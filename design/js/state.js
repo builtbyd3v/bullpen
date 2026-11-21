@@ -1,7 +1,7 @@
 /* ============================================================================
-   BULLPEN — Interactive Design State Store, Pathfinding & Agent FSM
-   Features: Campus Patrol, Waiting Queue at Door, Construction Hovering,
-   Ribbon-Cutting Completion, & Dramatic Kick-Out on Error / Time Limit.
+   BULLPEN — Interactive Design State Store, Repo Analyzer & Agent FSM
+   Analyzes repository folders first, dynamically maps N buildings, computes an
+   exact USF Campus crop so ALL folders remain visible, and animates Bulls.
    ============================================================================ */
 
 window.BullpenState = (function () {
@@ -9,27 +9,50 @@ window.BullpenState = (function () {
 
   const listeners = new Set();
 
-  function cloneDefaultBuildings() {
-    return Data.DEFAULT_BUILDINGS.map(b => ({
-      ...b,
-      door: { ...b.door },
-      changes: b.changes.map(c => ({
-        ...c,
-        files: c.files.map(f => ({ ...f, diff: f.diff.map(d => ({ ...d })) }))
-      }))
-    }));
+  function nowTimeLabel() {
+    const d = new Date();
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   }
 
-  function createInitialAgents() {
+  function randomCommitHash() {
+    return Math.random().toString(16).substring(2, 9);
+  }
+
+  function getVisibleWaypoints(crop) {
+    const pad = 12;
+    const valid = Object.entries(Data.WAYPOINTS).filter(([, pt]) =>
+      pt.x >= crop.x + pad &&
+      pt.x <= crop.x + crop.w - pad &&
+      pt.y >= crop.y + pad &&
+      pt.y <= crop.y + crop.h - pad
+    );
+    return valid.length ? valid.map(([id]) => id) : ['lc_maple', 'lc_lib', 'enb_door'];
+  }
+
+  function createAgentsForCrop(crop, buildings) {
+    const visibleIds = getVisibleWaypoints(crop);
+    const pickPos = (idx) => {
+      if (visibleIds.length) {
+        const id = visibleIds[idx % visibleIds.length];
+        return { ...Data.WAYPOINTS[id] };
+      }
+      const b = buildings[idx % buildings.length];
+      return b ? { ...b.door } : { x: 192, y: 166 };
+    };
+
+    const p0 = pickPos(0);
+    const p1 = pickPos(1);
+    const p2 = pickPos(2);
+
     return [
       {
         id: 'agent-1',
         name: 'Agent 1 (Opus)',
         shortLabel: 'OPUS',
         modelId: 'claude-opus-4-6',
-        x: 170, y: 158,
+        x: p0.x, y: p0.y,
         facing: 1,
-        state: 'idle', // idle | walking | waiting | working | kicked | celebrating
+        state: 'idle',
         path: [],
         targetBuildingId: null,
         task: 'Patrolling USF Campus',
@@ -48,7 +71,7 @@ window.BullpenState = (function () {
         name: 'Agent 2 (Sonnet)',
         shortLabel: 'SONNET',
         modelId: 'claude-sonnet-4-6',
-        x: 170, y: 62,
+        x: p1.x, y: p1.y,
         facing: -1,
         state: 'idle',
         path: [],
@@ -69,7 +92,7 @@ window.BullpenState = (function () {
         name: 'Agent 3 (Haiku)',
         shortLabel: 'HAIKU',
         modelId: 'claude-haiku-4-5',
-        x: 276, y: 276,
+        x: p2.x, y: p2.y,
         facing: 1,
         state: 'idle',
         path: [],
@@ -88,77 +111,32 @@ window.BullpenState = (function () {
     ];
   }
 
-  function nowTimeLabel() {
-    const d = new Date();
-    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  }
-
-  function randomCommitHash() {
-    return Math.random().toString(16).substring(2, 9);
-  }
-
   let kickReasonToggle = 0;
 
+  // Initial default dataset (pre-loaded behind the Pre-Map Repo Analyzer)
+  const initialPreset = Data.REPO_PRESETS[2]; // builtbyd3v/bullpen (8 folders)
+  const initialBuildings = Data.buildBuildingsForFolders(initialPreset.folders);
+  const initialCrop = Data.computeCropRect(initialBuildings);
+
   const state = {
-    rootFolder: 'bullpen-app/',
-    viewMode: 'pixel', // 'pixel' | 'traditional'
-    timeLimitSec: 15,  // Configurable time limit before agent gets kicked out!
-    buildings: cloneDefaultBuildings(),
-    agents: createInitialAgents(),
+    repoAnalyzed: false, // Analyzer screen displays BEFORE showing the map!
+    rootFolder: initialPreset.root,
+    analyzedFolders: [...initialPreset.folders],
+    truncatedExtraCount: 0,
+    viewMode: 'pixel',
+    timeLimitSec: 15,
+    buildings: initialBuildings,
+    cropRect: initialCrop,
+    agents: createAgentsForCrop(initialCrop, initialBuildings),
     hoveredBuildingId: null,
     selectedBuildingId: null,
-    ribbons: [],       // { buildingId, progress, folder, agentName }
-    kickouts: [],      // { id, buildingId, agentId, reasonType, reasonText, progress, duration, startX, startY, landX, landY, dirX, handoffDone }
-    announcement: null,// { kind: 'ribbon'|'kickout', title, subtitle, buildingId, timer }
+    ribbons: [],
+    kickouts: [],
+    announcement: null,
     screenShake: 0,
     autoDemoRunning: false,
     autoDemoTimers: [],
-    oracleFeed: [
-      {
-        id: 'orc-init-1',
-        type: 'commit',
-        time: '11:23 AM',
-        buildingId: 'LIB',
-        agentId: 'agent-3',
-        modelId: 'claude-haiku-4-5',
-        title: 'Updated /docs/LEASE_PROTOCOL.md',
-        detail: 'Documented folder lease queue & automatic timeout eviction.',
-        commit: '71d4e9a',
-      },
-      {
-        id: 'orc-init-2',
-        type: 'commit',
-        time: '11:21 AM',
-        buildingId: 'MSC',
-        agentId: 'agent-2',
-        modelId: 'claude-sonnet-4-6',
-        title: 'Applied USF Green & Gold tokens in /frontend',
-        detail: 'Official #006747 and #CFC493 palette synced to Campus HUD.',
-        commit: 'c82e0b7',
-      },
-      {
-        id: 'orc-init-3',
-        type: 'commit',
-        time: '11:18 AM',
-        buildingId: 'ENB',
-        agentId: 'agent-1',
-        modelId: 'claude-opus-4-6',
-        title: 'Hardened /backend/auth/login.ts token refresh',
-        detail: 'Added atomic lease lock so waiting agents enter cleanly in order.',
-        commit: 'a4f91c2',
-      },
-      {
-        id: 'orc-init-4',
-        type: 'guarded',
-        time: '11:15 AM',
-        buildingId: 'SUN',
-        agentId: 'agent-1',
-        modelId: 'claude-opus-4-6',
-        title: 'Guarded Zone migration approved in /database',
-        detail: 'Added non-destructive 004_agent_leases.sql schema.',
-        commit: 'e09a31f',
-      },
-    ],
+    oracleFeed: [],
 
     subscribe(fn) {
       listeners.add(fn);
@@ -200,6 +178,101 @@ window.BullpenState = (function () {
         .sort((a, b) => (a.queuePos || 0) - (b.queuePos || 0));
     },
 
+    // ========================================================================
+    // ANALYZE REPOSITORY -> DYNAMIC BUILDING COUNT & CAMPUS CROP
+    // ========================================================================
+    analyzeRepository(rootName, rawFolders, extraIgnoredCount = 0) {
+      stopAutoDemo();
+
+      const cleanedRoot = String(rootName || 'bullpen/').trim();
+      state.rootFolder = cleanedRoot.endsWith('/') ? cleanedRoot : cleanedRoot + '/';
+
+      const uniqueCount = new Set(
+        rawFolders.map(f => Data.normalizeFolder(f).toLowerCase()).filter(Boolean)
+      ).size;
+      state.truncatedExtraCount = Math.max(0, uniqueCount - Data.BUILDING_CATALOG.length) + extraIgnoredCount;
+
+      state.buildings = Data.buildBuildingsForFolders(rawFolders);
+      state.analyzedFolders = state.buildings.map(b => b.folder);
+      state.cropRect = Data.computeCropRect(state.buildings);
+      state.agents = createAgentsForCrop(state.cropRect, state.buildings);
+
+      state.hoveredBuildingId = null;
+      state.selectedBuildingId = null;
+      state.ribbons = [];
+      state.kickouts = [];
+      state.announcement = null;
+      state.screenShake = 0;
+      state.repoAnalyzed = true;
+
+      // Seed Oracle feed with repository scan + initial folder summaries
+      state.oracleFeed = [
+        {
+          id: 'orc-scan-' + Date.now(),
+          type: 'enter',
+          time: nowTimeLabel(),
+          buildingId: state.buildings[0] ? state.buildings[0].id : null,
+          agentId: 'agent-1',
+          modelId: 'claude-opus-4-6',
+          title: `Analyzed ${state.rootFolder}: ${state.buildings.length} folder${state.buildings.length === 1 ? '' : 's'} mapped`,
+          detail: `Campus cropped to ${state.cropRect.tierLabel} (${state.cropRect.w}x${state.cropRect.h}) — all ${state.buildings.length} visible.`,
+        },
+        ...state.buildings.slice(0, 4).map((b, idx) => {
+          const chg = b.changes[0];
+          return {
+            id: 'orc-init-' + idx + '-' + Date.now(),
+            type: b.guarded ? 'guarded' : 'commit',
+            time: chg ? chg.time : nowTimeLabel(),
+            buildingId: b.id,
+            agentId: chg ? chg.agentId : 'agent-1',
+            modelId: chg ? chg.modelId : 'claude-opus-4-6',
+            title: b.guarded
+              ? `Guarded Zone detected in ${b.folder}`
+              : `Mapped ${b.folder} -> ${b.name}`,
+            detail: b.summary,
+            commit: chg ? chg.commit : undefined,
+          };
+        }),
+      ];
+
+      state.notify('analyze');
+
+      // Kick off a lively opening dispatch on the first detected building!
+      const firstB = state.buildings[0];
+      if (firstB) {
+        setTimeout(() => {
+          if (state.repoAnalyzed && state.agents[0] && state.agents[0].state === 'idle' && state.getBuilding(firstB.id)) {
+            state.dispatchAgent('agent-1', firstB.id, { duration: 11 });
+          }
+        }, 550);
+      }
+    },
+
+    openRepoAnalyzer() {
+      stopAutoDemo();
+      state.repoAnalyzed = false;
+      state.notify('analyzerOpen');
+    },
+
+    // Live add/remove folders from Options (dynamically re-crops campus!)
+    addFolderBuilding(folderPath) {
+      const norm = Data.normalizeFolder(folderPath);
+      if (!norm) return false;
+      if (state.buildings.length >= Data.BUILDING_CATALOG.length) return false;
+      if (state.buildings.some(b => b.folder.toLowerCase() === norm.toLowerCase())) return false;
+
+      const nextFolders = [...state.buildings.map(b => b.folder), norm];
+      state.analyzeRepository(state.rootFolder, nextFolders);
+      return true;
+    },
+
+    removeFolderBuilding(buildingId) {
+      if (state.buildings.length <= 1) return false;
+      const nextFolders = state.buildings.filter(b => b.id !== buildingId).map(b => b.folder);
+      state.analyzeRepository(state.rootFolder, nextFolders);
+      return true;
+    },
+
     addOracleEntry(entry) {
       state.oracleFeed.unshift({
         id: 'orc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -217,7 +290,7 @@ window.BullpenState = (function () {
     },
 
     setRootFolder(folder) {
-      const cleaned = (folder || 'bullpen-app/').trim();
+      const cleaned = (folder || 'bullpen/').trim();
       state.rootFolder = cleaned.endsWith('/') ? cleaned : cleaned + '/';
       state.notify('options');
     },
@@ -231,8 +304,7 @@ window.BullpenState = (function () {
     updateBuildingFolder(buildingId, folderPath) {
       const b = state.getBuilding(buildingId);
       if (!b) return;
-      let clean = (folderPath || b.defaultFolder).trim();
-      if (!clean.startsWith('/')) clean = '/' + clean;
+      const clean = Data.normalizeFolder(folderPath) || b.defaultFolder;
       b.folder = clean;
       state.notify('options');
     },
@@ -245,11 +317,9 @@ window.BullpenState = (function () {
     },
 
     resetBuildingMappings() {
-      state.rootFolder = 'bullpen-app/';
       state.timeLimitSec = 15;
       state.buildings.forEach(b => {
         b.folder = b.defaultFolder;
-        b.guarded = b.id === 'SUN';
       });
       state.notify('options');
     },
@@ -271,9 +341,9 @@ window.BullpenState = (function () {
       const pick = samples.length
         ? samples[Math.floor(Math.random() * samples.length)]
         : {
-            task: `Refactor module logic in ${b ? b.folder : buildingId}`,
+            task: `Refactor module logic in ${b ? b.folder : '/src'}`,
             reason: 'Improve reliability and test coverage for this folder.',
-            summary: `Updated core handlers inside ${b ? b.folder : buildingId}.`,
+            summary: `Updated core handlers inside ${b ? b.folder : '/src'}.`,
             file: `${b ? b.folder : '/src'}/index.ts`,
             diff: [
               { type: 'add', text: '// Updated by Bullpen Claude agent' },
@@ -288,7 +358,6 @@ window.BullpenState = (function () {
       };
     },
 
-    // Dispatch an agent to walk to a building (waits in line if occupied!)
     dispatchAgent(agentId, buildingId, opts = {}) {
       const agent = state.getAgent(agentId);
       const b = state.getBuilding(buildingId);
@@ -322,13 +391,12 @@ window.BullpenState = (function () {
       state.notify('agents');
     },
 
-    // Preview Helper 1: Show an active agent working & a second agent waiting politely at the door!
-    testQueueDemo(buildingId = 'ENB') {
+    testQueueDemo(buildingId) {
       const b = state.getBuilding(buildingId) || state.buildings[0];
+      if (!b) return;
       const active = state.getActiveAgentOnBuilding(b.id);
 
       if (active) {
-        // Already someone working here -> send another available agent to wait at the door!
         const waiter = state.agents.find(a => a.id !== active.id && a.state !== 'working' && a.state !== 'kicked')
           || state.agents.find(a => a.id !== active.id);
         if (waiter) {
@@ -341,7 +409,6 @@ window.BullpenState = (function () {
         return;
       }
 
-      // Otherwise start Agent 1 immediately working here & send Agent 2 walking up to wait!
       const a1 = state.agents[0];
       const a2 = state.agents[1];
       const p1 = state.pickTaskPayload(b.id);
@@ -353,30 +420,27 @@ window.BullpenState = (function () {
       a1.workProgress = 0.1;
       startWorkingOnBuilding(a1, b);
 
-      a2.x = Math.max(24, b.door.x - 42);
+      a2.x = Math.max(state.cropRect.x + 18, b.door.x - 42);
       a2.y = b.door.y;
       state.dispatchAgent(a2.id, b.id, {
         duration: 9,
-        task: `Queued UI/API follow-up in ${b.folder}`,
+        task: `Queued follow-up in ${b.folder}`,
         reason: `Waiting politely for ${a1.shortLabel} to finish in ${b.folder}.`,
       });
     },
 
-    // Preview Helper 2: Dramatically kick out an active agent (Error or Time Limit) so the waiting agent enters!
-    testKickOutDemo(buildingId = 'ENB', forceType = null) {
+    testKickOutDemo(buildingId, forceType = null) {
       const reasonType = forceType || (kickReasonToggle++ % 2 === 0 ? 'error' : 'timeout');
       const reasonText = reasonType === 'error'
         ? 'Runtime error: TypeScript build failed & hook aborted edit'
         : `Time limit exceeded (${state.timeLimitSec}s lease cap reached)`;
 
-      // Prefer a building that already has an active working agent (especially one with a waiter!)
       const activeWithWaiter = state.agents.find(
         a => a.state === 'working' && state.getWaitingAgentsOnBuilding(a.targetBuildingId).length > 0
       );
       const anyActive = activeWithWaiter || state.agents.find(a => a.state === 'working');
 
       if (anyActive) {
-        // Make sure there is a waiting agent at the door if one is idle so user sees the handoff!
         const b = state.getBuilding(anyActive.targetBuildingId);
         const existingWaiters = b ? state.getWaitingAgentsOnBuilding(b.id) : [];
         if (b && existingWaiters.length === 0) {
@@ -384,7 +448,7 @@ window.BullpenState = (function () {
           if (idlePeer) {
             placeAgentInQueue(idlePeer, b, {
               task: `Recovery task in ${b.folder}`,
-              reason: `Queued at ${b.code} door ready to take over.`,
+              reason: `Queued outside ${b.folder} ready to take over.`,
             });
           }
         }
@@ -392,8 +456,8 @@ window.BullpenState = (function () {
         return;
       }
 
-      // If no one is working right now, set up Opus working + Sonnet waiting at door, then boot Opus!
       const b = state.getBuilding(buildingId) || state.buildings[0];
+      if (!b) return;
       const a1 = state.agents[0];
       const a2 = state.agents[1];
 
@@ -408,7 +472,7 @@ window.BullpenState = (function () {
 
       placeAgentInQueue(a2, b, {
         task: `Take over ${b.folder} after eviction`,
-        reason: `Waiting at ${b.code} door to enter once lease opens.`,
+        reason: `Waiting outside ${b.folder} to enter once lease opens.`,
       });
 
       setTimeout(() => {
@@ -418,7 +482,6 @@ window.BullpenState = (function () {
       }, 650);
     },
 
-    // Finish work immediately on any currently active building (triggers ribbon-cutting & lets next waiter enter!)
     finishActiveWork() {
       const working = state.agents.find(a => a.state === 'working');
       if (working) {
@@ -426,7 +489,8 @@ window.BullpenState = (function () {
         return true;
       }
       const fallback = state.agents[0];
-      const b = state.getBuilding('MSC') || state.buildings[0];
+      const b = state.buildings[0];
+      if (!b) return false;
       fallback.targetBuildingId = b.id;
       fallback.pendingPayload = state.pickTaskPayload(b.id);
       fallback.x = b.x + b.w / 2;
@@ -436,18 +500,9 @@ window.BullpenState = (function () {
     },
 
     resetCampus() {
-      stopAutoDemo();
-      state.buildings = cloneDefaultBuildings();
-      state.agents = createInitialAgents();
-      state.ribbons = [];
-      state.kickouts = [];
-      state.announcement = null;
-      state.selectedBuildingId = null;
-      state.screenShake = 0;
-      state.notify('reset');
+      state.analyzeRepository(state.rootFolder, state.analyzedFolders);
     },
 
-    // Scripted Auto-Demo showcasing: Wait-in-line -> Kick-Out on Error/Timeout -> Waiting Agent Enters -> Ribbon-Cutting!
     toggleAutoDemo() {
       if (state.autoDemoRunning) {
         stopAutoDemo();
@@ -457,29 +512,32 @@ window.BullpenState = (function () {
       state.autoDemoRunning = true;
       state.notify('demo');
 
-      // Step 1: Opus walks to ENB (/backend) with a long task; Sonnet walks right behind to WAIT at the door!
-      state.dispatchAgent('agent-1', 'ENB', { duration: 16 });
+      const b0 = state.buildings[0];
+      const b1 = state.buildings[1] || b0;
+      if (!b0) return;
+
+      state.dispatchAgent('agent-1', b0.id, { duration: 16 });
       const t1 = setTimeout(() => {
         if (!state.autoDemoRunning) return;
-        state.dispatchAgent('agent-2', 'ENB', {
+        state.dispatchAgent('agent-2', b0.id, {
           duration: 8,
-          task: 'Ship clean token middleware in /backend',
-          reason: 'Queued outside ENB waiting for Opus to finish.',
+          task: `Ship clean follow-up in ${b0.folder}`,
+          reason: `Queued outside ${b0.folder} waiting for Opus to finish.`,
         });
       }, 1400);
 
-      // Step 2: Haiku works cleanly on LIB (/docs) for a ribbon-cutting
       const t2 = setTimeout(() => {
         if (!state.autoDemoRunning) return;
-        state.dispatchAgent('agent-3', 'LIB', { duration: 7 });
+        if (b1 && b1.id !== b0.id) {
+          state.dispatchAgent('agent-3', b1.id, { duration: 7 });
+        }
       }, 2800);
 
-      // Step 3: Opus runs into an error inside ENB -> dramatic KICK-OUT -> Sonnet immediately enters ENB!
       const t3 = setTimeout(() => {
         if (!state.autoDemoRunning) return;
         const opus = state.getAgent('agent-1');
         if (opus && opus.state === 'working') {
-          kickOutAgent(opus, 'error', 'Build error in /backend/auth/login.ts — evicted from building!');
+          kickOutAgent(opus, 'error', `Build error in ${b0.folder} — evicted from building!`);
         }
       }, 8200);
 
@@ -494,12 +552,12 @@ window.BullpenState = (function () {
   }
 
   function getQueueSlotPosition(b, index) {
-    // Line up waiting Bulls cleanly outside the building's door
+    const crop = state.cropRect;
     const spacing = 16;
     const offset = (index % 2 === 0 ? -1 : 1) * (10 + Math.floor(index / 2) * spacing);
     return {
-      x: Math.max(18, Math.min(Data.WORLD_W - 18, b.door.x + offset)),
-      y: Math.min(Data.WORLD_H - 18, b.door.y + 4),
+      x: Math.max(crop.x + 16, Math.min(crop.x + crop.w - 16, b.door.x + offset)),
+      y: Math.min(crop.y + crop.h - 18, b.door.y + 4),
     };
   }
 
@@ -548,7 +606,6 @@ window.BullpenState = (function () {
   function admitNextWaitingAgent(buildingId) {
     const b = state.getBuilding(buildingId);
     if (!b) return false;
-    // Don't admit if someone is already working on this building
     if (state.getActiveAgentOnBuilding(buildingId)) return false;
 
     const waiters = state.getWaitingAgentsOnBuilding(buildingId);
@@ -579,26 +636,23 @@ window.BullpenState = (function () {
     agent.path = [];
     agent.queuePos = 0;
     agent.spinAngle = 0;
-    // Hover centered over the building!
     agent.x = b.x + b.w / 2;
     agent.y = b.y + b.h * 0.42;
     agent.workProgress = Math.max(0.02, agent.workProgress || 0);
     state.notify('agents');
   }
 
-  // ==========================================================================
-  // DRAMATIC KICK-OUT (on Error or Time Limit Exceeded!)
-  // ==========================================================================
   function kickOutAgent(agent, reasonType = 'error', reasonText = 'Agent encountered an error') {
     const b = state.getBuilding(agent.targetBuildingId);
     if (!b) return;
 
+    const crop = state.cropRect;
     const startX = b.door.x;
     const startY = b.door.y - 4;
-    // Kick away from nearest horizontal screen edge so the flight arc is always fully visible!
-    const dirX = startX > Data.WORLD_W * 0.62 ? -1 : 1;
-    const landX = Math.max(28, Math.min(Data.WORLD_W - 28, startX + dirX * 56));
-    const landY = Math.max(28, Math.min(Data.WORLD_H - 28, startY + 14));
+    const cropMidX = crop.x + crop.w * 0.55;
+    const dirX = startX > cropMidX ? -1 : 1;
+    const landX = Math.max(crop.x + 24, Math.min(crop.x + crop.w - 24, startX + dirX * 52));
+    const landY = Math.max(crop.y + 26, Math.min(crop.y + crop.h - 24, startY + 12));
 
     agent.state = 'kicked';
     agent.path = [];
@@ -617,7 +671,7 @@ window.BullpenState = (function () {
       id: 'kick-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5),
       buildingId: b.id,
       agentId: agent.id,
-      reasonType, // 'error' | 'timeout'
+      reasonType,
       reasonText,
       progress: 0,
       duration: 2.35,
@@ -714,7 +768,7 @@ window.BullpenState = (function () {
     agent.celebrateTimer = 2.1;
     agent.workProgress = 0;
     agent.workElapsed = 0;
-    agent.x = b.door.x + 12;
+    agent.x = Math.min(state.cropRect.x + state.cropRect.w - 16, b.door.x + 12);
     agent.y = b.door.y - 2;
     agent.targetBuildingId = null;
     agent.pendingPayload = null;
@@ -723,24 +777,22 @@ window.BullpenState = (function () {
   }
 
   function pickNextIdleWaypoint(agent) {
-    const wpIds = Object.keys(Data.WAYPOINTS);
-    const nextId = wpIds[Math.floor(Math.random() * wpIds.length)];
+    // Only patrol roads INSIDE the currently cropped campus so Bulls stay visible!
+    const visibleIds = getVisibleWaypoints(state.cropRect);
+    const nextId = visibleIds[Math.floor(Math.random() * visibleIds.length)];
     agent.path = Data.findPath(agent.x, agent.y, nextId);
   }
 
-  // ==========================================================================
-  // SIMULATION TICK (called at 60 FPS)
-  // ==========================================================================
   function tick(dt) {
+    if (!state.repoAnalyzed) return; // Pause simulation until repository is analyzed!
+
     const safeDt = Math.min(dt, 0.08);
     let uiNeedsSync = false;
 
-    // Decay screen shake
     if (state.screenShake > 0) {
       state.screenShake = Math.max(0, state.screenShake - safeDt * 2.5);
     }
 
-    // Update top announcement banner timer
     if (state.announcement) {
       state.announcement.timer -= safeDt;
       if (state.announcement.timer <= 0) {
@@ -749,7 +801,6 @@ window.BullpenState = (function () {
       }
     }
 
-    // Update Dramatic Kick-Out Animations
     for (let i = state.kickouts.length - 1; i >= 0; i--) {
       const k = state.kickouts[i];
       k.progress += safeDt / k.duration;
@@ -758,20 +809,17 @@ window.BullpenState = (function () {
 
       if (evicted && evicted.state === 'kicked') {
         if (p < 0.16) {
-          // Beat 1: Moment of boot impact right at the doorway
           evicted.x = k.startX + k.dirX * (p / 0.16) * 4;
           evicted.y = k.startY - (p / 0.16) * 4;
           evicted.spinAngle = k.dirX * (p / 0.16) * 0.5;
         } else if (p < 0.72) {
-          // Beat 2: High parabolic airborne tumble!
-          const t = (p - 0.16) / 0.56; // 0..1
+          const t = (p - 0.16) / 0.56;
           const arcY = Math.sin(t * Math.PI) * 38;
           evicted.x = k.startX + (k.landX - k.startX) * t;
           evicted.y = k.startY + (k.landY - k.startY) * t - arcY;
           evicted.spinAngle = k.dirX * (0.5 + t * Math.PI * 4.5);
         } else {
-          // Beat 3: Ground bounce + dizzy sit!
-          const t = (p - 0.72) / 0.28; // 0..1
+          const t = (p - 0.72) / 0.28;
           const bounce = t < 0.45 ? Math.sin((t / 0.45) * Math.PI) * 7 : 0;
           evicted.x = k.landX + k.dirX * t * 5;
           evicted.y = k.landY - bounce;
@@ -779,7 +827,6 @@ window.BullpenState = (function () {
         }
       }
 
-      // As soon as the evicted Bull is launched clear of the doorway, admit the waiting Bull!
       if (p >= 0.58 && !k.handoffDone) {
         k.handoffDone = true;
         admitNextWaitingAgent(k.buildingId);
@@ -798,7 +845,6 @@ window.BullpenState = (function () {
       }
     }
 
-    // Update Ribbon-Cutting Transitions -> admit waiting agent once finished!
     for (let i = state.ribbons.length - 1; i >= 0; i--) {
       const rib = state.ribbons[i];
       rib.progress += safeDt / 3.6;
@@ -810,7 +856,6 @@ window.BullpenState = (function () {
       }
     }
 
-    // Update Agents
     state.agents.forEach(agent => {
       if (agent.state === 'idle') {
         if (!agent.path.length) {
@@ -829,7 +874,6 @@ window.BullpenState = (function () {
         if (arrived && b) {
           const status = state.getBuildingStatus(b.id);
           const activeWorker = state.getActiveAgentOnBuilding(b.id);
-          // If the building is currently occupied (working, ribbon-cutting, or mid kick-out), WAIT IN LINE!
           if ((activeWorker && activeWorker.id !== agent.id) || status === 'ribbon' || status === 'kickout') {
             placeAgentInQueue(agent, b);
           } else {
@@ -840,7 +884,6 @@ window.BullpenState = (function () {
         agent.workElapsed += safeDt;
         agent.workProgress += safeDt / (agent.workDuration || 10);
 
-        // Automatic dramatic kick-out if agent exceeds the configured time limit!
         if (agent.workElapsed >= state.timeLimitSec) {
           kickOutAgent(
             agent,
@@ -892,16 +935,8 @@ window.BullpenState = (function () {
     }
   }
 
-  function startOpeningScene() {
-    setTimeout(() => {
-      if (state.agents[0].state === 'idle') {
-        state.dispatchAgent('agent-1', 'ENB', { duration: 11 });
-      }
-    }, 700);
-  }
-
-  // Clean design hook API for future integration
   window.BullpenDesignAPI = {
+    analyzeRepository: (root, folders) => state.analyzeRepository(root, folders),
     dispatchAgent: (agentId, buildingId, opts) => state.dispatchAgent(agentId, buildingId, opts),
     testQueue: (buildingId) => state.testQueueDemo(buildingId),
     triggerKickOut: (buildingId, type) => state.testKickOutDemo(buildingId, type),
@@ -912,5 +947,5 @@ window.BullpenState = (function () {
     getState: () => state,
   };
 
-  return { state, tick, startOpeningScene };
+  return { state, tick };
 })();

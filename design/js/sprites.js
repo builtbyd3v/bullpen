@@ -59,6 +59,8 @@ window.BullpenSprites = (function () {
     '_': ['000','000','000','000','111'],
     '+': ['000','010','111','010','000'],
     '#': ['101','111','101','111','101'],
+    '(': ['001','010','010','010','001'],
+    ')': ['100','010','010','010','100'],
   };
 
   function drawPixelText(ctx, text, x, y, color, align = 'left', shadowColor = null) {
@@ -449,7 +451,7 @@ window.BullpenSprites = (function () {
       px(ctx, x + 4, y + h - 9, 14, 3, USF.green);
       px(ctx, x + 4, y + h - 7, 14, 1, USF.gold);
 
-    } else {
+    } else if (b.roofStyle === 'arts') {
       // ======================================================================
       // FINE ARTS HALL (FAH) — Sawtooth North-Light Studio Skylights & Gallery
       // ======================================================================
@@ -458,20 +460,102 @@ window.BullpenSprites = (function () {
       px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
       px(ctx, x + 2, y + 2, w - 4, h - 12, USF.bldgLight);
 
-      // 3 Sawtooth Artist Studio Skylights across the roof!
       for (let sy = y + 5; sy <= y + 19; sy += 7) {
         px(ctx, x + 5, sy, w - 10, 5, USF.bldgDark);
         px(ctx, x + 6, sy, w - 12, 2, USF.sky);
         px(ctx, x + 7, sy, 8, 1, USF.white);
         px(ctx, x + 6, sy + 2, w - 12, 2, USF.sand);
       }
-      // Tall gallery windows + warm brick entrance arch
       for (let wx = x + 4; wx < x + w - 5; wx += 6) {
         px(ctx, wx, y + h - 8, 4, 5, USF.slate);
         px(ctx, wx + 1, y + h - 7, 2, 2, USF.lemongrass);
       }
       px(ctx, x + Math.floor(w / 2) - 6, y + h - 7, 12, 5, USF.green);
       px(ctx, x + Math.floor(w / 2) - 5, y + h - 7, 10, 1, USF.gold);
+
+    } else if (b.roofStyle === 'cooper') {
+      // COOPER HALL — Long Academic Hall with Twin Skylights & Brick Trim
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 8, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 11, USF.bldgLight);
+      px(ctx, x + 6, y + 5, 14, 5, USF.storm);
+      px(ctx, x + 7, y + 6, 12, 2, USF.sky);
+      px(ctx, x + w - 20, y + 5, 14, 5, USF.storm);
+      px(ctx, x + w - 19, y + 6, 12, 2, USF.sky);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 6, 3, 3, USF.evergreen);
+      }
+      px(ctx, x + Math.floor(w / 2) - 5, y + h - 6, 10, 4, USF.green);
+
+    } else if (b.roofStyle === 'services') {
+      // STUDENT SERVICES (SVC) — Stepped Glass Corner Atrium
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 8, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 11, USF.sand);
+      px(ctx, x + 5, y + 5, w - 10, 9, USF.teal);
+      px(ctx, x + 6, y + 6, w - 12, 4, USF.sky);
+      px(ctx, x + 7, y + 7, 8, 2, USF.white);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 6, 3, 3, USF.slate);
+      }
+
+    } else if (b.roofStyle === 'education') {
+      // COLLEGE OF EDUCATION — Courtyard Terrace & Stepped Roof
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 8, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 11, USF.bldgLight);
+      px(ctx, x + 6, y + 5, w - 12, 8, USF.evergreen);
+      px(ctx, x + 7, y + 6, w - 14, 6, USF.apple);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 7, 3, 4, USF.storm);
+        px(ctx, wx, y + h - 7, 2, 1, USF.sky);
+      }
+
+    } else if (b.roofStyle === 'residence') {
+      // JUNIPER-POPLAR HALL — Twin Wing Modern Complex with Balconies
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, 12, USF.bldgLight);
+      px(ctx, x + 4, y + 5, w - 8, 5, USF.silver);
+      for (let ry = y + 16; ry < y + h - 6; ry += 6) {
+        for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+          px(ctx, wx, ry, 3, 3, USF.storm);
+          px(ctx, wx + 1, ry, 2, 1, USF.lemongrass);
+        }
+      }
+      px(ctx, x + Math.floor(w / 2) - 5, y + h - 6, 10, 4, USF.green);
+
+    } else if (b.roofStyle === 'tower') {
+      // UNIVERSITY TOWER SOUTH — Multi-Floor Terraced Complex with Solar Roof
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 11, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 14, USF.sand);
+      px(ctx, x + 6, y + 5, w - 12, 10, USF.storm);
+      px(ctx, x + 7, y + 6, w - 14, 4, USF.sky);
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        px(ctx, wx, y + h - 10, 4, 3, USF.evergreen);
+        px(ctx, wx, y + h - 5, 4, 3, USF.slate);
+      }
+      px(ctx, x + Math.floor(w / 2) - 6, y + h - 7, 12, 5, USF.green);
+
+    } else {
+      // USF ALUMNI CENTER — Pitched Green-Trimmed Pavilion & Columned Portico
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 10, USF.bldgMid);
+      px(ctx, x + 3, y + 3, w - 6, h - 14, USF.green);
+      px(ctx, x + 6, y + 6, w - 12, h - 20, USF.evergreen);
+      px(ctx, x + Math.floor(w / 2) - 5, y + 8, 10, 8, USF.gold);
+      px(ctx, x + Math.floor(w / 2) - 3, y + 10, 6, 4, USF.lemongrass);
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        px(ctx, wx, y + h - 8, 4, 5, USF.sand);
+        px(ctx, wx + 1, y + h - 7, 2, 3, USF.slate);
+      }
     }
 
     // 4. Guarded Zone USF Shield Emblem (e.g. /database)

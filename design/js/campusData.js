@@ -1,17 +1,15 @@
 /* ============================================================================
-   BULLPEN — Zoomed-In USF Tampa Central Campus Map Data (512 x 320 pixel world)
-   Exclusively modeled on the Central & Athletics section of the provided
-   USF Tampa Campus Greenway reference map (removing USF Health & north of MSC).
+   BULLPEN — Adaptive USF Tampa Campus Greenway Map Data (580 x 364 Master World)
+   Exclusively modeled on the provided USF Tampa Campus Greenway reference map.
+   Dynamically activates N buildings to match the analyzed repo's folder count
+   and computes an exact viewport crop so ALL folders are visible on the map.
    ============================================================================ */
 
 window.BullpenCampusData = (function () {
-  const WORLD_W = 512;
-  const WORLD_H = 320;
+  const WORLD_W = 580;
+  const WORLD_H = 364;
 
-  // Inner campus viewport frame
-  const BORDER = { x: 6, y: 6, w: 500, h: 308 };
-
-  // Helper: clean folder name displayed on building plaques (e.g. "/backend" -> "BACKEND")
+  // Clean folder name shown on building plaques (e.g. "/backend" -> "BACKEND")
   function getFolderLabel(folderPath) {
     const clean = String(folderPath || '')
       .trim()
@@ -20,384 +18,448 @@ window.BullpenCampusData = (function () {
     return clean ? clean.toUpperCase() : 'ROOT';
   }
 
-  // Diagonal-hatched USF Tampa Campus Greenway polygons (exact zoomed Central section!)
+  // Diagonal-hatched USF Tampa Campus Greenway polygons (exact reference map)
   const GREENWAY_POLYGONS = [
-    // 1. Central Campus Greenway Strip (west edge past FAH & MSC -> Castor Pond -> NE Athletics edge)
+    // Central Campus Greenway Strip (FAH/MSC -> Castor Pond -> NE Athletics edge)
     [
-      [7, 58], [134, 58], [204, 58], [218, 44], [268, 36], [316, 32],
-      [316, 62], [270, 66], [250, 82], [202, 82], [190, 92], [54, 92],
-      [42, 108], [7, 108]
+      [4, 68], [156, 68], [226, 68], [240, 52], [292, 44], [338, 40],
+      [338, 70], [292, 74], [272, 92], [224, 92], [212, 102], [76, 102],
+      [62, 118], [4, 118]
     ],
-    // 2. Lower edge of Northeast Greenway Forest (top-right corner above Track & Field!)
+    // Lower edge of Northeast Greenway Forest (top-right above Track & Field)
     [
-      [320, 7], [505, 7], [505, 42], [320, 42]
+      [342, 4], [576, 4], [576, 52], [342, 52]
     ],
   ];
 
-  // Water bodies inside the zoomed Central Campus section
+  // Water bodies inside the master Central Campus region
   const PONDS = [
-    // Castor Pond (inside Central Campus Greenway east of MSC, north of SVC)
-    { id: 'castor', name: 'Castor Pond', x: 244, y: 55, rx: 22, ry: 11 },
+    { id: 'castor', name: 'Castor Pond', x: 266, y: 64, rx: 22, ry: 11 },
   ];
 
-  // Major USF roads in the zoomed Central & SE Campus
+  // Major USF roads matching the provided reference map
   const ROADS = [
-    // USF Leroy Collins Blvd (prominent N-S central spine between ENB/ISA and LIB/MSC!)
-    { name: 'USF Leroy Collins Blvd', width: 10, pts: [[170, 6], [170, 314]] },
-    // USF Genshaft Dr (east-central N-S spine between Central Campus & REC/SUN!)
-    { name: 'USF Genshaft Dr',        width: 9,  pts: [[322, 6], [322, 46], [312, 84], [312, 276], [324, 314]] },
-    // USF Maple Dr / Cherry Dr (central E-W road north of LIB & CPR)
-    { name: 'USF Maple Dr',           width: 7,  pts: [[44, 158], [312, 158]] },
-    // USF Cedar Dr (west engineering / Juniper-Poplar loop)
-    { name: 'USF Cedar Dr',           width: 6,  pts: [[44, 106], [108, 106]] },
-    { name: 'USF Cedar West',         width: 6,  pts: [[44, 106], [44, 266]] },
-    // USF Alumni Dr (southern sweeping boulevard south of ENB, LIB, BSN & SUN!)
-    { name: 'USF Alumni Dr',          width: 9,  pts: [[6, 264], [134, 264], [170, 276], [312, 276], [362, 292], [468, 292]] },
-    // USF Palm Dr (eastern road between REC/SUN & Soccer/Baseball!)
-    { name: 'USF Palm Dr',            width: 6,  pts: [[312, 174], [434, 174], [434, 292]] },
+    // USF Leroy Collins Blvd (central N-S spine)
+    { name: 'USF Leroy Collins Blvd', width: 10, pts: [[192, 4], [192, 360]] },
+    // USF Genshaft Dr (east-central N-S spine)
+    { name: 'USF Genshaft Dr',        width: 9,  pts: [[344, 4], [344, 54], [334, 92], [334, 286], [346, 360]] },
+    // USF Maple Dr (central E-W avenue above LIB & CPR)
+    { name: 'USF Maple Dr',           width: 7,  pts: [[66, 166], [334, 166]] },
+    // USF Cedar Dr (west engineering / JP loop)
+    { name: 'USF Cedar Dr',           width: 6,  pts: [[66, 116], [126, 116]] },
+    { name: 'USF Cedar West',         width: 6,  pts: [[66, 116], [66, 272]] },
+    // USF Alumni Dr (southern sweeping boulevard)
+    { name: 'USF Alumni Dr',          width: 9,  pts: [[4, 272], [156, 272], [192, 284], [334, 284], [386, 300], [500, 300]] },
+    // USF Palm Dr (eastern road between REC/SUN & Athletics)
+    { name: 'USF Palm Dr',            width: 6,  pts: [[334, 182], [456, 182], [456, 300]] },
     // USF Sage Dr (between LIB/CPR & BSN)
-    { name: 'USF Sage Dr',            width: 6,  pts: [[242, 158], [242, 276]] },
-    // MLK Plaza / North MSC crosswalk lane
-    { name: 'USF Holly Plaza',        width: 6,  pts: [[170, 60], [208, 60]] },
+    { name: 'USF Sage Dr',            width: 6,  pts: [[264, 166], [264, 284]] },
+    // MLK Plaza north walkway
+    { name: 'USF Holly Plaza',        width: 6,  pts: [[192, 72], [230, 72]] },
   ];
 
-  // USF Recreation & Athletics venues on the East side (exact reference positions!)
+  // USF Recreation & Athletics venues (East side of reference map)
   const ATHLETICS = [
-    // Track & Field Stadium (oval terracotta track + green infield + bleachers)
-    { type: 'track',    label: 'TRACK',    x: 334, y: 46,  w: 76, h: 40 },
-    // Recreation Softball Field (NE of Track)
-    { type: 'softball', label: 'REC FIELD',x: 420, y: 46,  w: 74, h: 38 },
-    // Tennis / Basketball Courts (south of Track)
-    { type: 'courts',   label: 'COURTS',   x: 334, y: 90,  w: 36, h: 28 },
-    // Athletic Practice Field
-    { type: 'field',    label: '',         x: 376, y: 90,  w: 36, h: 30 },
-    // Football Practice Fields (with crisp white yard lines)
-    { type: 'football', label: 'PRACTICE', x: 420, y: 88,  w: 62, h: 42 },
-    // Corbett Soccer Park Stadium
-    { type: 'soccer',   label: 'SOCCER',   x: 440, y: 136, w: 62, h: 40 },
-    // Baseball Stadium (east of SUN)
-    { type: 'baseball', label: 'BASEBALL', x: 444, y: 184, w: 54, h: 46 },
-    // Softball Stadium (south of Baseball)
-    { type: 'softball', label: 'SOFTBALL', x: 444, y: 236, w: 46, h: 36 },
+    { type: 'track',    label: 'TRACK',    x: 356, y: 56,  w: 76, h: 40 },
+    { type: 'softball', label: 'REC FIELD',x: 444, y: 56,  w: 76, h: 38 },
+    { type: 'courts',   label: 'COURTS',   x: 356, y: 100, w: 36, h: 28 },
+    { type: 'field',    label: '',         x: 398, y: 100, w: 36, h: 30 },
+    { type: 'football', label: 'PRACTICE', x: 444, y: 98,  w: 62, h: 42 },
+    { type: 'soccer',   label: 'SOCCER',   x: 462, y: 146, w: 64, h: 40 },
+    { type: 'baseball', label: 'BASEBALL', x: 466, y: 194, w: 54, h: 46 },
+    { type: 'softball', label: 'SOFTBALL', x: 466, y: 246, w: 46, h: 36 },
+    { type: 'football', label: 'FOWLER',   x: 364, y: 312, w: 72, h: 36 },
   ];
 
-  // Supporting non-interactive context buildings ONLY within the zoomed Central section
+  // Always-context supporting campus structures (garages & minor halls)
   const CONTEXT_BUILDINGS = [
-    // Central Campus supporting buildings
-    { code: 'SVC', x: 182, y: 66,  w: 30, h: 30 },
-    { code: 'CBG', x: 194, y: 104, w: 46, h: 34, isGarage: true },
-    { code: 'ALN', x: 162, y: 108, w: 26, h: 20 },
-    { code: 'EDU', x: 252, y: 122, w: 30, h: 24 },
-    { code: 'SOC', x: 286, y: 102, w: 22, h: 24 },
-    { code: 'CPR', x: 248, y: 168, w: 42, h: 22 },
-    { code: 'BGD', x: 34,  y: 204, w: 28, h: 42, isGarage: true },
-    { code: 'JP',  x: 10,  y: 162, w: 28, h: 30 },
-    { code: 'ENG', x: 76,  y: 168, w: 24, h: 24 },
-    { code: 'ENC', x: 108, y: 164, w: 28, h: 24 },
-    { code: 'ATH', x: 404, y: 132, w: 26, h: 34 },
+    { code: 'CBG', x: 214, y: 118, w: 44, h: 34, isGarage: true },
+    { code: 'ALN', x: 184, y: 118, w: 24, h: 20 },
+    { code: 'SOC', x: 308, y: 100, w: 20, h: 18 },
+    { code: 'BGD', x: 56,  y: 212, w: 28, h: 42, isGarage: true },
+    { code: 'ENG', x: 98,  y: 176, w: 24, h: 24 },
+    { code: 'ENC', x: 130, y: 172, w: 28, h: 24 },
+    { code: 'ATH', x: 426, y: 142, w: 24, h: 34 },
   ];
 
-  // District labels matching the zoomed reference map
   const DISTRICT_LABELS = [
-    { text: 'CENTRAL CAMPUS', x: 112, y: 74 },
-    { text: 'USF ATHLETICS',  x: 416, y: 38 },
+    { text: 'CENTRAL CAMPUS', x: 134, y: 84 },
+    { text: 'USF ATHLETICS',  x: 438, y: 46 },
   ];
 
   // ==========================================================================
-  // INTERACTIVE BUILDINGS (Enlarged & Detailed — Labeled by Folder Name!)
+  // 14-BUILDING MASTER CATALOG (ordered outward from Central Campus heart!)
+  // Depending on how many folders the analyzed repo has, the first N slots
+  // become active interactive buildings and the map crops tightly around them!
   // ==========================================================================
-  const DEFAULT_BUILDINGS = [
+  const BUILDING_CATALOG = [
     {
       id: 'ENB',
       code: 'ENB',
       name: 'Engineering Building II',
-      defaultFolder: '/backend',
-      folder: '/backend',
-      x: 74, y: 204, w: 72, h: 46,
-      door: { x: 110, y: 264 }, // on Alumni Dr
+      preferredNames: ['backend', 'server', 'api', 'src', 'core', 'app'],
+      x: 96, y: 212, w: 72, h: 46,
+      door: { x: 132, y: 272 },
       roofStyle: 'engineering',
       primary: true,
-      guarded: false,
-      description: 'Core API services, auth controllers, and business logic.',
-      summary: 'Refactored JWT session middleware and added rate-limit guard for login routes.',
-      changes: [
-        {
-          id: 'chg-enb-1',
-          commit: 'a4f91c2',
-          agentId: 'agent-1',
-          modelId: 'claude-opus-4-6',
-          time: '11:18 AM',
-          task: 'Harden /api/auth/login token refresh',
-          reason: 'Prevent race conditions when concurrent agents refresh OAuth tokens.',
-          summary: 'Added atomic token rotation lock and unit-tested expiry edge cases.',
-          files: [
-            {
-              path: '/backend/auth/login.ts',
-              added: 18, removed: 6,
-              diff: [
-                { type: 'ctx', text: 'export async function refreshSession(userId: string) {' },
-                { type: 'del', text: '  const token = await db.tokens.findLatest(userId);' },
-                { type: 'add', text: '  const lease = await bullpen.acquireLease(`token:${userId}`);' },
-                { type: 'add', text: '  const token = await db.tokens.rotateAtomic(userId, lease.id);' },
-                { type: 'add', text: '  if (!token) throw new AuthError("Token expired");' },
-                { type: 'ctx', text: '  return signJwt(token.payload);' },
-              ]
-            },
-            {
-              path: '/backend/middleware/rateLimit.ts',
-              added: 12, removed: 0,
-              diff: [
-                { type: 'add', text: 'export const loginLimiter = createWindowLimiter({ max: 20, windowMs: 60_000 });' },
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'MSC',
-      code: 'MSC',
-      name: 'Marshall Student Center',
-      defaultFolder: '/frontend',
-      folder: '/frontend',
-      x: 136, y: 12, w: 68, h: 44,
-      door: { x: 170, y: 62 }, // right on Leroy Collins Blvd / MLK Plaza
-      roofStyle: 'marshall',
-      primary: true,
-      guarded: false,
-      description: 'User-facing React/Canvas components, theme tokens, and interactive HUD.',
-      summary: 'Implemented USF Green & Gold theme tokens and responsive Bullpen dashboard header.',
-      changes: [
-        {
-          id: 'chg-msc-1',
-          commit: 'c82e0b7',
-          agentId: 'agent-2',
-          modelId: 'claude-sonnet-4-6',
-          time: '11:21 AM',
-          task: 'Build USF brand palette CSS tokens & header',
-          reason: 'Match official USF Marketing green (#006747) and gold (#CFC493) specs.',
-          summary: 'Created pixel-art beveled panel components and accessible contrast tokens.',
-          files: [
-            {
-              path: '/frontend/styles/theme.css',
-              added: 24, removed: 4,
-              diff: [
-                { type: 'del', text: '--primary-color: #1e7a4c;' },
-                { type: 'add', text: '--usf-green: #006747;' },
-                { type: 'add', text: '--usf-gold: #CFC493;' },
-                { type: 'add', text: '--usf-evergreen: #005432;' },
-              ]
-            },
-            {
-              path: '/frontend/components/CampusHud.tsx',
-              added: 31, removed: 2,
-              diff: [
-                { type: 'add', text: '<PixelBanner title="BULLPEN" badge="USF TAMPA" />' },
-              ]
-            }
-          ]
-        }
-      ]
     },
     {
       id: 'LIB',
       code: 'LIB',
       name: 'USF Tampa Library',
-      defaultFolder: '/docs',
-      folder: '/docs',
-      x: 184, y: 170, w: 52, h: 42,
-      door: { x: 170, y: 194 }, // facing Leroy Collins Blvd
+      preferredNames: ['docs', 'doc', 'documentation', 'shared', 'wiki', 'guides'],
+      x: 206, y: 178, w: 52, h: 42,
+      door: { x: 192, y: 202 },
       roofStyle: 'library',
       primary: true,
-      guarded: false,
-      description: 'Architecture specs, API reference docs, onboarding guides, and ADRs.',
-      summary: 'Updated LEASE_PROTOCOL.md with waiting-queue and timeout eviction rules.',
-      changes: [
-        {
-          id: 'chg-lib-1',
-          commit: '71d4e9a',
-          agentId: 'agent-3',
-          modelId: 'claude-haiku-4-5',
-          time: '11:23 AM',
-          task: 'Document folder lease queue & timeout eviction',
-          reason: 'Keep contributor docs aligned with waiting-at-door and kick-out handoff.',
-          summary: 'Added state diagram and examples for queued agents and lease timeouts.',
-          files: [
-            {
-              path: '/docs/LEASE_PROTOCOL.md',
-              added: 42, removed: 5,
-              diff: [
-                { type: 'ctx', text: '## Lease Queue & Eviction' },
-                { type: 'add', text: 'When a building already has an active Claude agent, arriving agents' },
-                { type: 'add', text: 'wait in line outside the door and enter on completion or eviction.' },
-              ]
-            }
-          ]
-        }
-      ]
+    },
+    {
+      id: 'MSC',
+      code: 'MSC',
+      name: 'Marshall Student Center',
+      preferredNames: ['frontend', 'web', 'client', 'ui', 'design', 'pages'],
+      x: 158, y: 24, w: 68, h: 44,
+      door: { x: 192, y: 74 },
+      roofStyle: 'marshall',
+      primary: true,
     },
     {
       id: 'SUN',
       code: 'SUN',
       name: 'Sun Dome (Yuengling Center)',
-      defaultFolder: '/database',
-      folder: '/database',
-      x: 348, y: 184, w: 76, h: 62,
-      door: { x: 312, y: 214 }, // facing Genshaft Dr
+      preferredNames: ['database', 'db', 'sql', 'migrations', 'prisma', 'jetson', 'data'],
+      x: 370, y: 192, w: 76, h: 62,
+      door: { x: 334, y: 222 },
       roofStyle: 'dome',
       primary: true,
-      guarded: true,
-      description: 'Guarded Zone — SQL schemas, migrations, and production seed scripts.',
-      summary: 'Guarded schema intact. Added non-destructive migration 004_agent_leases.sql.',
-      changes: [
-        {
-          id: 'chg-sun-1',
-          commit: 'e09a31f',
-          agentId: 'agent-1',
-          modelId: 'claude-opus-4-6',
-          time: '11:15 AM',
-          task: 'Add additive migration for agent_leases table',
-          reason: 'Avoided altering live users table after guarded-zone policy review.',
-          summary: 'Created indexed agent_leases table with foreign key to commits.',
-          files: [
-            {
-              path: '/database/migrations/004_agent_leases.sql',
-              added: 16, removed: 0,
-              diff: [
-                { type: 'add', text: 'CREATE TABLE agent_leases (' },
-                { type: 'add', text: '  folder_path TEXT PRIMARY KEY,' },
-                { type: 'add', text: '  agent_id TEXT NOT NULL,' },
-                { type: 'add', text: '  acquired_at TIMESTAMPTZ DEFAULT NOW()' },
-                { type: 'add', text: ');' },
-              ]
-            }
-          ]
-        }
-      ]
     },
     {
       id: 'BSN',
       code: 'BSN',
       name: 'Muma College of Business',
-      defaultFolder: '/config',
-      folder: '/config',
-      x: 248, y: 204, w: 56, h: 52,
-      door: { x: 276, y: 276 }, // Alumni Dr
+      preferredNames: ['config', 'configs', 'settings', 'campus', 'packages', 'lib'],
+      x: 270, y: 212, w: 56, h: 52,
+      door: { x: 298, y: 284 },
       roofStyle: 'courtyard',
       primary: false,
-      guarded: false,
-      description: 'Environment presets, model routing rules, and workspace configs.',
-      summary: 'Registered Claude Opus, Sonnet, and Haiku color & capability profiles.',
-      changes: [
-        {
-          id: 'chg-bsn-1',
-          commit: '5b912cc',
-          agentId: 'agent-2',
-          modelId: 'claude-sonnet-4-6',
-          time: '11:12 AM',
-          task: 'Configure Claude model roster',
-          reason: 'Assign distinct visual identities per Claude model tier.',
-          summary: 'Added model registry JSON with USF color tokens.',
-          files: [
-            {
-              path: '/config/models.json',
-              added: 15, removed: 0,
-              diff: [
-                { type: 'add', text: '{ "models": ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5"] }' },
-              ]
-            }
-          ]
-        }
-      ]
     },
     {
       id: 'ISA',
       code: 'ISA',
       name: 'Interdisciplinary Sciences',
-      defaultFolder: '/tests',
-      folder: '/tests',
-      x: 102, y: 98, w: 52, h: 38,
-      door: { x: 170, y: 118 }, // Leroy Collins Blvd
+      preferredNames: ['tests', 'test', '__tests__', 'spec', 'hooks', 'evals'],
+      x: 124, y: 108, w: 52, h: 38,
+      door: { x: 192, y: 128 },
       roofStyle: 'science',
       primary: false,
-      guarded: false,
-      description: 'Automated integration suites, fuzzers, and regression harnesses.',
-      summary: 'Added 14 lease queue unit tests — all passing.',
-      changes: []
     },
     {
       id: 'REC',
       code: 'REC',
       name: 'Campus Recreation Center',
-      defaultFolder: '/scripts',
-      folder: '/scripts',
-      x: 326, y: 124, w: 66, h: 38,
-      door: { x: 312, y: 144 }, // Genshaft Dr
+      preferredNames: ['scripts', 'tools', 'cli', 'bin', 'ops', 'workflows'],
+      x: 348, y: 132, w: 66, h: 38,
+      door: { x: 334, y: 152 },
       roofStyle: 'rec',
       primary: false,
-      guarded: false,
-      description: 'Build scripts, dev utilities, and deployment helpers.',
-      summary: 'No recent edits yet — ready for agent dispatch.',
-      changes: []
     },
     {
       id: 'FAH',
       code: 'FAH',
       name: 'Fine Arts Hall',
-      defaultFolder: '/assets',
-      folder: '/assets',
-      x: 36, y: 16, w: 48, h: 40,
-      door: { x: 64, y: 106 }, // Cedar / Central Walkway
+      preferredNames: ['assets', 'public', 'static', 'media', 'images', 'styles'],
+      x: 56, y: 28, w: 48, h: 40,
+      door: { x: 84, y: 116 },
       roofStyle: 'arts',
       primary: false,
-      guarded: false,
-      description: 'Pixel sprites, campus tilesets, and USF mascot artwork.',
-      summary: 'Exported crisp 16x16 Rocky Bull walk-cycle frames.',
-      changes: []
-    }
+    },
+    {
+      id: 'CPR',
+      code: 'CPR',
+      name: 'Cooper Hall',
+      preferredNames: ['components', 'modules', 'features', 'services', 'routes'],
+      x: 270, y: 174, w: 50, h: 26,
+      door: { x: 264, y: 186 },
+      roofStyle: 'cooper',
+      primary: false,
+    },
+    {
+      id: 'SVC',
+      code: 'SVC',
+      name: 'Student Services',
+      preferredNames: ['auth', 'security', 'middleware', 'guards', 'iam'],
+      x: 204, y: 78, w: 42, h: 32,
+      door: { x: 192, y: 94 },
+      roofStyle: 'services',
+      primary: false,
+    },
+    {
+      id: 'EDU',
+      code: 'EDU',
+      name: 'College of Education',
+      preferredNames: ['examples', 'demo', 'samples', 'tutorials', 'notebooks'],
+      x: 274, y: 122, w: 44, h: 32,
+      door: { x: 264, y: 166 },
+      roofStyle: 'education',
+      primary: false,
+    },
+    {
+      id: 'JP',
+      code: 'JP',
+      name: 'Juniper-Poplar Hall',
+      preferredNames: ['mobile', 'ios', 'android', 'desktop', 'native'],
+      x: 18, y: 174, w: 44, h: 38,
+      door: { x: 66, y: 192 },
+      roofStyle: 'residence',
+      primary: false,
+    },
+    {
+      id: 'UTB',
+      code: 'UTB',
+      name: 'University Tower South',
+      preferredNames: ['infra', 'deploy', 'terraform', 'docker', 'k8s', 'ci'],
+      x: 96, y: 298, w: 56, h: 42,
+      door: { x: 124, y: 272 },
+      roofStyle: 'tower',
+      primary: false,
+    },
+    {
+      id: 'ALC',
+      code: 'ALC',
+      name: 'USF Alumni Center',
+      preferredNames: ['analytics', 'metrics', 'telemetry', 'monitoring', 'logs'],
+      x: 268, y: 300, w: 60, h: 42,
+      door: { x: 298, y: 284 },
+      roofStyle: 'alumni',
+      primary: false,
+    },
+  ];
+
+  // Quick presets for the Pre-Map Repository Analyzer
+  const REPO_PRESETS = [
+    {
+      id: 'micro',
+      label: 'Micro Repo (3 folders)',
+      root: 'bullpen-micro/',
+      folders: ['/backend', '/frontend', '/docs'],
+      desc: 'Tightly cropped Core Campus — 3 large buildings',
+    },
+    {
+      id: 'mvp',
+      label: 'Bullpen MVP (4 folders)',
+      root: 'bullpen-mvp/',
+      folders: ['/backend', '/frontend', '/docs', '/database'],
+      desc: 'Focused Core Campus — 4 primary buildings',
+    },
+    {
+      id: 'bullpen',
+      label: 'builtbyd3v/bullpen (8 folders)',
+      root: 'bullpen/',
+      folders: ['/server', '/web', '/campus', '/jetson', '/shared', '/hooks', '/scripts', '/assets'],
+      desc: 'Actual Bullpen repo layout — Central Campus + Athletics',
+    },
+    {
+      id: 'monorepo',
+      label: 'USF Monorepo (12 folders)',
+      root: 'usf-monorepo/',
+      folders: ['/backend', '/frontend', '/docs', '/database', '/config', '/tests', '/scripts', '/assets', '/services', '/auth', '/mobile', '/infra'],
+      desc: 'Expanded Campus view — 12 buildings across campus',
+    },
   ];
 
   // ==========================================================================
-  // CAMPUS WALKING PATH GRAPH (Exact zoomed Central Campus road network!)
+  // SMART FOLDER -> BUILDING ASSIGNMENT & DYNAMIC CAMPUS CROP CALCULATION
+  // ==========================================================================
+  function normalizeFolder(f) {
+    const clean = String(f || '').trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    return clean ? '/' + clean : '';
+  }
+
+  function isGuardedFolder(folder) {
+    const lower = folder.toLowerCase();
+    return /database|(^|\/)db($|\/)|migrations|schema|prod|secrets|jetson/.test(lower);
+  }
+
+  function createSampleChangeForFolder(folder, idx) {
+    const label = getFolderLabel(folder).toLowerCase();
+    const models = ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'];
+    const modelId = models[idx % models.length];
+    const agentId = `agent-${(idx % 3) + 1}`;
+    const commits = ['a4f91c2', 'c82e0b7', '71d4e9a', 'e09a31f', '5b912cc', '9d3a10e', '3f88b21', 'f12c4d9'];
+    const times = ['11:24 AM', '11:21 AM', '11:18 AM', '11:15 AM', '11:12 AM', '11:09 AM', '11:05 AM', '11:02 AM'];
+    return {
+      id: `chg-init-${idx}`,
+      commit: commits[idx % commits.length],
+      agentId,
+      modelId,
+      time: times[idx % times.length],
+      task: `Initialize & verify module structure in ${folder}`,
+      reason: `Scanned from repository analysis for ${folder} folder lease.`,
+      summary: `Synced ${folder} handlers and verified lease boundaries.`,
+      files: [
+        {
+          path: `${folder}/index.ts`,
+          added: 14 + (idx * 3) % 18,
+          removed: 2 + (idx % 4),
+          diff: [
+            { type: 'ctx', text: `// Folder lease root: ${folder}` },
+            { type: 'add', text: `export const MODULE_NAME = "${label}";` },
+            { type: 'add', text: `export const LEASE_GUARD = ${isGuardedFolder(folder)};` },
+          ]
+        }
+      ]
+    };
+  }
+
+  // Build exactly N active buildings for the analyzed repository folders
+  function buildBuildingsForFolders(rawFolders) {
+    const unique = [];
+    const seen = new Set();
+    rawFolders.forEach(f => {
+      const norm = normalizeFolder(f);
+      if (norm && !seen.has(norm.toLowerCase())) {
+        seen.add(norm.toLowerCase());
+        unique.push(norm);
+      }
+    });
+
+    const capped = unique.slice(0, BUILDING_CATALOG.length);
+    if (!capped.length) capped.push('/src');
+
+    const count = capped.length;
+    // Choose the tightest N building slots from the master catalog (ordered from center outward!)
+    const activeSlots = BUILDING_CATALOG.slice(0, count);
+
+    // Smart semantic matching within the active N slots so /backend -> ENB, /frontend -> MSC, /docs -> LIB, /database -> SUN!
+    const assigned = new Map(); // slotIndex -> folder
+    const unassignedFolders = [];
+
+    capped.forEach(folder => {
+      const seg = getFolderLabel(folder).toLowerCase().split('/').pop();
+      const matchIdx = activeSlots.findIndex((slot, i) =>
+        !assigned.has(i) && slot.preferredNames.includes(seg)
+      );
+      if (matchIdx !== -1) {
+        assigned.set(matchIdx, folder);
+      } else {
+        unassignedFolders.push(folder);
+      }
+    });
+
+    // Fill remaining active slots in order
+    let u = 0;
+    for (let i = 0; i < activeSlots.length; i++) {
+      if (!assigned.has(i) && u < unassignedFolders.length) {
+        assigned.set(i, unassignedFolders[u++]);
+      }
+    }
+
+    return activeSlots.map((slot, idx) => {
+      const folder = assigned.get(idx) || `/folder-${idx + 1}`;
+      const guarded = isGuardedFolder(folder);
+      const change = createSampleChangeForFolder(folder, idx);
+      return {
+        ...slot,
+        door: { ...slot.door },
+        defaultFolder: folder,
+        folder,
+        guarded,
+        description: `Mapped repository folder ${folder} (${slot.name}).`,
+        summary: change.summary,
+        changes: [change],
+      };
+    });
+  }
+
+  // Compute an exact pixel viewport crop that guarantees ALL active buildings
+  // (plus their construction cranes, doors, & waiting lines) are 100% visible!
+  function computeCropRect(activeBuildings) {
+    if (!activeBuildings || !activeBuildings.length) {
+      return { x: 0, y: 0, w: WORLD_W, h: WORLD_H, tierLabel: 'FULL CAMPUS' };
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    activeBuildings.forEach(b => {
+      minX = Math.min(minX, b.x - 24, b.door.x - 24);
+      minY = Math.min(minY, b.y - 24, b.door.y - 20);
+      // Right padding includes tower crane (~24px); bottom padding includes plaque & waiting Bull (~30px)
+      maxX = Math.max(maxX, b.x + b.w + 34, b.door.x + 28);
+      maxY = Math.max(maxY, b.y + b.h + 32, b.door.y + 26);
+    });
+
+    const n = activeBuildings.length;
+    // Allow small repos (1-3 folders) to crop tighter instead of pulling in empty eastern lots
+    const targetAspect = n <= 3 ? 1.28 : 1.60;
+    let cw = Math.max(260, maxX - minX);
+    let ch = Math.max(182, maxY - minY);
+
+    if (cw / ch < targetAspect) {
+      cw = ch * targetAspect;
+    } else {
+      ch = cw / targetAspect;
+    }
+
+    cw = Math.min(WORLD_W, Math.ceil(cw));
+    ch = Math.min(WORLD_H, Math.ceil(ch));
+
+    if (cw === WORLD_W) ch = Math.min(WORLD_H, Math.max(ch, Math.round(WORLD_W / targetAspect)));
+    if (ch === WORLD_H) cw = Math.min(WORLD_W, Math.max(cw, Math.round(WORLD_H * targetAspect)));
+
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    let rx = Math.round(cx - cw / 2);
+    let ry = Math.round(cy - ch / 2);
+
+    rx = Math.max(0, Math.min(WORLD_W - cw, rx));
+    ry = Math.max(0, Math.min(WORLD_H - ch, ry));
+
+    const tierLabel = n <= 3
+      ? 'TIGHT CORE CROP'
+      : (n <= 5 ? 'CORE CAMPUS CROP' : (n <= 8 ? 'CENTRAL + ATHLETICS CROP' : 'EXPANDED CAMPUS VIEW'));
+
+    return { x: rx, y: ry, w: cw, h: ch, tierLabel };
+  }
+
+  // ==========================================================================
+  // CAMPUS WALKING PATH GRAPH (Covers all 14 master campus buildings!)
   // ==========================================================================
   const WAYPOINTS = {
-    // Leroy Collins Blvd (N-S central spine)
-    lc_msc:     { x: 170, y: 62 },
-    lc_isa:     { x: 170, y: 118 },
-    lc_maple:   { x: 170, y: 158 },
-    lc_lib:     { x: 170, y: 194 },
-    lc_alumni:  { x: 170, y: 276 },
-    lc_south:   { x: 170, y: 304 },
+    lc_msc:     { x: 192, y: 74 },
+    lc_svc:     { x: 192, y: 94 },
+    lc_isa:     { x: 192, y: 128 },
+    lc_maple:   { x: 192, y: 166 },
+    lc_lib:     { x: 192, y: 202 },
+    lc_alumni:  { x: 192, y: 284 },
+    lc_south:   { x: 192, y: 332 },
 
-    // Cedar & West Engineering Loop
-    cedar_nw:   { x: 44,  y: 106 },
-    fah_door:   { x: 64,  y: 106 },
-    cedar_isa:  { x: 108, y: 106 },
-    cedar_mid:  { x: 44,  y: 158 },
-    cedar_s:    { x: 44,  y: 264 },
-    enb_door:   { x: 110, y: 264 },
+    cedar_nw:   { x: 66,  y: 116 },
+    fah_door:   { x: 84,  y: 116 },
+    cedar_isa:  { x: 126, y: 116 },
+    cedar_mid:  { x: 66,  y: 166 },
+    jp_door:    { x: 66,  y: 192 },
+    cedar_s:    { x: 66,  y: 272 },
+    enb_door:   { x: 132, y: 272 },
 
-    // Maple Dr & Sage Dr (Central)
-    maple_mid:  { x: 242, y: 158 },
-    maple_e:    { x: 312, y: 158 },
-    sage_s:     { x: 242, y: 276 },
-    bsn_door:   { x: 276, y: 276 },
+    maple_mid:  { x: 264, y: 166 },
+    cpr_door:   { x: 264, y: 186 },
+    maple_e:    { x: 334, y: 166 },
+    sage_s:     { x: 264, y: 284 },
+    bsn_door:   { x: 298, y: 284 },
 
-    // Genshaft Dr (East-Central)
-    gen_north:  { x: 312, y: 84 },
-    gen_rec:    { x: 312, y: 144 },
-    gen_palm:   { x: 312, y: 174 },
-    gen_sun:    { x: 312, y: 214 },
-    gen_alumni: { x: 312, y: 276 },
+    gen_north:  { x: 334, y: 92 },
+    gen_rec:    { x: 334, y: 152 },
+    gen_palm:   { x: 334, y: 182 },
+    gen_sun:    { x: 334, y: 222 },
+    gen_alumni: { x: 334, y: 284 },
 
-    // Palm Dr & Athletics
-    palm_e:     { x: 434, y: 174 },
-    palm_s:     { x: 434, y: 292 },
-    alumni_se:  { x: 362, y: 292 },
+    palm_e:     { x: 456, y: 182 },
+    palm_s:     { x: 456, y: 300 },
+    alumni_se:  { x: 386, y: 300 },
   };
 
   const WAYPOINT_EDGES = [
-    ['lc_msc', 'lc_isa'],
+    ['lc_msc', 'lc_svc'],
+    ['lc_svc', 'lc_isa'],
     ['lc_isa', 'lc_maple'],
     ['lc_maple', 'lc_lib'],
     ['lc_lib', 'lc_alumni'],
@@ -407,14 +469,16 @@ window.BullpenCampusData = (function () {
     ['fah_door', 'cedar_isa'],
     ['cedar_isa', 'lc_isa'],
     ['cedar_nw', 'cedar_mid'],
-    ['cedar_mid', 'cedar_s'],
+    ['cedar_mid', 'jp_door'],
+    ['jp_door', 'cedar_s'],
     ['cedar_mid', 'lc_maple'],
     ['cedar_s', 'enb_door'],
     ['enb_door', 'lc_alumni'],
 
     ['lc_maple', 'maple_mid'],
     ['maple_mid', 'maple_e'],
-    ['maple_mid', 'sage_s'],
+    ['maple_mid', 'cpr_door'],
+    ['cpr_door', 'sage_s'],
     ['lc_alumni', 'sage_s'],
     ['sage_s', 'bsn_door'],
     ['bsn_door', 'gen_alumni'],
@@ -441,6 +505,12 @@ window.BullpenCampusData = (function () {
     ISA: 'lc_isa',
     REC: 'gen_rec',
     FAH: 'fah_door',
+    CPR: 'cpr_door',
+    SVC: 'lc_svc',
+    EDU: 'maple_mid',
+    JP:  'jp_door',
+    UTB: 'enb_door',
+    ALC: 'bsn_door',
   };
 
   const ADJACENCY = {};
@@ -503,22 +573,15 @@ window.BullpenCampusData = (function () {
     return path.length ? path : [{ ...WAYPOINTS[targetNodeId] }];
   }
 
-  // Pixel trees placed cleanly across parks, greenways & lawns inside zoomed Central Campus
   const TREES = [
-    // Central Campus Greenway canopy
-    [18,74],[34,88],[62,72],[96,84],[144,78],[214,76],[286,54],[302,44],
-    // NE Greenway edge
-    [348,22],[386,20],[426,24],[468,20],[494,30],
-    // Legacy Park (south of LIB) & South Alumni lawn
-    [194,232],[214,244],[202,258],[226,238],
-    [22,286],[58,294],[94,290],[132,296],[198,296],[244,298],[288,298],[344,302],[408,304],
-    // West & North lawns around FAH / Engineering
-    [16,32],[20,128],[66,134],[90,142],[148,144],
-    // East campus edges
-    [328,118],[492,126],[498,232],[496,282],
+    [24,84],[46,98],[84,82],[118,94],[164,88],[236,84],[308,64],[324,52],
+    [370,26],[410,22],[450,28],[492,24],[540,34],
+    [216,242],[236,254],[224,268],[248,248],
+    [30,308],[66,316],[168,318],[226,318],[252,334],[344,332],[454,328],[510,322],
+    [22,42],[30,140],[88,144],[112,152],[170,152],
+    [350,126],[534,136],[540,242],[534,296],
   ];
 
-  // Sample realistic tasks & generated diffs for dynamic agent dispatches
   const SAMPLE_TASKS = {
     ENB: [
       {
@@ -530,18 +593,6 @@ window.BullpenCampusData = (function () {
           { type: 'del', text: 'clients.forEach(c => c.send(JSON.stringify(fullState)));' },
           { type: 'add', text: 'const delta = computeLeaseDelta(prevState, nextState);' },
           { type: 'add', text: 'broadcastDelta(clients, delta);' },
-        ]
-      },
-      {
-        task: 'Add rollback endpoint for single-agent undo',
-        reason: 'Allow engineers to revert only Agent 2 commits without touching peers.',
-        summary: 'Implemented selective cherry-revert filter keyed by Agent-Id trailer.',
-        file: '/backend/git/undoAgent.ts',
-        diff: [
-          { type: 'add', text: 'export async function undoAgentCommits(agentId: string) {' },
-          { type: 'add', text: '  const shas = await findCommitsByAgent(agentId);' },
-          { type: 'add', text: '  return gitRevertSequence(shas);' },
-          { type: 'add', text: '}' },
         ]
       }
     ],
@@ -555,82 +606,27 @@ window.BullpenCampusData = (function () {
           { type: 'add', text: 'if (bldg.state === "working") drawConstructionSite(ctx, bldg, t);' },
           { type: 'add', text: 'if (bldg.state === "ribbon") drawRibbonCutting(ctx, bldg, t);' },
         ]
-      },
-      {
-        task: 'Wire building hover tooltip & folder mapper',
-        reason: 'Let users inspect mapped folders and customize paths in Options.',
-        summary: 'Added instant hover folder badge and live building-to-path rebinding.',
-        file: '/frontend/ui/optionsModal.ts',
-        diff: [
-          { type: 'add', text: 'building.folder = sanitizeFolderPath(input.value);' },
-          { type: 'add', text: 'emit("campus:mapping-updated", building);' },
-        ]
       }
     ],
     LIB: [
       {
-        task: 'Write USF HackJam Devpost architecture guide',
-        reason: 'Document how Bullpen separates agent leases from human git workflows.',
-        summary: 'Added Campus Metaphor table and 3-minute live demo walkthrough.',
-        file: '/docs/ARCHITECTURE.md',
+        task: 'Document folder lease queue & timeout eviction',
+        reason: 'Keep contributor docs aligned with waiting-at-door and kick-out handoff.',
+        summary: 'Added state diagram and examples for queued agents and lease timeouts.',
+        file: '/docs/LEASE_PROTOCOL.md',
         diff: [
-          { type: 'add', text: '| Building | Folder | Protection |' },
-          { type: 'add', text: '| Sun Dome | /database | Guarded Zone |' },
+          { type: 'add', text: 'Waiting agents line up outside the door and enter on release or eviction.' },
         ]
       }
     ],
     SUN: [
       {
         task: 'Add safe additive index on audit_events(agent_id)',
-        reason: 'Speed up "why did login change?" history queries by 8x.',
-        summary: 'Created CONCURRENTLY index with zero table lock downtime.',
+        reason: 'Speed up history queries with zero table lock downtime.',
+        summary: 'Created CONCURRENTLY index for fast agent commit lookups.',
         file: '/database/migrations/005_audit_idx.sql',
         diff: [
           { type: 'add', text: 'CREATE INDEX CONCURRENTLY idx_audit_agent ON audit_events(agent_id);' },
-        ]
-      }
-    ],
-    BSN: [
-      {
-        task: 'Update Claude Haiku fallback concurrency limit',
-        reason: 'Prevent burst edits during rapid doc updates.',
-        summary: 'Set max concurrent leases per Claude model in bullpen.config.json.',
-        file: '/config/bullpen.config.json',
-        diff: [
-          { type: 'add', text: '"maxConcurrentLeasesPerAgent": 1,' },
-        ]
-      }
-    ],
-    ISA: [
-      {
-        task: 'Add lease queue & timeout kick-out test suite',
-        reason: 'Verify waiting agents enter /backend cleanly after completion or eviction.',
-        summary: 'Added 6 deterministic waiting-queue and timeout handoff tests.',
-        file: '/tests/queue.spec.ts',
-        diff: [
-          { type: 'add', text: 'expect(state.getWaitingAgentsOnBuilding("ENB").length).toBe(1);' },
-        ]
-      }
-    ],
-    REC: [
-      {
-        task: 'Add pixel sprite atlas verification script',
-        reason: 'Ensure every mascot color passes USF contrast guidelines.',
-        summary: 'Added automated hex palette checker for USF brand compliance.',
-        file: '/scripts/checkPalette.mjs',
-        diff: [
-          { type: 'add', text: 'assertColorInPalette(agent.primary, USF_OFFICIAL_HEX);' },
-        ]
-      }
-    ],
-    FAH: [
-      {
-        task: 'Polish Rocky Bull pixel mascot walk frames',
-        reason: 'Make idle campus patrol lively and crisp at 2x pixel scale.',
-        summary: 'Added 4-frame hoof animation and hover halo particles.',
-        file: '/assets/sprites/bullMascot.ts',
-        diff: [
-          { type: 'add', text: 'const bob = state === "working" ? Math.sin(t * 6) * 2.5 : (frame % 2);' },
         ]
       }
     ],
@@ -639,19 +635,22 @@ window.BullpenCampusData = (function () {
   return {
     WORLD_W,
     WORLD_H,
-    BORDER,
     GREENWAY_POLYGONS,
     PONDS,
     ROADS,
     ATHLETICS,
     CONTEXT_BUILDINGS,
     DISTRICT_LABELS,
-    DEFAULT_BUILDINGS,
+    BUILDING_CATALOG,
+    REPO_PRESETS,
     WAYPOINTS,
     BUILDING_WAYPOINT,
     TREES,
     SAMPLE_TASKS,
     getFolderLabel,
+    normalizeFolder,
+    buildBuildingsForFolders,
+    computeCropRect,
     findPath,
     nearestWaypoint,
   };

@@ -145,6 +145,15 @@ html, body {
   font-size: 10px;
 }
 
+.crop-chip {
+  background: var(--panel-dark);
+  border: 1px solid var(--usf-teal);
+  color: var(--usf-seaglass);
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
 /* Claude Model Color Legend */
 .model-legend {
   display: flex;
@@ -1018,12 +1027,28 @@ html, body {
 
 .opt-map-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr auto;
+  grid-template-columns: 1.25fr 1fr auto auto;
   align-items: center;
   gap: 8px;
   background: #062218;
   border: 2px solid var(--usf-evergreen);
   padding: 6px 8px;
+}
+
+.opt-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.opt-add-row .pixel-input {
+  flex: 1;
+}
+
+.opt-remove-btn {
+  padding: 4px 7px !important;
+  font-size: 8px !important;
 }
 
 .opt-bldg-info {
@@ -1307,4 +1332,175 @@ html, body {
 @media (max-width: 980px) {
   .oracle-panel { display: none; }
   .trad-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================================
+   PRE-MAP REPOSITORY ANALYZER OVERLAY
+   ============================================================================ */
+.analyzer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(0, 103, 71, 0.22) 0px,
+      rgba(0, 103, 71, 0.22) 8px,
+      transparent 8px,
+      transparent 16px
+    ),
+    rgba(4, 24, 17, 0.94);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.analyzer-modal {
+  width: 760px;
+  max-width: 100%;
+  max-height: 92vh;
+}
+
+.analyzer-intro {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--usf-sand);
+}
+
+.analyzer-intro strong {
+  color: var(--usf-lemongrass);
+}
+
+.analyzer-scan-note {
+  font-size: 12px;
+  color: var(--usf-seaglass);
+  line-height: 1.35;
+}
+
+.analyzer-scan-note.success {
+  color: var(--usf-apple);
+  font-weight: 700;
+}
+
+.analyzer-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.preset-card {
+  text-align: left;
+  background: var(--usf-evergreen);
+  border: 2px solid var(--usf-slate);
+  padding: 8px 10px;
+  color: var(--usf-sand);
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.preset-card:hover {
+  border-color: var(--usf-gold);
+  background: #046241;
+}
+
+.preset-card.active {
+  border-color: var(--usf-lemongrass);
+  background: var(--usf-green);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.preset-title {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--usf-white);
+  margin-bottom: 4px;
+}
+
+.preset-desc {
+  font-size: 11px;
+  color: var(--usf-gold);
+}
+
+.analyzer-count-badge {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  background: var(--usf-green);
+  color: var(--usf-lemongrass);
+  border: 2px solid var(--usf-gold);
+  padding: 3px 7px;
+}
+
+.analyzer-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr 2.2fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.analyzer-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--usf-gold);
+}
+
+.analyzer-folder-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.analyzer-chip {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  padding: 4px 7px;
+  background: var(--usf-green);
+  color: var(--usf-lemongrass);
+  border: 2px solid var(--usf-gold);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.analyzer-chip.guarded {
+  border-color: var(--usf-lemongrass);
+  background: var(--usf-evergreen);
+}
+
+.analyzer-crop-summary {
+  background: #051e15;
+  border: 2px solid var(--usf-teal);
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--usf-white);
+}
+
+.analyzer-crop-summary strong {
+  color: var(--usf-lemongrass);
+}
+
+.analyzer-scan-progress {
+  background: var(--panel-dark);
+  border: 2px solid var(--usf-lemongrass);
+  padding: 9px 10px;
+}
+
+.analyzer-scan-msg {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  color: var(--usf-lemongrass);
+  margin-bottom: 6px;
+}
+
+.analyzer-launch-btn {
+  padding: 12px 14px !important;
+  font-size: 10px !important;
+}
+
+@media (max-width: 720px) {
+  .analyzer-presets-grid,
+  .analyzer-inputs-grid {
+    grid-template-columns: 1fr;
+  }
 }
