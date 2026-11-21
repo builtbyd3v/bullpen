@@ -1,8 +1,8 @@
 # Shots to record
 
-- 12 clips and 13 voiceover takes. File names must match the slot ids below.
+- 11 clips and 13 voiceover takes. File names must match the slot ids below.
 - Record each beat as its own clip, 3 to 5 s longer than its slot. The build trims.
-- Screen: one browser window at 1920x1080, 30 fps, no sound. Voice: one take per beat.
+- Screen: a 16:9 box over the app (1504 x 846 on the MacBook), no sound. Voice: one take per beat.
 - Run `scripts/demo_reset.sh` before each demo take. The health strip must be all green.
 - Drop files into `video/raw/` and `video/raw/vo/`, then run `npm run render` in `video/`.
 
