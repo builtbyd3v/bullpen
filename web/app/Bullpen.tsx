@@ -240,9 +240,72 @@ function Feed() {
   );
 }
 
+function MergeIntentCards() {
+  const store = useStore();
+  const merges = useBullpen((s) => s.merges);
+  if (merges.length === 0) return null;
+  return (
+    <Section title="Merged intent">
+      <div className="flex flex-col gap-3">
+        {merges.map((card) => (
+          <article
+            key={card.id}
+            style={agentColor(card.color)}
+            className="rounded-lg border border-(--agent)/40 border-l-4 border-l-(--agent) bg-(--agent)/10 p-3 shadow-sm"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Dot color={card.color} />
+              <span className="text-lg font-bold text-(--agent)">{card.agent}</span>
+              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold tracking-wide text-emerald-300 uppercase">
+                Merged
+              </span>
+              <button
+                type="button"
+                onClick={() => store.dismissMerge(card.id)}
+                className="ml-auto rounded px-2 py-0.5 text-xs font-semibold text-white/60 hover:bg-white/10 hover:text-white"
+                aria-label={`Dismiss ${card.agent} merge card`}
+              >
+                Dismiss
+              </button>
+            </div>
+            <p className="mt-0.5 font-mono text-xs text-white/50">
+              {card.branch}
+              {card.sha && <span className="ml-2 text-white/40">{card.sha.slice(0, 7)}</span>}
+            </p>
+            <div className="mt-2.5 rounded-md border border-white/10 bg-black/25 p-2.5">
+              <p className="text-[11px] font-bold tracking-widest text-white/50 uppercase">Intent</p>
+              <p className="mt-1 text-sm leading-relaxed text-white/95">
+                {card.intent || <span className="italic text-white/50">No intent summary provided.</span>}
+              </p>
+            </div>
+            <div className="mt-2.5">
+              <p className="mb-1 text-[11px] font-bold tracking-widest text-white/50 uppercase">
+                Commits ({card.commits.length})
+              </p>
+              {card.commits.length === 0 ? (
+                <p className="text-xs italic text-white/50">No branch commits recorded.</p>
+              ) : (
+                <ul className="space-y-1">
+                  {card.commits.map((c) => (
+                    <li key={c.sha} className="flex items-baseline gap-2 text-sm">
+                      <span className="shrink-0 font-mono text-xs text-white/50">{c.sha.slice(0, 7)}</span>
+                      <span className="text-white/85">{c.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 function SidePanel() {
   return (
     <aside className="h-full w-[35%] overflow-y-auto border-l border-white/10">
+      <MergeIntentCards />
       <NeedsYou />
       <Agents />
       <Selection />
