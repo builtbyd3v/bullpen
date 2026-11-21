@@ -29,9 +29,12 @@ assert pre["timeout"] == 90 and pre["onFailure"] == "block", pre
 PY
 ok "make_demo.sh"
 
-# campus ranking: web and api largest, db guarded
-cnt() { git -C "$DEMO_DIR" ls-files "$1" | wc -l; }
-[ "$(cnt web)" -gt "$(cnt api)" ] && [ "$(cnt api)" -gt "$(cnt tests)" ] || fail "file counts"
+# campus map: exact tracked file counts (web=msc, shared=library, api=enb, tests=enc, config=muma, docs=cooper, scripts=rec, db=sundome)
+for pair in web:7 shared:6 api:5 tests:4 config:3 docs:2 db:2 scripts:1; do
+  d="${pair%%:*}"; want="${pair##*:}"; got="$(git -C "$DEMO_DIR" ls-files "$d" | wc -l | tr -d ' ')"
+  [ "$got" = "$want" ] || fail "$d has $got tracked files, want $want"
+done
+ok "campus file counts"
 
 # reset
 echo dirty > "$T/demo-api/api/users.ts"; echo x > "$T/demo-web/junk.txt"
