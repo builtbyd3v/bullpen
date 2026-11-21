@@ -106,5 +106,33 @@ async def merge(repo: Path, main: str, branch: str, message: str) -> str:
     return (await git(repo, "rev-parse", "--short", "HEAD")).strip()
 
 
+async def is_clean(worktree: Path) -> bool:
+    """No uncommitted changes to tracked files (an edit between PreToolUse and its auto-commit counts)."""
+    return not (await git(worktree, "status", "--porcelain", "--untracked-files=no")).strip()
+
+
+async def sync_from_main(worktree: Path, main: str, branch: str) -> str | None:
+    """Bring main into this agent's branch. Returns the new short sha, or None if already up to date.
+
+    Fast-forwards when the branch has no commits of its own, otherwise makes a merge commit.
+    On a conflict the merge is aborted, the branch is left exactly as it was, and GitError is raised.
+    """
+    behind = int((await git(worktree, "rev-list", "--count", f"HEAD..{main}")).strip() or 0)
+    if behind == 0:
+        return None
+    try:
+        await git(worktree, *IDENTITY, "merge", "--no-edit", "-m", f"Sync {main} into {branch}", main)
+    except GitError:
+        await git(worktree, "merge", "--abort", check=False)
+        raise
+    return (await git(worktree, "rev-parse", "--short", "HEAD")).strip()
+
+
+async def touches(repo: Path, base: str, tip: str, path: str) -> bool:
+    """Did tip change this exact file since it forked from base? (git diff base...tip -- path)"""
+    out = await git(repo, "--literal-pathspecs", "diff", "--name-only", f"{base}...{tip}", "--", path)
+    return bool(out.strip())
+
+
 async def diff(repo: Path, main: str, branch: str, path: str = "") -> str:
     return await git(repo, "diff", f"{main}...{branch}", *(["--", path] if path else []))

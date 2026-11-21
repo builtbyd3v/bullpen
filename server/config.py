@@ -17,6 +17,11 @@ APPROVAL_TIMEOUT = int(os.environ.get("BULLPEN_APPROVAL_TIMEOUT", 60))  # second
 # events.md section 2: leases are released when the edit is committed.
 # Set BULLPEN_RELEASE_ON_COMMIT=0 to keep a lease until Stop, undo or expiry instead.
 RELEASE_ON_COMMIT = os.environ.get("BULLPEN_RELEASE_ON_COMMIT", "1") != "0"
+# Merge guard: before a free lease is granted, refuse a file that another agent's unmerged branch
+# already changed (wait), or that main changed after this agent's branch started (deny, stale copy).
+# Together with leases, no two branches ever change the same file before one is merged.
+# Set BULLPEN_BLOCK_UNMERGED=0 to turn it off.
+BLOCK_UNMERGED = os.environ.get("BULLPEN_BLOCK_UNMERGED", "1") != "0"
 
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 COLORS = {"api": "#e5484d", "web": "#3e63dd", "db": "#f5b400"}
