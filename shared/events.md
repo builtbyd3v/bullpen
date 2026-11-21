@@ -38,7 +38,7 @@ Server steps, in order:
 2. `ask`: create an approval, broadcast `approval_needed`, and hold this HTTP request open until a human answers through `POST /approve/{id}` or 60 s pass. Timeout = `deny`. The server normally answers the hook with the final `allow` or `deny`; it returns a literal `ask` only if it cannot hold the request.
 3. Lease `{file, agent, expires_at}`: free, expired, or held by this agent -> grant or renew for 90 s (`claim_granted`). Held by another agent -> `wait` (`claim_wait`).
 
-Leases: TTL 90 s. Renewed by each `/checkout` and each `PostToolUse` from the holder for that file. Released on commit, on `Stop`, on undo, and on expiry (`claim_released`). The Jetson holds no lease state.
+Leases: TTL 90 s. Renewed by each `/checkout` and each `PostToolUse` from the holder for that file. Released on commit, on `Stop`, on undo, and on expiry (`claim_released`). The Jetson holds no lease state. The demo runs the server with `BULLPEN_RELEASE_ON_COMMIT=0`: a lease is then kept past its commit and released only on `Stop`, undo or expiry, so a second agent visibly waits.
 
 The hook's HTTP timeout for `/checkout` is 70 s, because an approval can take 60 s.
 
