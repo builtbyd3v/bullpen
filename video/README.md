@@ -48,6 +48,16 @@ Levels are 0 to 1 and live in `mix` at the top of `timeline.json`. The level cha
 
 The build stops with a clear message when a voiceover take is longer than its slot, or a clip is shorter than `start + dur x rate`.
 
+## Automated recording
+
+`node scripts/record.mjs live` opens Chrome at 1920x1080, types the ask, and drives the beats on the running stack: lock and wait, the referee's approval card (it clicks Deny), ask-why, a building interior, Undo on web, Merge on api, then the Locks and Referee panels. `node scripts/record.mjs fake` records the scripted `?fake` demo and needs no server.
+
+- Output: `raw/take-<mode>.webm` plus `raw/take-<mode>.json` with the beat marks, the server events, and every sound note the app played.
+- The recording has no sound track. The build plays the logged notes back at the right moments, with the same waves the app uses, under the voice.
+- In `timeline.json`, a slot cuts from a take with `"src": "take-live"`, `"from": "<mark>"` and `start` (seconds after that mark). A new take keeps the same marks, so the cuts follow it.
+- Run `scripts/demo_reset.sh` before a live take. The Jetson cable pull is not automated.
+- First use: `npx playwright-core install ffmpeg` (Playwright's video encoder, about 2 MB). Chrome must be installed. macOS asks for no Screen Recording permission, because Chrome records its own page.
+
 ## How it works
 
 `scripts/build.mjs` converts the inputs with ffmpeg, times the captions to the length of each voiceover take, and writes `out/props.json`. Remotion (React rendered frame by frame in headless Chrome) then draws the title card, labels and captions and encodes the film. The ffmpeg build on the demo Mac has no text or subtitle filters, so all text is drawn by Remotion.
@@ -57,4 +67,5 @@ The build stops with a clear message when a voiceover take is longer than its sl
 - Remotion 4.0.545 (free license: teams of up to 3).
 - ffmpeg.
 - macOS `say` for placeholder voiceover only.
+- playwright-core 1.65.1, to drive Chrome and record the app.
 - Bull sprite: the team's own pixel art from `web/app/bullSprite.ts`. Title lettering is drawn in code. Text uses the system monospace font (Menlo).

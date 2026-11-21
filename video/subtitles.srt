@@ -171,21 +171,21 @@ Small on-device models write the history, and
 a secret guard scans each diff.
 
 44
-00:01:48,000 --> 00:01:50,364
-Anthropic rebuilt source control for
+00:01:48,000 --> 00:01:49,921
+Two clean pull requests should
 
 45
-00:01:50,364 --> 00:01:52,203
-agents, and called it Scion.
+00:01:49,921 --> 00:01:51,394
+never break each other.
 
 46
-00:01:52,203 --> 00:01:54,699
-Bullpen brings that to every engineer.
+00:01:51,394 --> 00:01:54,404
+Bullpen stops that live, while the agents work.
 
 47
-00:01:54,699 --> 00:01:56,275
+00:01:54,404 --> 00:01:55,941
 Git tracks what changed.
 
 48
-00:01:56,275 --> 00:01:59,164
+00:01:55,941 --> 00:01:58,759
 Bullpen controls who's allowed to change it.

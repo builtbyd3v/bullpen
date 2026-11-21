@@ -1,15 +1,14 @@
 # Bullpen demo video script (2:00)
 
 - 13 slots, 120 s, 1080p30. Slots, lines and timings live in `timeline.json`; change them there, then update this file.
-- Voiceover: 252 words. "say" is the placeholder voice's time at 150 words per minute, a natural speaking pace. A take may run up to the slot length minus 0.3 s.
+- Voiceover: 253 words. "say" is the placeholder voice's time at 150 words per minute, a natural speaking pace. A take may run up to the slot length minus 0.3 s.
 - Captions are the voiceover text, burned in at the bottom. Labels sit top left.
 - Sound: voice on top, the app's sound effects from each clip lowered under it, optional music bed lowest.
 - The spoken line names no model. The three model names are on screen in slot 12.
-- Slot 13 names Scion, Anthropic's in-house source control system. Source for Q&A: https://www.anthropic.com/engineering/redesigning-source-control
 
 ## The core problem
 
-Two agents work in separate worktrees on the same code. Each pull request has no conflict with main, but the two conflict with each other. The second merge breaks, and someone redoes the work. Bullpen stops that before it happens: agents take live locks on files while they work, so the second agent waits or adapts while the first one works. If two branches still conflict at merge time, the merge aborts cleanly and nothing breaks on main.
+Two agents work in separate worktrees on the same code. Each pull request has no conflict with main, but the two conflict with each other. The second merge breaks, and someone redoes the work. Bullpen stops that live: agents take locks on files while they work, so the second agent waits or adapts while the first one works. If two branches still conflict at merge time, the merge aborts cleanly and nothing breaks on main.
 
 ## Shot list and voiceover
 
@@ -44,7 +43,7 @@ Two agents work in separate worktrees on the same code. Each pull request has no
 | 1:24-1:32 | `10-campus` | Campus built from a second repo, then tagged commits | Auto-commit per edit: Bullpen-Agent, Bullpen-Task | Point Bullpen at any repo and it builds your campus. Each edit becomes a commit, tagged with its agent. | 6.5 s |
 | 1:32-1:38 | `11-interior` | Building interior zoom | Your own Claude subscription, no API key | It runs on your own Claude subscription, with no API key. | 4.0 s |
 | 1:38-1:48 | `12-referee` | Referee log: rule, latency, model | On the Jetson: qwen2.5-coder:3b, llama3.2:3b, nomic-embed-text | The referee runs on separate hardware the agents cannot reach. Small on-device models write the history, and a secret guard scans each diff. | 8.8 s |
-| 1:48-2:00 | `13-close` | Generated: title card with the closing line | none | Anthropic rebuilt source control for agents, and called it Scion. Bullpen brings that to every engineer. Git tracks what changed. Bullpen controls who's allowed to change it. | 11.2 s |
+| 1:48-2:00 | `13-close` | Generated: title card with the closing line | none | Two clean pull requests should never break each other. Bullpen stops that live, while the agents work. Git tracks what changed. Bullpen controls who's allowed to change it. | 10.8 s |
 
 ## Read-aloud copy
 
@@ -72,4 +71,4 @@ It runs on your own Claude subscription, with no API key.
 
 The referee runs on separate hardware the agents cannot reach. Small on-device models write the history, and a secret guard scans each diff.
 
-Anthropic rebuilt source control for agents, and called it Scion. Bullpen brings that to every engineer. Git tracks what changed. Bullpen controls who's allowed to change it.
+Two clean pull requests should never break each other. Bullpen stops that live, while the agents work. Git tracks what changed. Bullpen controls who's allowed to change it.
