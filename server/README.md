@@ -3,7 +3,8 @@
 Referee and event hub. FastAPI on port 8600, runs on the Mac next to the demo worktrees.
 Contract: `../shared/events.md` (sections 2 to 6). The server calls no model: it only calls the Jetson.
 
-How an edit flows through the referee: [docs/version-control-flow.png](docs/version-control-flow.png)
+- Overview, without vs. with Bullpen: [docs/version-control-overview.png](docs/version-control-overview.png)
+- How an edit flows through the referee: [docs/version-control-flow.png](docs/version-control-flow.png)
 
 ```sh
 cd server
