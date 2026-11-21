@@ -4,6 +4,7 @@
 - Live beats: collision, Sun Dome deny, ask why, undo, merge, then unplug the Jetson.
 - Fallback: `GET /replay` on the server, or `?fake` plus "Play demo" in the web app.
 - Before judging: run `scripts/demo_reset.sh`, check the health strip is all green.
+- Start the server with `BULLPEN_RELEASE_ON_COMMIT=0` (in `server/`: `BULLPEN_RELEASE_ON_COMMIT=0 uv run uvicorn main:app --host 0.0.0.0 --port 8600`). Without it the lease drops at each auto-commit (about 1 s), so the second agent almost never waits and the collision beat does not show.
 - Never cut: claims, the fence, undo.
 - Timeline: project done by 3:00 PM, testing until 5:00 PM, pitch prep 5:30 PM, submit on MLH before 6:00 PM, judging 6:20 to 7:50 PM.
 
