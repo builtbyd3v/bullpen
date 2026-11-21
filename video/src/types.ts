@@ -19,6 +19,11 @@ export type Slot = {
   clip?: string | null;
   voFile?: string | null;
   voDur?: number;
+  // The slot lasts as long as its voice line plus `pad` seconds.
+  fit?: boolean;
+  pad?: number;
+  // Large centered text over the clip, for the closing line.
+  overlay?: string;
   // Recorder takes: the source file, a mark in its log, and the app's sound-effect notes inside this slot.
   src?: string;
   from?: string | string[];

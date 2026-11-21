@@ -71,12 +71,12 @@ function charge(t: number, tagline: string): Pen {
 }
 
 // `still` skips the run: the finished lockup holds while the tagline comes in. Used for the closing card.
-export function TitleCard({ tagline, still = false }: { tagline: string; still?: boolean }) {
+export function TitleCard({ tagline, still = false, speed = 1 }: { tagline: string; still?: boolean; speed?: number }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   let n = 0;
   return (
-    <Stage pen={charge(still ? 5 : frame / fps, tagline)}>
+    <Stage pen={charge(still ? 5 : (frame / fps) * speed, tagline)}>
       {fitsPixel(tagline) ? null : (
         <div style={{ position: "absolute", top: GY * 4 - 16, width: "100%", fontFamily: MONO, fontSize: 40, color: C.gold, textAlign: "center", lineHeight: 1.5 }}>
           {tagline.split(/(?<=\.)\s/).map((line, l) => (
