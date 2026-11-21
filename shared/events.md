@@ -106,16 +106,31 @@ The server must send CORS headers (allow all origins): the web app runs on anoth
 - `GET /history?file=<path>`: commits that touched the file, newest first: `[{sha, agent, task, message, at}]`.
 - `GET /replay`: re-broadcast `events.log` in order. Every replayed envelope carries `"replay": true` so the web can label it.
 
-## Folder -> building
-`campus/campus.json` maps repo folders to campus buildings. `folder: null`
-(Juniper-Poplar) catches unmapped paths. `folder: ""` (Bull Runner) is the repo
-root: files with no folder map there. Unknown folders map to Juniper. `guarded: true` (Sun Dome, `db/`) marks folders the referee protects.
+## Campus layout: `campus/campus.json` (generated file, no endpoint)
+`python3 scripts/make_campus.py <repo path>` writes it. The web imports the file; the server reads the same file. Deterministic: the same repo gives the same layout.
 
-## 6b. Orchestrator: `http://localhost:8650` (Dev)
-Runs Claude Code through the `claude` CLI on the user's subscription. No API key.
-- `POST /orchestrate` body `{"ask": str}` -> `{"tasks": [{"agent": "api" | "web" | "db", "task": str}]}`. Splits the ask into one task per agent, starts the agents (`scripts/demo_start.sh`), then posts `{"event": "Plan", "agent": "orchestrator", "ask": str, "tasks": [...]}` to the server's `POST /hook`. The server stores each task as that worktree's `task` in `/state` and broadcasts `plan`.
-- `POST /ask` body `{"question": str, "agent": str?}` -> `{"answer": str}`. Ask-why: reads the server's `/state` and `/history`, then calls Jetson `/ask`. Jetson down -> `503 {"error": str}`.
-- Sends CORS headers, like the server.
+Rules:
+1. Count tracked files per top-level folder (`git ls-files`). Sort by count, highest first; ties by name.
+2. Guarded folders (default `db/`) take the `sundome` slot and get `guarded: true`.
+3. The other top folders fill the fixed slots in this order, up to 8 buildings in total: `msc`, `library`, `enb`, `enc`, `muma`, `cooper`, `rec`.
+4. Every other folder maps to the Annex (`juniper`, `folder: null`). Files in the repo root map to the hub (`bullrunner`, `folder: ""`).
+5. Slot positions (`x`, `y`, `w`, `h`) and names are fixed per slot. Only `folder` and `rooms` change.
+
+Shape:
+```json
+{
+  "repo": "demo", "width": 960, "height": 640,
+  "buildings": [{
+    "id": "enb", "name": "ENB", "folder": "api/", "guarded": false,
+    "x": 660, "y": 60, "w": 180, "h": 110,
+    "files": 42,
+    "rooms": [{"name": "routes", "path": "api/routes/", "files": 12}]
+  }]
+}
+```
+- `rooms`: up to 6 per building, for the interior view: its subfolders by file count, then its largest files if there are fewer than 6 subfolders. `path` ends in `/` for a folder.
+- File -> building: longest non-empty `folder` prefix; root files -> `bullrunner`; no match -> `juniper`.
+- Interior view data, all existing: an agent's current file is its lease in `/state` `leases`; the sign is its `branch`; the mini log is that agent's `hook` events; the diff is `GET /diff`.
 
 ## 7. Jetson: `{JETSON_URL}` (port 8700), policy and local model only
 `JETSON_URL=http://192.168.55.1:8700` (USB). Fallback `http://dev.local:8700`. No lease state lives here.
