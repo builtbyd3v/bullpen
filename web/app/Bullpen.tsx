@@ -214,6 +214,7 @@ function CampusPane() {
 // Plain verbs for the UI. The server's `working` reads as editing.
 const STATUS_LABEL: Record<Status, string> = { working: "editing", waiting: "waiting", blocked: "blocked", done: "done" };
 const STATUS_ICON: Record<Status, string> = { working: "✎", waiting: "⏳", blocked: "⛔", done: "✓" };
+const LEGEND: [Status, string][] = [["working", "editing"], ["waiting", "waiting"], ["blocked", "blocked"], ["done", "saved"]];
 
 const STATUS_CLASS: Record<Status, string> = {
   working: "bg-emerald-500/20 text-emerald-300",
@@ -728,29 +729,33 @@ function Activity() {
   const leases = useBullpen((s) => s.data.leases ?? []);
   const now = useNowTick(leases.length > 0);
   if (worktrees.length === 0) return null;
-  const line = (agent: string, status: Status, commits: { files: string[] }[]) => {
+  const line = (agent: string, status: Status, commits: { files: string[] }[]): [Status, string] => {
     const held = leases.find((l) => l.agent === agent);
-    if (status === "blocked") return "blocked";
-    if (status === "waiting" || leases.some((l) => l.waiters.includes(agent))) return "waiting";
-    if (held) return `editing ${held.file}${formatTtl(held.expires_at, now) ? ` · ${formatTtl(held.expires_at, now)}` : ""}`;
+    if (status === "blocked") return ["blocked", "blocked"];
+    if (status === "waiting" || leases.some((l) => l.waiters.includes(agent))) return ["waiting", "waiting"];
+    const ttl = held ? formatTtl(held.expires_at, now) : null;
+    if (held) return ["working", `editing ${held.file}${ttl ? ` · ${ttl}` : ""}`];
     const last = commits[0]?.files[0];
-    return last ? `saved ${last.split("/").pop()}` : STATUS_LABEL[status];
+    return last ? ["done", `saved ${last.split("/").pop()}`] : [status, STATUS_LABEL[status]];
   };
   return (
     <Section title="Activity" hint="What each agent is doing right now, from live events.">
       <ul className="space-y-2">
-        {worktrees.map((w) => (
-          <li key={w.agent} style={agentColor(w.color)} className="flex items-center gap-3 text-lg">
-            <span aria-hidden="true" className="w-6 text-center">{STATUS_ICON[w.status]}</span>
-            <AgentChip agent={w.agent} color={w.color} />
-            <span className="min-w-0 truncate font-mono text-white/90">{line(w.agent, w.status, w.commits)}</span>
-          </li>
-        ))}
+        {worktrees.map((w) => {
+          const [kind, text] = line(w.agent, w.status, w.commits);
+          return (
+            <li key={w.agent} className="flex items-center gap-3 text-lg">
+              <span aria-hidden="true" className="w-6 text-center">{STATUS_ICON[kind]}</span>
+              <AgentChip agent={w.agent} color={w.color} />
+              <span className="min-w-0 truncate font-mono text-white/90">{text}</span>
+            </li>
+          );
+        })}
       </ul>
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/55">
-        {(Object.keys(STATUS_ICON) as Status[]).map((st) => (
+        {LEGEND.map(([st, label]) => (
           <span key={st}>
-            {STATUS_ICON[st]} {STATUS_LABEL[st]}
+            {STATUS_ICON[st]} {label}
           </span>
         ))}
       </p>
