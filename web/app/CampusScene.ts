@@ -223,11 +223,29 @@ export class CampusScene extends Phaser.Scene {
     return bull;
   }
 
-  // The Bull's body. Swap this for a sprite later; everything else hangs off the container.
+  // The Bull's body: 16x11 pixel art (2px cells) facing right, in the agent's color.
   private makeBull(color: number): Phaser.GameObjects.GameObject[] {
-    const horns = this.add.graphics().fillStyle(0xf5f0e1);
-    horns.fillTriangle(6, -8, 9, -16, 11, -8).fillTriangle(15, -8, 18, -16, 20, -8);
-    return [this.add.ellipse(0, 0, 28, 16, color), this.add.circle(13, -5, 7, color), horns];
+    const rows = [
+      "..........h..h..",
+      "..........oh.ho.",
+      "..oooooooooooooo",
+      ".occccccccccccco",
+      ".occccccccccecco",
+      ".occccccccccttto",
+      ".occccccccccttto",
+      "..oooooooooooooo",
+      "..oc.oc..oc.oc..",
+      "..oc.oc..oc.oc..",
+      "..oo.oo..oo.oo..",
+    ];
+    const fills: Record<string, number> = { o: 0x1b1b2f, e: 0x1b1b2f, c: color, t: 0xd9b382, h: 0xf5f0e1 };
+    const g = this.add.graphics();
+    rows.forEach((row, y) =>
+      [...row].forEach((ch, x) => {
+        if (fills[ch] !== undefined) g.fillStyle(fills[ch]).fillRect(-12 + x * 2, -16 + y * 2, 2, 2);
+      }),
+    );
+    return [g];
   }
 
   private bull({ agent, color }: BullSpec) {
