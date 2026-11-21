@@ -1,0 +1,3054 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bullpen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Pixelify+Sans:wght@500;600;700&display=swap">
+<style>
+/* Bullpen v3 shared tokens. One ink (USF green) on sand; gold is the second voice. Dark = deep forest. */
+:root {
+  --bg: #EDEBD1;
+  --surface: #F7F6EA;
+  --surface-2: #E2DFC0;
+  --fg: #0D231B;
+  --muted: #466069;
+  --accent: #006747;
+  --accent-fg: #F7F6EA;
+  --gold: #CFC493;
+  --rule: #CFC493;
+  --frame: #0D231B;
+  --ok: #1F8A5B;
+  --warn: #B07A00;
+  --bad: #C4373C;
+  /* App chrome (the product UI itself is always dark forest, like main) */
+  --app-bg: #08120D;
+  --app-panel: #0F1F17;
+  --app-panel-2: #132a1f;
+  --app-line: rgba(237, 235, 209, 0.12);
+  --app-fg: #EDEBD1;
+  --app-muted: rgba(237, 235, 209, 0.62);
+  --api: #e5484d;
+  --web: #3e63dd;
+  --db: #f5b400;
+  --orch: #8e4ec6;
+  --font-pixel: 'Press Start 2P', 'Courier New', monospace;
+  --font-display: 'Pixelify Sans', 'Courier New', monospace;
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #072E20; --surface: #0B3B2A; --surface-2: #0F4532; --fg: #EDEBD1; --muted: #9DBFB7; --accent: #CFC493; --accent-fg: #072E20;
+  --rule: #005432; --frame: #CFC493; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #072E20; --surface: #0B3B2A; --surface-2: #0F4532; --fg: #EDEBD1; --muted: #9DBFB7; --accent: #CFC493; --accent-fg: #072E20;
+  --rule: #005432; --frame: #CFC493; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1360px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+p { margin: 0; text-wrap: pretty; }
+code { font-family: var(--font-mono); font-size: 0.9em; }
+a { color: inherit; }
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid #DBE442; outline-offset: 2px; }
+canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+
+/* Page scaffolding for the mockup sheet */
+.sheet-head { padding-block: 40px 8px; display: grid; gap: 14px; }
+.sheet-head h1 { font-size: clamp(26px, 4vw, 40px); color: var(--accent); }
+.sheet-head .lede { color: var(--muted); max-width: 72ch; }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; }
+.toc a { font-size: 14px; text-decoration: none; padding: 5px 11px; border: 2px solid var(--frame); background: var(--surface-2); transition: background 160ms var(--ease-out); }
+.toc a:hover { background: var(--rule); }
+main.sheet { display: grid; gap: 72px; padding-block: 28px 80px; }
+.sec { display: grid; gap: 18px; min-width: 0; scroll-margin-top: 16px; }
+.sec-head { display: grid; gap: 8px; border-top: 4px solid var(--rule); padding-top: 18px; }
+.sec-head h2 { font-size: clamp(20px, 2.6vw, 28px); color: var(--accent); }
+.sec-head p { color: var(--muted); max-width: 76ch; }
+.num { font-family: var(--font-pixel); font-size: 11px; color: var(--muted); }
+.note { font-size: 14px; color: var(--muted); }
+.real { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+/* Browser frame around every product screen */
+.frame { border: 3px solid var(--frame); box-shadow: 0 0 0 3px var(--rule); background: var(--app-bg); overflow: hidden; min-width: 0; }
+.frame-bar { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: #0D231B; color: #9DBFB7; font-family: var(--font-mono); font-size: 12px; border-bottom: 2px solid #005432; }
+.frame-bar i { width: 9px; height: 9px; background: #466069; display: inline-block; }
+.frame-bar .url { flex: 1; min-width: 0; padding: 3px 10px; background: #072E20; color: #CFC493; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.frame-body { position: relative; }
+.scroll-x { overflow-x: auto; max-width: 100%; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
+
+/* Campus hover tooltip */
+.campus-tip { position: absolute; z-index: 5; min-width: 200px; max-width: 280px; padding: 9px 11px; background: #0D231B; color: #EDEBD1; border: 2px solid #CFC493; box-shadow: 3px 3px 0 rgba(0,0,0,0.35); font-family: var(--font-body); font-size: 12.5px; line-height: 1.4; pointer-events: none; display: grid; gap: 4px; }
+.campus-tip[hidden] { display: none; }
+.campus-tip > b { font-family: var(--font-display); font-size: 14px; color: #E9E2B8; }
+.campus-tip .f { font-family: var(--font-mono); font-size: 11px; color: #CFC493; }
+.campus-tip .l { display: flex; gap: 7px; align-items: flex-start; }
+.campus-tip .l i { width: 8px; height: 8px; flex: none; margin-top: 5px; }
+.campus-tip .l small { display: block; color: rgba(237,235,209,0.65); font-size: 11.5px; }
+.campus-tip .hint { color: rgba(237,235,209,0.5); font-size: 11px; }
+
+</style>
+<script>window.BP_SPRITES = {"bullrunner": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAaCAYAAADMp76xAAABAUlEQVR4nGPkVZb+z0AF8PnuU0YGOgAWENG/QoEiQwojHjDQC7CAiJQ5PBQZwstAP8DEMMQAE8MQA0wMQwywUMsgapU2hAAjNS06tLCCgZbALr6DgQVWfoIcTmpZiqyHXiHMxDBS0zAIGC7ewkBLwEttB4OApkc7Cv/6jkqqilPdwde3bkMVYKauOIqDlzW7kJRx0hdcZ6A3YGIYYoAFmRNVu4fkYg1DkPkwdsXM1BFnoqQ9S6828PBJEpSC87E+DLQEdnuujFYcYMC75woDNvDZRYeBUn2MQ655yUADAHN8YXErmN/fW01UqUKMviFXSjDSwlBcyeMzkSGMT9+QC2EASsBib5AHfaMAAAAASUVORK5CYII=", "cooper": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAaCAYAAAD1wA/qAAAAp0lEQVR4nGPkVZb+zzAMAAuIOLNxKcNQBib+0RCP3Lp5nWGoAyaGYQKYGIYJYGIYJoCJYZgAJoZhApgYhglgHK0QB2OFCALL7zxjgIFIFakhxQcBuEeObTgMYzJEloQPKf7wy+xnhkGjkYlhmAAWGGMwZd7I0cw+DADjcMnsLLQyGB+gRcCxMNAIfDYUxyrOe/4lTexjYhgmgIlhmAAmhmECGIdLfwQADmOwgH8QIKYAAAAASUVORK5CYII=", "enb": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEgAAAAuCAYAAACLQF8AAAABz0lEQVR4nGPkVZb+zzAKcAIWEHFm41LcKkYwMPGPZmAaaEcMiRSEHmr4wJmNS4etGqICCARkejbD2b/XL2VgDYQY/qTEd9irISqArm/dBmerIPF5R4AadDBaBhEAowFEAGDNYrz7p8PZL3EkweGqBh0wghqKo+0g7ABU841W81AwWs0zjFbzDDAwWs3TEYxW8wTAaDVPAIxW8wSqeXAA4VM00gE4i12dHckwWMBbNnkG4V8PGQYD0E5djr0MGqiAQWcPhoBCCaCoiyYYCrZ7fWHw3MaD0wBqyU82fc1gF98BFju0sALuHnrZjwyW6Z/BHkAvzp/GNMFLE7s4FeVBgYMNQMQ5aW4/hrw+4+BqB4XOegBPObDUgyw+kGBQBNBgBihZbF8CImkRI05VeWiBjFyLwfTRxf6hkoKEB0HNNagDaLABwtW89Bes4sNZftBV8y8Gm/xgq+YHMxgNoCFTzeMBo9X8IAajWYwAGK3mpUereYbRap6GYMBGFF8eXQGmpbzwq4PJi1tHMAwEAA/aD8SYtHbqcobPhuJEqeU9/3JAxs0HfExaM3oOUeqenMe9RI7WYLSaJwBGA4gAGA0gAmA0gAiA0QAiAEbn5hnwAwCYudheFN0zNwAAAABJRU5ErkJggg==", "enc": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAAAmCAYAAACLZrh7AAABNUlEQVR4nGPkVZb+zzCMAAuIWNZVwzAcQFRZCwMTwzADLLh8SgxAj1l66yPaQyCwd/1eBnzAOdB5UOgj2kPIYMuRE3C2j40FMVoGRB8IMJFiODb+YNEHA0QVCv291WBMKqC3PqKTXGFxKzHKBlwfCAy7YpuJkAL0TElsJqW3PoJJDlcx2d+LS8fA6EMHjKC23GjTZxADFhAhc3A3w7Dy0LMnLxmGC2BiGGaABZnTbpuLoaDy8ORBJ0e0h16cP41T4WCSG1FJjolhmAFGUMW6Ql+BYTiAiIsPhl8MMTEMM8CCzBlMRfNosT1ckxwTwzADjKPF9iAHLLSq4IgBtKjQWRhoBD4biuOV5z1Pmz4YC01MZWBg0Iyeg1f+yXlfmtjLxDDMABPDMANMDMMMMDEMx4qVYRgBAANRovnq0TX+AAAAAElFTkSuQmCC", "juniper": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAmCAYAAAC/H3lnAAAA60lEQVR4nGPkVZb+zzCEAAuIeLatkWEoACmveoiDcUkSA+jtWRZ8knvX78Wr2TnQmYHegIlhiAEmhiEGWAZblJPt4MFacjAxDDHAOCQrjgcntjEMBaBg4TX0kgQLMsfmyF8UySM2zAMqTtDB17eiJQ0b3wEVxwaGXJJgYhiKxdqDE9sYhGvKGAYzeNvSBS4lWJAFhgJgQeaMlhIwMFpKDCHAOFpK0BiwIHNGSwkYGC0lhhBgHC0laAyYGIbTQAopANT0wwceUKmjSzUHg8BnQ3Gs4rznX47cJMHEMMQAE8MQA0wMQwwwDrWxNQD4zZ1QCFTK4gAAAABJRU5ErkJggg==", "library": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAAAqCAYAAAD8pHgAAAABXklEQVR4nGPkVZb+zzCMAAuI+HTnCcNwAHwqMgxMDMMMsICIW1cPkqzRxD+agZbgzMalZOkDe4hcsKyrhoEWIKqshWy9LJRafvolJwM1gan4d4r0MzEMM8Ay0CFKbcDEMMwAE8MwAywDVRoNOg+dIbOeoDVgYhhmgAVESLHeYRhWHnr/9AbDcAFMyBxBaQ0GpwX/wXgo8rEWChKGplDWmSHJZ0H30IvzpyEMfcYhyWdiGGaAiWGYARZ0gYHOA6N56PxoHhpagAVdYKDzwGgeOj+ah4YWYEEXGOg8MJqHzo/moaEFWNAFBjoPjOah86h5iOKhYBB4eXQFw9u0Coa3r78zrE5TAIu9BWES+NrxHQzPtjVS7BZG0JTk1dmRFBminbqc4dDCCorMsIvvYKCGO1gYqAQMJ8ynSD8vldzBwkAjoBk9B6/89aUpNLGXiWGYASaGYQaYGIYZYBxuCy8AHLZi1/EhtkIAAAAASUVORK5CYII=", "mlk-plaza": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAiCAYAAAAZHFoXAAAChElEQVR4nGNgGOKAkVIDumdP/U+J/tLUbIrcwEKpo6P9gxgoBP8p8QzjADkaK1i6cR0DqZ5BUVS/MhruyMbwpYzojqeVw3F5BOYJXO4CATjHr94dIy3byvgx0NPh2Dxy+MkmDPFNjTvh7saIphgrxf9Ljt1nBIX6QDkcm0cuzu9hALkLXY4JQzU0yQwWx4MAPrdg9cBgcjyhIpuJmmU6rUG0fxCGGwespKFWCcWELEmK46Wq5jIMBIhGcyMjsZkW3cGa3l4M17duQxF71pbMQM+YKE3NZiSqKQFyPMjBMHAtwBBMa2FRRy1PvLy1hkFcLQRO4wIspDoeHwCpI9UTU9J8MMRyZm2By4WWJODVz0JOyKPztTacJ9kT2ByOTW51zwIGBoYFcE9R1BqFORSbw0kB+ByPDTx69Y4BF2A5cfEMSrn66PlTMG0xeQfRSQcdIMcCzDw5SWm4+SAHyYkJEWWWX+NMFD7MPBhgstA3YTx86iRcAGQRCIMsRy9liAUgfbAkBDMP2fyuDcfA7JxZW+BJA8ZG52+qT8fQj8wnq0NDbtKhBWDBJwkKRVJKIfTQRwfqliYo/MlI/MlEyN08fgbDTIIxQIon8DkeBs5sXMpADjDxj8YqzoLUrsBZG8M8MVhq4qXQWhgjBkAS+DxBq1oXH1h2dTaYLmpzwOg3gwBKDwfUJvrCBykhQCDdsYeBmgCUB0hJQqWr2xmwdXORO/woHsDWL56RDaoJqQPQMzGxwF+cjWHjy18MdRVVGKMVWIcuQP1iWFk9GEBZgBWDfmIJ1qEWrF1KbGltoEEpjnEinMUorGQa6GEVQoCFSF8P6MDWyBlaHAjPLCXD0cNqeJ1hqAMAWyw6UlaWsMgAAAAASUVORK5CYII=", "msc": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEQAAAAsCAYAAADctB6FAAACmklEQVR4nGPkVZb+zzAK4IAFRDw4sQ0hMoKBgoUXA9NAO2JQphC2d6cH2h2DK0DQgZRXPV5Nz7Y1MgwFQI4/sAYICOxdv5cBG3AOdGYYSoBUf4yWIYM1QKQIJG96AZxZht6el+nZzCDl5Tvg5RXOAHGmclmBHAggz2MD2MSRA4mcwCHVH4ygliqtY0EKGhggD18LMMSQ19pwnqAZT0ogAUNLt4LcSfMsI+VVjzNFkAJgZoBSDC0DhYXegaFFRGrAB2BlDa0ChWmwpwzcgVI/vKvdwQLAhepAO2IwAXAZcnV2JFUN1U5dzqCf0wtmvzh/mkHC0JTh4pRihs+G4gznCxIZDCfMR6FhABsfBHjPv8RqHrXdDnI3zQrVwwXhUBaE5oN6AASQPY3scVx8XIDaEQkCVAkQuZWX4exH4bpg2nbCSpQYxQdgAURsQBBjP1UCxP1jFIrkTv5lRIpXMpyP9WEwXLyFKEuRswYsENBTDTEAm/2k+gFvgFzfijaUGEWkODOmwaCUgY2NDrAFBLYUg808bPaT6gd0QLMyRAKaTWBZ5uXRFeDC0S6+g4GXgQGFhgFsfHzmDenerj5aLQEDpPJpDUYbZvhSyKOoD+jyRInLQSoUugNs9pPqB7plmRd4ClVq86kJqBYghmhVLnohCAPU4qMXqsRW+XQJkEcUNoYGk/1Uapjhb+zQCiDbTy23UqdhRqCxQyuAYj+V3DpaqA5US5XWhSq1wGjDjBYNs4EC2Oyn1K2jKQQNjBaqg6FQfUlkgQjqIdO7UB2QyW4QAA044wOgsZOBAAMWILcnCOCVN7IfmAAZLVQHQ6FKLIDpo2f3n2YpRMLQFF4YwtikDgXi0k/LIUWaZxkJNMeTGyjk6icVjM7tMqACAOOxoLF3DnocAAAAAElFTkSuQmCC", "muma": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA0CAYAAADfRPtlAAACAUlEQVR4nO2YMUsDMRTHX8MbLY6VugjiYJdygyhI/QCC0M1ihyI6KhZcdCgIDroIFR0VcVDq1skPYBGUDkcXZweRdpS6K5FesVfby93lcq/xfkMvl5d76SPJPy+Jxacnv0BjkP+UEuOgI4etD2CgOQw0B90MNyVElxW6cXpxuwEU2Fy7FG6Lbp3f3D93y/nleaAOA81hqjs8eM8q7Q/dfuB1WlqBvWQNSFU7dclOgVKAMkeN1w8K0klIRFUdQXFwqaopHGR668RX343zXQUBJqtD153TNK0VV/vqMuU7YlM0+XeQTsE1zTrMFOq++kZQhBXMsClpZ8KY89Vn67ESwjahQDn/1UaPQeWAIxdgSfGhmO9zXGT8gkCYkRQZ1aA97Xm43oOlwrGrpwV/Jxlg20j0VFp/2qq3P+12o3wFZnG9z48f4mZLih+U4YQHFwSBiYzRGZFB2O1O7cmLjBnQCKkgRvlmW9pxqZKe+qnYGVvoaXD6+dQtq7blGq8gAwTCRJmMgMjgoCliR7VNFgw0h4Hm4O+Xo8x2j3G/dhaaLRCRaQ5xqNrGiY5LAmi/BhloToznolaqRgmeqiUWc3I3empEIiOA9muQgeag1w/dnte8CFnox6W24C2a1xsyGSKDfhzM5i+E2r2ZKxAWDDSHgeYgECZ0kQmaKJMRgPTFrwy+AVFm6Px0RVEGAAAAAElFTkSuQmCC", "rec": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEIAAAAmCAYAAABwMU2kAAABJklEQVR4nGPkVZb+zzAKGFhAYfDpzpMRHRR8KjKQgKifvpBhpANwQPjYWDCMZNDfy8DANNCOGFQpYsuREwwjHYxmDYbRrIECRrMGFIxmDYbRrIECRrMGFIxmDYbRrIECRrMGFIxmDYbRrIECRrMGFIxmDQZI1mAcHapDShFXZ0cyjGSgnbocEhC4JIcjwBXpOAOClEFd2wkrMcRenD/NIGFoOqjEXx5dgdMPLMR68AWJFg81MDpmCQWjAQEFowEBBaMBAQWjAQEFowEBBeAm9lUsjYyR1KDC27K8SoNmN8jCz4biRKnlPf+Srk1/cEDIrbxMF8t4GRgYbk8QIEqtkf1LurprtIxAThGPwnUZ6AG091whST093TWaIqBgNCCgYHSEigECADjdY1xvdDlpAAAAAElFTkSuQmCC", "sundome": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEwAAAA+CAYAAACBff3hAAACd0lEQVR4nO2bP0vDQBiH746Ci+1QBAc7CIpSELHgJjgpuIg4d3B18AM4ODiKgwg6CuLi2k/QRXTRodIOWrHgUBGhBEnFxUGJmJKUa3Pv5e6SNu8DhXJtwnsPv/vToyEEGQ7SUxM/JIbQQRbSbrwar5/GVdLVxS5Z3jqInTwapST7udl5f39zGnivhaWdzvvMdC4SedSkKNsjyIsra3SyxP3882WTK80LT6AOcdSELLuHKNFkddNLGk+camk0KlGy0vrJMiGO6pBlC4ryAp3DRPGKi2JV5YryvkS4rT4GfqdyfaLkPg7dNZIQpKJMVT++M6tEFW5tbtqcumXTxuIoSxfeOmWTxpIiS5U0plrWXa1O4gSvnjDSUrqTZbWqnNYRbnt2bJ6YwqlfZk5jumRZrWoPWWqvCYNM0sBD0haUFYaopCkT5tovl8pkGHH7JZKyQGGQSdFSnAyTSRPtL1MVXUtT50xJEx2aTMT2oO21ZHH72S9lbNDO1E3Rq/8sDqviIK2aKRXpyno2nI23euAGVNV3dMPb0PZNWFLmLki/pU8rkgpL+soIXTExYUBQWBhhOByDhyUmDAgKkxWGw1FsWGLCgKAwICgMCAoDgsKAoDAgKAyI7wCxvTJH6PYa9B5DT7o7YUk/v4dsXqnvOLYwHnhxEklX3jv/XvQNyfr+UWRFxZnFjWLwpP9Uf/h7Jb29G1wlgaAwICgMCAoDgsKAoDAgKMzkkyCym0Dn4dHc/4+Kr4+a73NIu/MA6uXhHhlqYQ6F43Oi+kdx5MJmZvPa2vPFM6KCZmVda508cA4DgsKAoDAgKAwICgOCwoD4jqihF5ME4R5R/wLDV/MDO+OpmwAAAABJRU5ErkJggg=="}; window.BP_ATLAS = {
+ "image": "buildings-sheet.png",
+ "scale_note": "1 sprite px = 1 px at native size; draw at 2x or 3x with pixelArt: true",
+ "frames": {
+  "library": {
+   "name": "USF Tampa Library",
+   "folder": "shared/",
+   "x": 0,
+   "y": 0,
+   "w": 52,
+   "h": 42,
+   "door": {
+    "x": 26,
+    "y": 42
+   }
+  },
+  "msc": {
+   "name": "Marshall Student Center",
+   "folder": "web/",
+   "x": 54,
+   "y": 0,
+   "w": 68,
+   "h": 44,
+   "door": {
+    "x": 34,
+    "y": 44
+   }
+  },
+  "enb": {
+   "name": "Engineering Building II",
+   "folder": "api/",
+   "x": 124,
+   "y": 0,
+   "w": 72,
+   "h": 46,
+   "door": {
+    "x": 36,
+    "y": 46
+   }
+  },
+  "enc": {
+   "name": "Engineering Building III",
+   "folder": "tests/",
+   "x": 198,
+   "y": 0,
+   "w": 52,
+   "h": 38,
+   "door": {
+    "x": 26,
+    "y": 38
+   }
+  },
+  "muma": {
+   "name": "Muma College of Business",
+   "folder": "config/",
+   "x": 252,
+   "y": 0,
+   "w": 56,
+   "h": 52,
+   "door": {
+    "x": 28,
+    "y": 52
+   }
+  },
+  "cooper": {
+   "name": "Cooper Hall",
+   "folder": "docs/",
+   "x": 310,
+   "y": 0,
+   "w": 50,
+   "h": 26,
+   "door": {
+    "x": 25,
+    "y": 26
+   }
+  },
+  "rec": {
+   "name": "Campus Recreation Center",
+   "folder": "scripts/",
+   "x": 362,
+   "y": 0,
+   "w": 66,
+   "h": 38,
+   "door": {
+    "x": 33,
+    "y": 38
+   }
+  },
+  "sundome": {
+   "name": "Sun Dome (Yuengling Center)",
+   "folder": "db/",
+   "x": 430,
+   "y": 0,
+   "w": 76,
+   "h": 62,
+   "door": {
+    "x": 38,
+    "y": 62
+   }
+  },
+  "juniper": {
+   "name": "Juniper-Poplar Hall",
+   "folder": null,
+   "x": 508,
+   "y": 0,
+   "w": 44,
+   "h": 38,
+   "door": {
+    "x": 22,
+    "y": 38
+   }
+  },
+  "bullrunner": {
+   "name": "Bull Runner stop",
+   "folder": "",
+   "x": 554,
+   "y": 0,
+   "w": 44,
+   "h": 26,
+   "door": {
+    "x": 22,
+    "y": 26
+   }
+  },
+  "mlk-plaza": {
+   "name": "MLK Plaza and the Bull statue",
+   "folder": null,
+   "x": 600,
+   "y": 0,
+   "w": 48,
+   "h": 34,
+   "door": {
+    "x": 24,
+    "y": 34
+   }
+  }
+ }
+};</script>
+<script>window.CAMPUS = {"repo":"demo","width":960,"height":640,"buildings":[{"id":"msc","name":"Marshall Student Center","folder":"web/","guarded":false,"x":380,"y":60,"w":200,"h":110,"files":7,"rooms":[{"name":"session.ts","path":"web/session.ts","files":1},{"name":"login.tsx","path":"web/login.tsx","files":1},{"name":"TaskList.tsx","path":"web/TaskList.tsx","files":1},{"name":"App.tsx","path":"web/App.tsx","files":1},{"name":"Header.tsx","path":"web/Header.tsx","files":1},{"name":"index.html","path":"web/index.html","files":1}]},{"id":"library","name":"Library","folder":"shared/","guarded":false,"x":120,"y":60,"w":180,"h":110,"files":6,"rooms":[{"name":"auth.ts","path":"shared/auth.ts","files":1},{"name":"session.ts","path":"shared/session.ts","files":1},{"name":"types.ts","path":"shared/types.ts","files":1},{"name":"errors.ts","path":"shared/errors.ts","files":1},{"name":"roles.ts","path":"shared/roles.ts","files":1},{"name":"log.ts","path":"shared/log.ts","files":1}]},{"id":"enb","name":"ENB","folder":"api/","guarded":false,"x":660,"y":60,"w":180,"h":110,"files":5,"rooms":[{"name":"users.ts","path":"api/users.ts","files":1},{"name":"tasks.ts","path":"api/tasks.ts","files":1},{"name":"router.ts","path":"api/router.ts","files":1},{"name":"index.ts","path":"api/index.ts","files":1},{"name":"login.ts","path":"api/login.ts","files":1}]},{"id":"enc","name":"ENC","folder":"tests/","guarded":false,"x":660,"y":260,"w":180,"h":110,"files":4,"rooms":[{"name":"auth.test.ts","path":"tests/auth.test.ts","files":1},{"name":"tasks.test.ts","path":"tests/tasks.test.ts","files":1},{"name":"users.test.ts","path":"tests/users.test.ts","files":1},{"name":"session.test.ts","path":"tests/session.test.ts","files":1}]},{"id":"muma","name":"Muma Business","folder":"config/","guarded":false,"x":120,"y":260,"w":180,"h":110,"files":3,"rooms":[{"name":"app.json","path":"config/app.json","files":1},{"name":"roles.json","path":"config/roles.json","files":1},{"name":"auth.json","path":"config/auth.json","files":1}]},{"id":"cooper","name":"Cooper Hall","folder":"docs/","guarded":false,"x":120,"y":460,"w":180,"h":110,"files":2,"rooms":[{"name":"architecture.md","path":"docs/architecture.md","files":1},{"name":"api.md","path":"docs/api.md","files":1}]},{"id":"rec","name":"Recreation Center","folder":"scripts/","guarded":false,"x":380,"y":175,"w":200,"h":85,"files":1,"rooms":[{"name":"build.sh","path":"scripts/build.sh","files":1}]},{"id":"sundome","name":"Sun Dome","folder":"db/","guarded":true,"x":660,"y":460,"w":180,"h":110,"files":2,"rooms":[{"name":"schema.sql","path":"db/schema.sql","files":1},{"name":"seed.sql","path":"db/seed.sql","files":1}]},{"id":"juniper","name":"Juniper-Poplar","folder":null,"guarded":false,"x":380,"y":460,"w":200,"h":110,"files":1,"rooms":[{"name":".claude","path":".claude/","files":1}]},{"id":"bullrunner","name":"Bull Runner stop","folder":"","guarded":false,"x":400,"y":270,"w":160,"h":90,"files":1,"rooms":[{"name":"README.md","path":"README.md","files":1}]}]};</script>
+<script>
+/* Bullpen v3 shared helpers: window.BP. Every part script uses these; nothing else is global. */
+(() => {
+  const USF = {
+    green: '#006747', gold: '#CFC493', white: '#FFFFFF', evergreen: '#005432', sand: '#EDEBD1',
+    lemongrass: '#DBE442', apple: '#9CCB3B', teal: '#009374', seaglass: '#80B0A6', storm: '#006484', sky: '#29AFCE',
+    silver: '#CAD2D8', gray: '#7E96A0', slate: '#466069',
+    deepForest: '#003822', ink: '#0D231B', turfLight: '#A9C97E', turfMid: '#7FA95B', turfDark: '#4E7F47',
+    bldgLight: '#F3D99C', bldgMid: '#E2BE74', bldgDark: '#A68344', roadLight: '#E6EAE7', roadMid: '#C8D1CC', roadDark: '#8B9B95',
+  };
+  // Agent colors are the ones on main (web/lib/fake.ts). orch has no color on main; purple sits outside green and gold.
+  const AGENT = {
+    api: { B: '#e5484d', b: '#a3262c', h: '#ff9d9f' },
+    web: { B: '#3e63dd', b: '#253c96', h: '#a2b6ff' },
+    db:  { B: '#f5b400', b: '#a87400', h: '#ffe58a' },
+    orch: { B: '#8e4ec6', b: '#56287f', h: '#d4aef7' },
+  };
+  // The 20x15 bull from web/app/bullSprite.ts on main (#55). c body, d shade, t muzzle, n nostril, h horns, H horn tip, e eye, p pupil, k hooves.
+  const BULL_ROWS = [
+    '..............H....H',
+    '..............h....h',
+    '..............hh..hh',
+    '.....cccc.....hhhh..',
+    '....cccccccc..ccccc.',
+    '.d.ccccccccccdccccc.',
+    '.dcccccccccccdeepcc.',
+    '.dcccccccccccdccttnn',
+    '..cccccccccccccctttt',
+    '..ddddddddddddddddd.',
+    '...cc.dd....cc.dd...',
+    '...cc.dd....cc.dd...',
+    '...cc.dd....cc.dd...',
+    '...cc.dd....cc.dd...',
+    '...kk.kk....kk.kk...',
+  ];
+  const shade = (hex, amt) => { // amt -1..1, negative darkens
+    const n = parseInt(hex.slice(1), 16); let r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+    const f = v => Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt);
+    return '#' + [f(r), f(g), f(b)].map(v => v.toString(16).padStart(2, '0')).join('');
+  };
+  const bullPal = color => ({ c: color, d: shade(color, -0.4), t: '#d9b382', n: '#a67f54', h: '#f5f0e1', H: '#ffffff', e: '#ffffff', p: '#1b1b2f', k: '#2a2a40' });
+
+  const rgbC = {};
+  const rgb = hex => rgbC[hex] || (rgbC[hex] = (n => [n >> 16 & 255, n >> 8 & 255, n & 255])(parseInt(hex.slice(1), 16)));
+  const grid = (w, h, ch = '.') => Array.from({ length: h }, () => Array(w).fill(ch));
+  const mirror = (half, swap = {}) => half.map(r => r + [...r].reverse().map(c => swap[c] || c).join(''));
+  const flipH = rows => rows.map(r => [...r].reverse().join(''));
+  // Add a 1px outline of `ch` around every filled cell (4-neighbour). `only`: restrict to these source chars.
+  function outline(rows, ch, only) {
+    const g = rows.map(r => [...r]); const H = g.length, W = g[0].length, add = [];
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      if (g[y][x] !== '.') continue;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const c = g[y + b] && g[y + b][x + a];
+        if (c && c !== '.' && c !== ch && (!only || only.includes(c))) { add.push([x, y]); break; }
+      }
+    }
+    add.forEach(([x, y]) => { g[y][x] = ch; });
+    return g.map(r => r.join(''));
+  }
+  // EPX 2x upscale for 16 -> 32 px marks.
+  function scale2x(rows) {
+    const H = rows.length, W = rows[0].length, at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H) ? '.' : rows[y][x];
+    const out = Array.from({ length: H * 2 }, () => Array(W * 2).fill('.'));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const P = at(x, y), A = at(x, y - 1), B = at(x + 1, y), C = at(x - 1, y), D = at(x, y + 1);
+      out[y * 2][x * 2] = (C === A && C !== D && A !== B) ? A : P;
+      out[y * 2][x * 2 + 1] = (A === B && A !== C && B !== D) ? B : P;
+      out[y * 2 + 1][x * 2] = (D === C && D !== B && C !== A) ? C : P;
+      out[y * 2 + 1][x * 2 + 1] = (B === D && B !== A && D !== C) ? D : P;
+    }
+    return out.map(r => r.join(''));
+  }
+  function rowsToCanvas(rows, pal) {
+    const h = rows.length, w = rows[0].length, cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const c = rows[y][x]; if (c === '.') continue; const col = pal[c]; if (!col) continue;
+      const [r, g, b] = rgb(col), i = (y * w + x) * 4; img.data[i] = r; img.data[i + 1] = g; img.data[i + 2] = b; img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0); return cv;
+  }
+  // Draw pixel rows straight into a ctx at (x, y) with `cell` px per pixel. alpha optional.
+  function drawRows(ctx, rows, pal, x, y, cell = 1, alpha = 1) {
+    if (alpha <= 0) return;
+    const pa = ctx.globalAlpha; ctx.globalAlpha = pa * alpha;
+    for (let j = 0; j < rows.length; j++) { const r = rows[j];
+      for (let i = 0; i < r.length; i++) { const c = r[i]; if (c === '.' || !pal[c]) continue;
+        ctx.fillStyle = pal[c]; ctx.fillRect(Math.round(x + i * cell), Math.round(y + j * cell), Math.ceil(cell), Math.ceil(cell)); } }
+    ctx.globalAlpha = pa;
+  }
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  // A canvas showing `rows` at `scale` CSS px per pixel, crisp at any DPR.
+  function pixCanvas(rows, pal, scale, label) {
+    const src = rowsToCanvas(rows, pal), cv = document.createElement('canvas');
+    cv.width = src.width * scale * DPR; cv.height = src.height * scale * DPR;
+    cv.style.width = src.width * scale + 'px'; cv.style.height = src.height * scale + 'px';
+    cv.className = 'px';
+    const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(src, 0, 0, cv.width, cv.height);
+    cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', label || 'pixel art'); return cv;
+  }
+  // A logical-pixel canvas: draw at world size W x H, shown at W*scale CSS px. Returns { cv, ctx }. Set CSS width yourself for fluid.
+  function plate(cv, W, H, scale = 2) {
+    cv.width = W * scale * DPR; cv.height = H * scale * DPR; cv.classList.add('px');
+    if (!cv.style.width) cv.style.width = W * scale + 'px';
+    const ctx = cv.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.setTransform(scale * DPR, 0, 0, scale * DPR, 0, 0);
+    return { cv, ctx, W, H };
+  }
+
+  // 5x7 pixel font. Lowercase maps to uppercase.
+  const G = {
+    A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'], B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+    C: ['.###.', '#...#', '#....', '#....', '#....', '#...#', '.###.'], D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+    E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'], F: ['#####', '#....', '#....', '####.', '#....', '#....', '#....'],
+    G: ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.####'], H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+    I: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '#####'], J: ['..###', '...#.', '...#.', '...#.', '...#.', '#..#.', '.##..'],
+    K: ['#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#'], L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
+    M: ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'], N: ['#...#', '##..#', '##..#', '#.#.#', '#..##', '#..##', '#...#'],
+    O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
+    Q: ['.###.', '#...#', '#...#', '#...#', '#.#.#', '#..#.', '.##.#'], R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+    S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'], T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
+    U: ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], V: ['#...#', '#...#', '#...#', '#...#', '#...#', '.#.#.', '..#..'],
+    W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '#.#.#', '.#.#.'], X: ['#...#', '#...#', '.#.#.', '..#..', '.#.#.', '#...#', '#...#'],
+    Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'], Z: ['#####', '....#', '...#.', '..#..', '.#...', '#....', '#####'],
+    0: ['.###.', '#...#', '#..##', '#.#.#', '##..#', '#...#', '.###.'], 1: ['..#..', '.##..', '..#..', '..#..', '..#..', '..#..', '.###.'],
+    2: ['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'], 3: ['####.', '....#', '....#', '.###.', '....#', '....#', '####.'],
+    4: ['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'], 5: ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'],
+    6: ['.###.', '#....', '#....', '####.', '#...#', '#...#', '.###.'], 7: ['#####', '....#', '...#.', '..#..', '.#...', '.#...', '.#...'],
+    8: ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'], 9: ['.###.', '#...#', '#...#', '.####', '....#', '....#', '.###.'],
+    ' ': ['.....', '.....', '.....', '.....', '.....', '.....', '.....'], '.': ['.....', '.....', '.....', '.....', '.....', '.##..', '.##..'],
+    ',': ['.....', '.....', '.....', '.....', '.##..', '..#..', '.#...'], ':': ['.....', '.##..', '.##..', '.....', '.##..', '.##..', '.....'],
+    '/': ['....#', '....#', '...#.', '..#..', '.#...', '#....', '#....'], '-': ['.....', '.....', '.....', '#####', '.....', '.....', '.....'],
+    '_': ['.....', '.....', '.....', '.....', '.....', '.....', '#####'], "'": ['..#..', '..#..', '.#...', '.....', '.....', '.....', '.....'],
+    '!': ['..#..', '..#..', '..#..', '..#..', '..#..', '.....', '..#..'], '?': ['.###.', '#...#', '....#', '...#.', '..#..', '.....', '..#..'],
+    '#': ['.#.#.', '.#.#.', '#####', '.#.#.', '#####', '.#.#.', '.#.#.'], '(': ['...#.', '..#..', '.#...', '.#...', '.#...', '..#..', '...#.'],
+    ')': ['.#...', '..#..', '...#.', '...#.', '...#.', '..#..', '.#...'], '+': ['.....', '..#..', '..#..', '#####', '..#..', '..#..', '.....'],
+    '>': ['.#...', '..#..', '...#.', '....#', '...#.', '..#..', '.#...'], '<': ['...#.', '..#..', '.#...', '#....', '.#...', '..#..', '...#.'],
+    '%': ['##..#', '##..#', '...#.', '..#..', '.#...', '#..##', '#..##'], '=': ['.....', '.....', '#####', '.....', '#####', '.....', '.....'],
+  };
+  const textWidth = (s, cell = 1, gap = 1) => s.length ? (s.length * (5 + gap) - gap) * cell : 0;
+  // Pixel text at (x, y) top-left. opts: { cell, color, shadow, gap, align: 'left'|'center'|'right' }
+  function drawText(ctx, s, x, y, opts = {}) {
+    const { cell = 1, color = USF.sand, shadow = null, gap = 1, align = 'left', alpha = 1 } = opts;
+    s = String(s).toUpperCase();
+    let x0 = x; const w = textWidth(s, cell, gap);
+    if (align === 'center') x0 = x - w / 2; else if (align === 'right') x0 = x - w;
+    const pa = ctx.globalAlpha; ctx.globalAlpha = pa * alpha;
+    const pass = (dx, dy, col) => { ctx.fillStyle = col;
+      [...s].forEach((ch, i) => { const g = G[ch] || G['?'];
+        for (let r = 0; r < 7; r++) for (let c = 0; c < 5; c++) if (g[r][c] === '#')
+          ctx.fillRect(Math.round(x0 + (i * (5 + gap) + c) * cell + dx), Math.round(y + r * cell + dy), Math.ceil(cell), Math.ceil(cell)); }); };
+    if (shadow) pass(cell, cell, shadow);
+    pass(0, 0, color);
+    ctx.globalAlpha = pa;
+    return w;
+  }
+  // Text as pixel rows (for stamping into grids). Returns rows of '#'/'.'.
+  function textRows(s, gap = 1) {
+    s = String(s).toUpperCase(); const W = Math.max(1, textWidth(s, 1, gap)), g = grid(W, 7);
+    [...s].forEach((ch, i) => (G[ch] || G['?']).forEach((row, y) => { for (let x = 0; x < 5; x++) if (row[x] === '#') g[y][i * (5 + gap) + x] = '#'; }));
+    return g.map(r => r.join(''));
+  }
+
+  // Deterministic randomness: same seed, same sequence. Use for dust, sparks, anything in an intro.
+  function rand(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const hash = (i, s = 1) => rand(i * 9973 + s * 7919)();
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = {
+    linear: t => t, expoOut: t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t), cubicOut: t => 1 - Math.pow(1 - t, 3),
+    cubicInOut: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, backOut: t => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); },
+    quadIn: t => t * t,
+  };
+  // Progress of t inside [a, b], eased.
+  const seg = (t, a, b, e = ease.linear) => e(clamp((t - a) / (b - a)));
+
+  // Animation registry. draw(t, dt) with t in seconds since mount. Paused off-screen; reduced motion draws one still frame at `still`.
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const loops = [];
+  function animate(el, draw, opts = {}) {
+    const L = { el, draw, visible: true, t0: performance.now(), still: opts.still ?? 2.5, period: opts.period || 0 };
+    loops.push(L);
+    if ('IntersectionObserver' in window) new IntersectionObserver(es => es.forEach(e => { L.visible = e.isIntersecting; }), { rootMargin: '200px' }).observe(el);
+    draw(reduce ? L.still : 0);
+    return L;
+  }
+  function tick(now) {
+    for (let i = loops.length - 1; i >= 0; i--) if (!loops[i].el.isConnected && loops[i].mounted) loops.splice(i, 1); else loops[i].mounted = true;
+    if (!reduce) for (const L of loops) if (L.visible && !document.hidden) {
+      let t = Math.max(0, (now - L.t0) / 1000); if (L.period) t %= L.period; L.draw(t);
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  function el(tag, attrs = {}, html) { const e = document.createElement(tag); for (const k in attrs) { if (k === 'class') e.className = attrs[k]; else if (k === 'style') e.style.cssText = attrs[k]; else e.setAttribute(k, attrs[k]); } if (html !== undefined) e.innerHTML = html; return e; }
+
+  window.BP = { USF, AGENT, BULL_ROWS, bullPal, shade, rgb, grid, mirror, flipH, outline, scale2x, rowsToCanvas, drawRows, pixCanvas, plate, DPR,
+    GLYPHS: G, drawText, textWidth, textRows, rand, hash, clamp, lerp, ease, seg, animate, reduce, el };
+})();
+
+</script>
+<script>
+/* ============================================================================
+   BULLPEN — Official USF Brand Palette & Agent Mascot Colors
+   Source: https://www.usf.edu/ucm/marketing/colors.aspx
+   ============================================================================ */
+
+window.BullpenPalette = (function () {
+  const USF = {
+    // Primary Core Colors
+    green:      '#006747', // USF Green (PMS 342)
+    gold:       '#CFC493', // USF Gold (PMS 4535)
+    white:      '#FFFFFF',
+
+    // Alternates (Digital Contrast / Accents)
+    evergreen:  '#005432', // Evergreen (PMS 3435)
+    sand:       '#EDEBD1', // Sand (PMS 614)
+
+    // Official Accent Palette
+    lemongrass: '#DBE442', // Lemongrass
+    apple:      '#9CCB3B', // Apple (PMS 376)
+    teal:       '#009374', // Teal (PMS 341)
+    seaglass:   '#80B0A6', // Seaglass (PMS 5503)
+    storm:      '#006484', // Storm
+    sky:        '#29AFCE', // Sky
+
+    // Official Neutrals
+    silver:     '#CAD2D8', // Silver
+    gray:       '#7E96A0', // Gray
+    slate:      '#466069', // Slate (PMS 7545)
+
+    // Pixel Art Derived Tones (deep shadows & semantic hazard/ribbon accents)
+    deepForest: '#003822', // Deep evergreen pixel outline / night shadow
+    ink:        '#0D231B', // Pixel ink border (tinted USF Evergreen)
+    turfLight:  '#A9C97E', // Campus lawn light (blend of Apple & Sand)
+    turfMid:    '#7FA95B', // Campus lawn mid
+    turfDark:   '#4E7F47', // Tree canopy mid
+    bldgLight:  '#F3D99C', // Reference map warm tan/gold building top
+    bldgMid:    '#E2BE74', // Reference map building body
+    bldgDark:   '#A68344', // Building pixel shadow
+    roadLight:  '#E6EAE7', // Main campus road
+    roadMid:    '#C8D1CC', // Road curb / parking lot
+    roadDark:   '#8B9B95', // Road edge outline
+
+    // Semantic Construction & Ribbon Accents (used strictly for cones, cranes, alerts, ribbons)
+    coneOrange: '#E86A17',
+    craneGold:  '#F2B705',
+    alertRed:   '#D64045',
+    ribbonRed:  '#C8373B',
+  };
+
+  // Distinct USF-harmonized colors assigned to each agent (api, web, db)
+  const AGENT_COLORS = {
+    'agent-api': {
+      id: 'agent-api',
+      shortName: 'api',
+      displayName: 'api agent',
+      primary: '#DBE442',     // Lemongrass / Gold jersey
+      secondary: '#CFC493',   // USF Gold trim
+      accent: '#005432',      // Evergreen outline
+      badgeBg: '#3D3B0A',
+      badgeText: '#DBE442',
+      bullFur: '#5C3A21',     // Warm espresso bull coat
+      bullFurLight: '#7A5033',
+      horns: '#EDEBD1',
+    },
+    'agent-web': {
+      id: 'agent-web',
+      shortName: 'web',
+      displayName: 'web agent',
+      primary: '#29AFCE',     // Sky jersey
+      secondary: '#006484',   // Storm trim
+      accent: '#0D231B',
+      badgeBg: '#093445',
+      badgeText: '#7CE4FA',
+      bullFur: '#4E3829',
+      bullFurLight: '#6B4E3B',
+      horns: '#EDEBD1',
+    },
+    'agent-db': {
+      id: 'agent-db',
+      shortName: 'db',
+      displayName: 'db agent',
+      primary: '#9CCB3B',     // Apple green jersey
+      secondary: '#009374',   // Teal trim
+      accent: '#003822',
+      badgeBg: '#123A24',
+      badgeText: '#C5F06B',
+      bullFur: '#63412B',
+      bullFurLight: '#82583D',
+      horns: '#FFFFFF',
+    },
+  };
+
+  return { USF, AGENT_COLORS };
+})();
+
+/* ============================================================================
+   BULLPEN — Adaptive USF Tampa Campus Greenway Map Data (580 x 364 Master World)
+   Exclusively modeled on the provided USF Tampa Campus Greenway reference map.
+   Dynamically activates N buildings to match the analyzed repo's folder count
+   and computes an exact viewport crop so ALL folders are visible on the map.
+   ============================================================================ */
+
+window.BullpenCampusData = (function () {
+  const WORLD_W = 580;
+  const WORLD_H = 364;
+
+  // Clean folder name shown on building plaques (e.g. "/backend" -> "BACKEND")
+  function getFolderLabel(folderPath) {
+    const clean = String(folderPath || '')
+      .trim()
+      .replace(/^\/+/, '')
+      .replace(/\/+$/, '');
+    return clean ? clean.toUpperCase() : 'ROOT';
+  }
+
+  // Diagonal-hatched USF Tampa Campus Greenway polygons (exact reference map)
+  const GREENWAY_POLYGONS = [
+    // Central Campus Greenway Strip (FAH/MSC -> Castor Pond -> NE Athletics edge)
+    [
+      [4, 68], [156, 68], [226, 68], [240, 52], [292, 44], [338, 40],
+      [338, 70], [292, 74], [272, 92], [224, 92], [212, 102], [76, 102],
+      [62, 118], [4, 118]
+    ],
+    // Lower edge of Northeast Greenway Forest (top-right above Track & Field)
+    [
+      [342, 4], [576, 4], [576, 52], [342, 52]
+    ],
+  ];
+
+  // Water bodies inside the master Central Campus region
+  const PONDS = [
+    { id: 'castor', name: 'Castor Pond', x: 266, y: 64, rx: 22, ry: 11 },
+  ];
+
+  // Major USF roads matching the provided reference map
+  const ROADS = [
+    // USF Leroy Collins Blvd (central N-S spine)
+    { name: 'USF Leroy Collins Blvd', width: 10, pts: [[192, 4], [192, 360]] },
+    // USF Genshaft Dr (east-central N-S spine)
+    { name: 'USF Genshaft Dr',        width: 9,  pts: [[344, 4], [344, 54], [334, 92], [334, 286], [346, 360]] },
+    // USF Maple Dr (central E-W avenue above LIB & CPR)
+    { name: 'USF Maple Dr',           width: 7,  pts: [[66, 166], [334, 166]] },
+    // USF Cedar Dr (west engineering / JP loop)
+    { name: 'USF Cedar Dr',           width: 6,  pts: [[66, 116], [126, 116]] },
+    { name: 'USF Cedar West',         width: 6,  pts: [[66, 116], [66, 272]] },
+    // USF Alumni Dr (southern sweeping boulevard)
+    { name: 'USF Alumni Dr',          width: 9,  pts: [[4, 272], [156, 272], [192, 284], [334, 284], [386, 300], [500, 300]] },
+    // USF Palm Dr (eastern road between REC/SUN & Athletics)
+    { name: 'USF Palm Dr',            width: 6,  pts: [[334, 182], [456, 182], [456, 300]] },
+    // USF Sage Dr (between LIB/CPR & BSN)
+    { name: 'USF Sage Dr',            width: 6,  pts: [[264, 166], [264, 284]] },
+    // MLK Plaza north walkway
+    { name: 'USF Holly Plaza',        width: 6,  pts: [[192, 72], [230, 72]] },
+  ];
+
+  // USF Recreation & Athletics venues (East side of reference map)
+  const ATHLETICS = [
+    { type: 'track',    label: 'TRACK',    x: 356, y: 56,  w: 76, h: 40 },
+    { type: 'softball', label: 'REC FIELD',x: 444, y: 56,  w: 76, h: 38 },
+    { type: 'courts',   label: 'COURTS',   x: 356, y: 100, w: 36, h: 28 },
+    { type: 'field',    label: '',         x: 398, y: 100, w: 36, h: 30 },
+    { type: 'football', label: 'PRACTICE', x: 444, y: 98,  w: 62, h: 42 },
+    { type: 'soccer',   label: 'SOCCER',   x: 462, y: 146, w: 64, h: 40 },
+    { type: 'baseball', label: 'BASEBALL', x: 466, y: 194, w: 54, h: 46 },
+    { type: 'softball', label: 'SOFTBALL', x: 466, y: 246, w: 46, h: 36 },
+    { type: 'football', label: 'FOWLER',   x: 364, y: 312, w: 72, h: 36 },
+  ];
+
+  // Always-context supporting campus structures (garages & minor halls)
+  const CONTEXT_BUILDINGS = [
+    { code: 'CBG', x: 214, y: 118, w: 44, h: 34, isGarage: true },
+    { code: 'ALN', x: 184, y: 118, w: 24, h: 20 },
+    { code: 'SOC', x: 308, y: 100, w: 20, h: 18 },
+    { code: 'BGD', x: 56,  y: 212, w: 28, h: 42, isGarage: true },
+    { code: 'ENG', x: 98,  y: 176, w: 24, h: 24 },
+    { code: 'ENC', x: 130, y: 172, w: 28, h: 24 },
+    { code: 'ATH', x: 426, y: 142, w: 24, h: 34 },
+  ];
+
+  const DISTRICT_LABELS = [
+    { text: 'CENTRAL CAMPUS', x: 134, y: 84 },
+    { text: 'USF ATHLETICS',  x: 438, y: 46 },
+  ];
+
+  // ==========================================================================
+  // 14-BUILDING MASTER CATALOG (ordered outward from Central Campus heart!)
+  // Depending on how many folders the analyzed repo has, the first N slots
+  // become active interactive buildings and the map crops tightly around them!
+  // ==========================================================================
+  const BUILDING_CATALOG = [
+    {
+      id: 'ENB',
+      code: 'ENB',
+      name: 'Engineering Building II',
+      preferredNames: ['backend', 'server', 'api', 'src', 'core', 'app'],
+      x: 96, y: 212, w: 72, h: 46,
+      door: { x: 132, y: 272 },
+      roofStyle: 'engineering',
+      primary: true,
+    },
+    {
+      id: 'LIB',
+      code: 'LIB',
+      name: 'USF Tampa Library',
+      preferredNames: ['docs', 'doc', 'documentation', 'shared', 'wiki', 'guides'],
+      x: 206, y: 178, w: 52, h: 42,
+      door: { x: 192, y: 202 },
+      roofStyle: 'library',
+      primary: true,
+    },
+    {
+      id: 'MSC',
+      code: 'MSC',
+      name: 'Marshall Student Center',
+      preferredNames: ['frontend', 'web', 'client', 'ui', 'design', 'pages'],
+      x: 158, y: 24, w: 68, h: 44,
+      door: { x: 192, y: 74 },
+      roofStyle: 'marshall',
+      primary: true,
+    },
+    {
+      id: 'SUN',
+      code: 'SUN',
+      name: 'Sun Dome (Yuengling Center)',
+      preferredNames: ['database', 'db', 'sql', 'migrations', 'prisma', 'jetson', 'data'],
+      x: 370, y: 192, w: 76, h: 62,
+      door: { x: 334, y: 222 },
+      roofStyle: 'dome',
+      primary: true,
+    },
+    {
+      id: 'BSN',
+      code: 'BSN',
+      name: 'Muma College of Business',
+      preferredNames: ['config', 'configs', 'settings', 'campus', 'packages', 'lib'],
+      x: 270, y: 212, w: 56, h: 52,
+      door: { x: 298, y: 284 },
+      roofStyle: 'courtyard',
+      primary: false,
+    },
+    {
+      id: 'ISA',
+      code: 'ISA',
+      name: 'Interdisciplinary Sciences',
+      preferredNames: ['tests', 'test', '__tests__', 'spec', 'hooks', 'evals'],
+      x: 124, y: 108, w: 52, h: 38,
+      door: { x: 192, y: 128 },
+      roofStyle: 'science',
+      primary: false,
+    },
+    {
+      id: 'REC',
+      code: 'REC',
+      name: 'Campus Recreation Center',
+      preferredNames: ['scripts', 'tools', 'cli', 'bin', 'ops', 'workflows'],
+      x: 348, y: 132, w: 66, h: 38,
+      door: { x: 334, y: 152 },
+      roofStyle: 'rec',
+      primary: false,
+    },
+    {
+      id: 'FAH',
+      code: 'FAH',
+      name: 'Fine Arts Hall',
+      preferredNames: ['assets', 'public', 'static', 'media', 'images', 'styles'],
+      x: 56, y: 28, w: 48, h: 40,
+      door: { x: 84, y: 116 },
+      roofStyle: 'arts',
+      primary: false,
+    },
+    {
+      id: 'CPR',
+      code: 'CPR',
+      name: 'Cooper Hall',
+      preferredNames: ['components', 'modules', 'features', 'services', 'routes'],
+      x: 270, y: 174, w: 50, h: 26,
+      door: { x: 264, y: 186 },
+      roofStyle: 'cooper',
+      primary: false,
+    },
+    {
+      id: 'SVC',
+      code: 'SVC',
+      name: 'Student Services',
+      preferredNames: ['auth', 'security', 'middleware', 'guards', 'iam'],
+      x: 204, y: 78, w: 42, h: 32,
+      door: { x: 192, y: 94 },
+      roofStyle: 'services',
+      primary: false,
+    },
+    {
+      id: 'EDU',
+      code: 'EDU',
+      name: 'College of Education',
+      preferredNames: ['examples', 'demo', 'samples', 'tutorials', 'notebooks'],
+      x: 274, y: 122, w: 44, h: 32,
+      door: { x: 264, y: 166 },
+      roofStyle: 'education',
+      primary: false,
+    },
+    {
+      id: 'JP',
+      code: 'JP',
+      name: 'Juniper-Poplar Hall',
+      preferredNames: ['mobile', 'ios', 'android', 'desktop', 'native'],
+      x: 18, y: 174, w: 44, h: 38,
+      door: { x: 66, y: 192 },
+      roofStyle: 'residence',
+      primary: false,
+    },
+    {
+      id: 'UTB',
+      code: 'UTB',
+      name: 'University Tower South',
+      preferredNames: ['infra', 'deploy', 'terraform', 'docker', 'k8s', 'ci'],
+      x: 96, y: 298, w: 56, h: 42,
+      door: { x: 124, y: 272 },
+      roofStyle: 'tower',
+      primary: false,
+    },
+    {
+      id: 'ALC',
+      code: 'ALC',
+      name: 'USF Alumni Center',
+      preferredNames: ['analytics', 'metrics', 'telemetry', 'monitoring', 'logs'],
+      x: 268, y: 300, w: 60, h: 42,
+      door: { x: 298, y: 284 },
+      roofStyle: 'alumni',
+      primary: false,
+    },
+  ];
+
+  // Quick presets for the Pre-Map Repository Analyzer
+  const REPO_PRESETS = [
+    {
+      id: 'micro',
+      label: 'Micro Repo (3 folders)',
+      root: 'bullpen-micro/',
+      folders: ['/backend', '/frontend', '/docs'],
+      desc: 'Tightly cropped Core Campus — 3 large buildings',
+    },
+    {
+      id: 'mvp',
+      label: 'Bullpen MVP (4 folders)',
+      root: 'bullpen-mvp/',
+      folders: ['/backend', '/frontend', '/docs', '/database'],
+      desc: 'Focused Core Campus — 4 primary buildings',
+    },
+    {
+      id: 'bullpen',
+      label: 'builtbyd3v/bullpen (8 folders)',
+      root: 'bullpen/',
+      folders: ['/server', '/web', '/campus', '/jetson', '/shared', '/hooks', '/scripts', '/assets'],
+      desc: 'Actual Bullpen repo layout — Central Campus + Athletics',
+    },
+    {
+      id: 'monorepo',
+      label: 'USF Monorepo (12 folders)',
+      root: 'usf-monorepo/',
+      folders: ['/backend', '/frontend', '/docs', '/database', '/config', '/tests', '/scripts', '/assets', '/services', '/auth', '/mobile', '/infra'],
+      desc: 'Expanded Campus view — 12 buildings across campus',
+    },
+  ];
+
+  // ==========================================================================
+  // SMART FOLDER -> BUILDING ASSIGNMENT & DYNAMIC CAMPUS CROP CALCULATION
+  // ==========================================================================
+  function normalizeFolder(f) {
+    const clean = String(f || '').trim().replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    return clean ? '/' + clean : '';
+  }
+
+  function isGuardedFolder(folder) {
+    const lower = folder.toLowerCase();
+    return /database|(^|\/)db($|\/)|migrations|schema|prod|secrets|jetson/.test(lower);
+  }
+
+  function createSampleChangeForFolder(folder, idx) {
+    const label = getFolderLabel(folder).toLowerCase();
+    const models = ['agent-api', 'agent-web', 'agent-db'];
+    const modelId = models[idx % models.length];
+    const agentId = `agent-${(idx % 3) + 1}`;
+    const commits = ['a4f91c2', 'c82e0b7', '71d4e9a', 'e09a31f', '5b912cc', '9d3a10e', '3f88b21', 'f12c4d9'];
+    const times = ['11:24 AM', '11:21 AM', '11:18 AM', '11:15 AM', '11:12 AM', '11:09 AM', '11:05 AM', '11:02 AM'];
+    return {
+      id: `chg-init-${idx}`,
+      commit: commits[idx % commits.length],
+      agentId,
+      modelId,
+      time: times[idx % times.length],
+      task: `Initialize & verify module structure in ${folder}`,
+      reason: `Scanned from repository analysis for ${folder} folder lease.`,
+      summary: `Synced ${folder} handlers and verified lease boundaries.`,
+      files: [
+        {
+          path: `${folder}/index.ts`,
+          added: 14 + (idx * 3) % 18,
+          removed: 2 + (idx % 4),
+          diff: [
+            { type: 'ctx', text: `// Folder lease root: ${folder}` },
+            { type: 'add', text: `export const MODULE_NAME = "${label}";` },
+            { type: 'add', text: `export const LEASE_GUARD = ${isGuardedFolder(folder)};` },
+          ]
+        }
+      ]
+    };
+  }
+
+  // Build exactly N active buildings for the analyzed repository folders
+  function buildBuildingsForFolders(rawFolders) {
+    const unique = [];
+    const seen = new Set();
+    rawFolders.forEach(f => {
+      const norm = normalizeFolder(f);
+      if (norm && !seen.has(norm.toLowerCase())) {
+        seen.add(norm.toLowerCase());
+        unique.push(norm);
+      }
+    });
+
+    const capped = unique.slice(0, BUILDING_CATALOG.length);
+    if (!capped.length) capped.push('/src');
+
+    const count = capped.length;
+    // Choose the tightest N building slots from the master catalog (ordered from center outward!)
+    const activeSlots = BUILDING_CATALOG.slice(0, count);
+
+    // Smart semantic matching within the active N slots so /backend -> ENB, /frontend -> MSC, /docs -> LIB, /database -> SUN!
+    const assigned = new Map(); // slotIndex -> folder
+    const unassignedFolders = [];
+
+    capped.forEach(folder => {
+      const seg = getFolderLabel(folder).toLowerCase().split('/').pop();
+      const matchIdx = activeSlots.findIndex((slot, i) =>
+        !assigned.has(i) && slot.preferredNames.includes(seg)
+      );
+      if (matchIdx !== -1) {
+        assigned.set(matchIdx, folder);
+      } else {
+        unassignedFolders.push(folder);
+      }
+    });
+
+    // Fill remaining active slots in order
+    let u = 0;
+    for (let i = 0; i < activeSlots.length; i++) {
+      if (!assigned.has(i) && u < unassignedFolders.length) {
+        assigned.set(i, unassignedFolders[u++]);
+      }
+    }
+
+    return activeSlots.map((slot, idx) => {
+      const folder = assigned.get(idx) || `/folder-${idx + 1}`;
+      const guarded = isGuardedFolder(folder);
+      const change = createSampleChangeForFolder(folder, idx);
+      return {
+        ...slot,
+        door: { ...slot.door },
+        defaultFolder: folder,
+        folder,
+        guarded,
+        description: `Mapped repository folder ${folder} (${slot.name}).`,
+        summary: change.summary,
+        changes: [change],
+      };
+    });
+  }
+
+  // Compute an exact pixel viewport crop that guarantees ALL active buildings
+  // (plus their construction cranes, doors, & waiting lines) are 100% visible!
+  function computeCropRect(activeBuildings) {
+    if (!activeBuildings || !activeBuildings.length) {
+      return { x: 0, y: 0, w: WORLD_W, h: WORLD_H, tierLabel: 'FULL CAMPUS' };
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    activeBuildings.forEach(b => {
+      minX = Math.min(minX, b.x - 24, b.door.x - 24);
+      minY = Math.min(minY, b.y - 24, b.door.y - 20);
+      // Right padding includes tower crane (~24px); bottom padding includes plaque & waiting Bull (~30px)
+      maxX = Math.max(maxX, b.x + b.w + 34, b.door.x + 28);
+      maxY = Math.max(maxY, b.y + b.h + 32, b.door.y + 26);
+    });
+
+    const n = activeBuildings.length;
+    // Allow small repos (1-3 folders) to crop tighter instead of pulling in empty eastern lots
+    const targetAspect = n <= 3 ? 1.28 : 1.60;
+    let cw = Math.max(260, maxX - minX);
+    let ch = Math.max(182, maxY - minY);
+
+    if (cw / ch < targetAspect) {
+      cw = ch * targetAspect;
+    } else {
+      ch = cw / targetAspect;
+    }
+
+    cw = Math.min(WORLD_W, Math.ceil(cw));
+    ch = Math.min(WORLD_H, Math.ceil(ch));
+
+    if (cw === WORLD_W) ch = Math.min(WORLD_H, Math.max(ch, Math.round(WORLD_W / targetAspect)));
+    if (ch === WORLD_H) cw = Math.min(WORLD_W, Math.max(cw, Math.round(WORLD_H * targetAspect)));
+
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    let rx = Math.round(cx - cw / 2);
+    let ry = Math.round(cy - ch / 2);
+
+    rx = Math.max(0, Math.min(WORLD_W - cw, rx));
+    ry = Math.max(0, Math.min(WORLD_H - ch, ry));
+
+    const tierLabel = n <= 3
+      ? 'TIGHT CORE CROP'
+      : (n <= 5 ? 'CORE CAMPUS CROP' : (n <= 8 ? 'CENTRAL + ATHLETICS CROP' : 'EXPANDED CAMPUS VIEW'));
+
+    return { x: rx, y: ry, w: cw, h: ch, tierLabel };
+  }
+
+  // ==========================================================================
+  // CAMPUS WALKING PATH GRAPH (Covers all 14 master campus buildings!)
+  // ==========================================================================
+  const WAYPOINTS = {
+    lc_msc:     { x: 192, y: 74 },
+    lc_svc:     { x: 192, y: 94 },
+    lc_isa:     { x: 192, y: 128 },
+    lc_maple:   { x: 192, y: 166 },
+    lc_lib:     { x: 192, y: 202 },
+    lc_alumni:  { x: 192, y: 284 },
+    lc_south:   { x: 192, y: 332 },
+
+    cedar_nw:   { x: 66,  y: 116 },
+    fah_door:   { x: 84,  y: 116 },
+    cedar_isa:  { x: 126, y: 116 },
+    cedar_mid:  { x: 66,  y: 166 },
+    jp_door:    { x: 66,  y: 192 },
+    cedar_s:    { x: 66,  y: 272 },
+    enb_door:   { x: 132, y: 272 },
+
+    maple_mid:  { x: 264, y: 166 },
+    cpr_door:   { x: 264, y: 186 },
+    maple_e:    { x: 334, y: 166 },
+    sage_s:     { x: 264, y: 284 },
+    bsn_door:   { x: 298, y: 284 },
+
+    gen_north:  { x: 334, y: 92 },
+    gen_rec:    { x: 334, y: 152 },
+    gen_palm:   { x: 334, y: 182 },
+    gen_sun:    { x: 334, y: 222 },
+    gen_alumni: { x: 334, y: 284 },
+
+    palm_e:     { x: 456, y: 182 },
+    palm_s:     { x: 456, y: 300 },
+    alumni_se:  { x: 386, y: 300 },
+  };
+
+  const WAYPOINT_EDGES = [
+    ['lc_msc', 'lc_svc'],
+    ['lc_svc', 'lc_isa'],
+    ['lc_isa', 'lc_maple'],
+    ['lc_maple', 'lc_lib'],
+    ['lc_lib', 'lc_alumni'],
+    ['lc_alumni', 'lc_south'],
+
+    ['cedar_nw', 'fah_door'],
+    ['fah_door', 'cedar_isa'],
+    ['cedar_isa', 'lc_isa'],
+    ['cedar_nw', 'cedar_mid'],
+    ['cedar_mid', 'jp_door'],
+    ['jp_door', 'cedar_s'],
+    ['cedar_mid', 'lc_maple'],
+    ['cedar_s', 'enb_door'],
+    ['enb_door', 'lc_alumni'],
+
+    ['lc_maple', 'maple_mid'],
+    ['maple_mid', 'maple_e'],
+    ['maple_mid', 'cpr_door'],
+    ['cpr_door', 'sage_s'],
+    ['lc_alumni', 'sage_s'],
+    ['sage_s', 'bsn_door'],
+    ['bsn_door', 'gen_alumni'],
+
+    ['lc_msc', 'gen_north'],
+    ['gen_north', 'gen_rec'],
+    ['gen_rec', 'maple_e'],
+    ['maple_e', 'gen_palm'],
+    ['gen_palm', 'gen_sun'],
+    ['gen_sun', 'gen_alumni'],
+
+    ['gen_palm', 'palm_e'],
+    ['palm_e', 'palm_s'],
+    ['gen_alumni', 'alumni_se'],
+    ['alumni_se', 'palm_s'],
+  ];
+
+  const BUILDING_WAYPOINT = {
+    ENB: 'enb_door',
+    MSC: 'lc_msc',
+    LIB: 'lc_lib',
+    SUN: 'gen_sun',
+    BSN: 'bsn_door',
+    ISA: 'lc_isa',
+    REC: 'gen_rec',
+    FAH: 'fah_door',
+    CPR: 'cpr_door',
+    SVC: 'lc_svc',
+    EDU: 'maple_mid',
+    JP:  'jp_door',
+    UTB: 'enb_door',
+    ALC: 'bsn_door',
+  };
+
+  const ADJACENCY = {};
+  Object.keys(WAYPOINTS).forEach(k => { ADJACENCY[k] = []; });
+  WAYPOINT_EDGES.forEach(([a, b]) => {
+    const dx = WAYPOINTS[a].x - WAYPOINTS[b].x;
+    const dy = WAYPOINTS[a].y - WAYPOINTS[b].y;
+    const d = Math.hypot(dx, dy);
+    ADJACENCY[a].push({ id: b, dist: d });
+    ADJACENCY[b].push({ id: a, dist: d });
+  });
+
+  function nearestWaypoint(x, y) {
+    let best = 'lc_maple';
+    let bestD = Infinity;
+    for (const [id, pt] of Object.entries(WAYPOINTS)) {
+      const d = Math.hypot(pt.x - x, pt.y - y);
+      if (d < bestD) { bestD = d; best = id; }
+    }
+    return best;
+  }
+
+  function findPath(fromX, fromY, targetNodeId) {
+    const startId = nearestWaypoint(fromX, fromY);
+    if (startId === targetNodeId) {
+      return [{ ...WAYPOINTS[targetNodeId] }];
+    }
+    const dist = {};
+    const prev = {};
+    const visited = new Set();
+    Object.keys(WAYPOINTS).forEach(k => { dist[k] = Infinity; });
+    dist[startId] = 0;
+
+    while (true) {
+      let u = null;
+      let uDist = Infinity;
+      for (const k of Object.keys(WAYPOINTS)) {
+        if (!visited.has(k) && dist[k] < uDist) {
+          u = k; uDist = dist[k];
+        }
+      }
+      if (!u || u === targetNodeId) break;
+      visited.add(u);
+      for (const edge of ADJACENCY[u]) {
+        const alt = dist[u] + edge.dist;
+        if (alt < dist[edge.id]) {
+          dist[edge.id] = alt;
+          prev[edge.id] = u;
+        }
+      }
+    }
+
+    const path = [];
+    let cur = targetNodeId;
+    while (cur) {
+      path.unshift({ ...WAYPOINTS[cur] });
+      if (cur === startId) break;
+      cur = prev[cur];
+    }
+    return path.length ? path : [{ ...WAYPOINTS[targetNodeId] }];
+  }
+
+  const TREES = [
+    [24,84],[46,98],[84,82],[118,94],[164,88],[236,84],[308,64],[324,52],
+    [370,26],[410,22],[450,28],[492,24],[540,34],
+    [216,242],[236,254],[224,268],[248,248],
+    [30,308],[66,316],[168,318],[226,318],[252,334],[344,332],[454,328],[510,322],
+    [22,42],[30,140],[88,144],[112,152],[170,152],
+    [350,126],[534,136],[540,242],[534,296],
+  ];
+
+  const SAMPLE_TASKS = {
+    ENB: [
+      {
+        task: 'Optimize WebSocket lease broadcast loop',
+        reason: 'Reduce heartbeat jitter when 3+ agents edit concurrently.',
+        summary: 'Batched lease state deltas into 60ms frames with zero dropped packets.',
+        file: '/backend/ws/leaseHub.ts',
+        diff: [
+          { type: 'del', text: 'clients.forEach(c => c.send(JSON.stringify(fullState)));' },
+          { type: 'add', text: 'const delta = computeLeaseDelta(prevState, nextState);' },
+          { type: 'add', text: 'broadcastDelta(clients, delta);' },
+        ]
+      }
+    ],
+    MSC: [
+      {
+        task: 'Add pixel-art construction crane & ribbon FX',
+        reason: 'Give immediate visual feedback when a folder enters build or completion.',
+        summary: 'Built multi-frame crane swing, safety cones, scaffolding, and scissor snip.',
+        file: '/frontend/canvas/buildingFx.ts',
+        diff: [
+          { type: 'add', text: 'if (bldg.state === "working") drawConstructionSite(ctx, bldg, t);' },
+          { type: 'add', text: 'if (bldg.state === "ribbon") drawRibbonCutting(ctx, bldg, t);' },
+        ]
+      }
+    ],
+    LIB: [
+      {
+        task: 'Document folder lease queue & timeout eviction',
+        reason: 'Keep contributor docs aligned with waiting-at-door and kick-out handoff.',
+        summary: 'Added state diagram and examples for queued agents and lease timeouts.',
+        file: '/docs/LEASE_PROTOCOL.md',
+        diff: [
+          { type: 'add', text: 'Waiting agents line up outside the door and enter on release or eviction.' },
+        ]
+      }
+    ],
+    SUN: [
+      {
+        task: 'Add safe additive index on audit_events(agent_id)',
+        reason: 'Speed up history queries with zero table lock downtime.',
+        summary: 'Created CONCURRENTLY index for fast agent commit lookups.',
+        file: '/database/migrations/005_audit_idx.sql',
+        diff: [
+          { type: 'add', text: 'CREATE INDEX CONCURRENTLY idx_audit_agent ON audit_events(agent_id);' },
+        ]
+      }
+    ],
+  };
+
+  return {
+    WORLD_W,
+    WORLD_H,
+    GREENWAY_POLYGONS,
+    PONDS,
+    ROADS,
+    ATHLETICS,
+    CONTEXT_BUILDINGS,
+    DISTRICT_LABELS,
+    BUILDING_CATALOG,
+    REPO_PRESETS,
+    WAYPOINTS,
+    BUILDING_WAYPOINT,
+    TREES,
+    SAMPLE_TASKS,
+    getFolderLabel,
+    normalizeFolder,
+    buildBuildingsForFolders,
+    computeCropRect,
+    findPath,
+    nearestWaypoint,
+  };
+})();
+
+/* ============================================================================
+   BULLPEN — Pixel Art Sprite & Animation Engine
+   All coordinates snapped to integer pixels for razor-sharp pixel art.
+   ============================================================================ */
+
+window.BullpenSprites = (function () {
+  const { USF, AGENT_COLORS } = window.BullpenPalette;
+
+  // Helper: snap to integer pixel rect
+  function px(ctx, x, y, w, h, color) {
+    if (color) ctx.fillStyle = color;
+    ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+  }
+
+  // Crisp 3x5 / 4x5 micro pixel font for canvas badges (ultra legible on 512x350!)
+  const MICRO_FONT = {
+    'A': ['010','101','111','101','101'],
+    'B': ['110','101','110','101','110'],
+    'C': ['011','100','100','100','011'],
+    'D': ['110','101','101','101','110'],
+    'E': ['111','100','110','100','111'],
+    'F': ['111','100','110','100','100'],
+    'G': ['011','100','101','101','011'],
+    'H': ['101','101','111','101','101'],
+    'I': ['111','010','010','010','111'],
+    'J': ['001','001','001','101','010'],
+    'K': ['101','101','110','101','101'],
+    'L': ['100','100','100','100','111'],
+    'M': ['101','111','111','101','101'],
+    'N': ['110','101','101','101','101'],
+    'O': ['010','101','101','101','010'],
+    'P': ['110','101','110','100','100'],
+    'Q': ['010','101','101','111','011'],
+    'R': ['110','101','110','101','101'],
+    'S': ['011','100','010','001','110'],
+    'T': ['111','010','010','010','010'],
+    'U': ['101','101','101','101','111'],
+    'V': ['101','101','101','101','010'],
+    'W': ['101','101','111','111','101'],
+    'X': ['101','101','010','101','101'],
+    'Y': ['101','101','010','010','010'],
+    'Z': ['111','001','010','100','111'],
+    '0': ['111','101','101','101','111'],
+    '1': ['010','110','010','010','111'],
+    '2': ['110','001','010','100','111'],
+    '3': ['110','001','010','001','110'],
+    '4': ['101','101','111','001','001'],
+    '5': ['111','100','110','001','110'],
+    '6': ['011','100','111','101','111'],
+    '7': ['111','001','010','010','010'],
+    '8': ['111','101','111','101','111'],
+    '9': ['111','101','111','001','110'],
+    '/': ['001','001','010','100','100'],
+    '-': ['000','000','111','000','000'],
+    '!': ['010','010','010','000','010'],
+    '.': ['000','000','000','000','010'],
+    ':': ['000','010','000','010','000'],
+    ' ': ['000','000','000','000','000'],
+    '_': ['000','000','000','000','111'],
+    '+': ['000','010','111','010','000'],
+    '#': ['101','111','101','111','101'],
+    '(': ['001','010','010','010','001'],
+    ')': ['100','010','010','010','100'],
+  };
+
+  function drawPixelText(ctx, text, x, y, color, align = 'left', shadowColor = null) {
+    const str = String(text).toUpperCase();
+    const charW = 4;
+    const totalW = str.length * charW - 1;
+    let startX = Math.round(x);
+    if (align === 'center') startX = Math.round(x - totalW / 2);
+    if (align === 'right') startX = Math.round(x - totalW);
+    const startY = Math.round(y);
+
+    for (let i = 0; i < str.length; i++) {
+      const glyph = MICRO_FONT[str[i]] || MICRO_FONT[' '];
+      const gx = startX + i * charW;
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 3; c++) {
+          if (glyph[r][c] === '1') {
+            if (shadowColor) {
+              ctx.fillStyle = shadowColor;
+              ctx.fillRect(gx + c + 1, startY + r + 1, 1, 1);
+            }
+            ctx.fillStyle = color;
+            ctx.fillRect(gx + c, startY + r, 1, 1);
+          }
+        }
+      }
+    }
+    return totalW;
+  }
+
+  // Pixel badge pill (e.g. building code tag or status tag)
+  function drawPixelPill(ctx, text, cx, y, bg, fg, border = USF.ink) {
+    const str = String(text).toUpperCase();
+    const tw = str.length * 4 - 1;
+    const pw = tw + 6;
+    const ph = 9;
+    const lx = Math.round(cx - pw / 2);
+    const ty = Math.round(y);
+
+    px(ctx, lx, ty, pw, ph, border);
+    px(ctx, lx + 1, ty + 1, pw - 2, ph - 2, bg);
+    drawPixelText(ctx, str, cx, ty + 2, fg, 'center');
+  }
+
+  // ==========================================================================
+  // PIXEL TREE (Classic USF campus oak / palm)
+  // ==========================================================================
+  function drawPixelTree(ctx, x, y, variant = 0) {
+    const ix = Math.round(x);
+    const iy = Math.round(y);
+    // Ground shadow
+    px(ctx, ix - 2, iy + 2, 6, 2, 'rgba(0,56,34,0.28)');
+    // Trunk
+    px(ctx, ix, iy, 2, 3, '#6D5236');
+    // Canopy
+    const cDark = variant % 2 === 0 ? '#2C6B3F' : '#005432';
+    const cMid  = variant % 2 === 0 ? '#468C4D' : '#006747';
+    const cTop  = variant % 2 === 0 ? '#85B85B' : '#9CCB3B';
+    px(ctx, ix - 3, iy - 4, 8, 5, cDark);
+    px(ctx, ix - 2, iy - 5, 6, 5, cMid);
+    px(ctx, ix - 1, iy - 6, 4, 2, cTop);
+    px(ctx, ix - 2, iy - 4, 2, 2, cTop);
+  }
+
+  // ==========================================================================
+  // INTERACTIVE PIXEL BUILDINGS — High-Detail Zoomed USF Architecture!
+  // Labeled with each building's mapped folder name (live-updated from Options)
+  // ==========================================================================
+  function drawInteractiveBuilding(ctx, b, opts) {
+    const { hovered, selected, status, time } = opts;
+    const x = Math.round(b.x);
+    const y = Math.round(b.y);
+    const w = Math.round(b.w);
+    const h = Math.round(b.h);
+    const folderLabel = window.BullpenCampusData.getFolderLabel(b.folder);
+
+    // 1. Highlight glow / status perimeter
+    if (status === 'kickout') {
+      const pulse = Math.floor(time * 12) % 2 === 0;
+      px(ctx, x - 3, y - 3, w + 6, h + 6, pulse ? USF.alertRed : USF.lemongrass);
+    } else if (hovered || selected) {
+      px(ctx, x - 3, y - 3, w + 6, h + 6, hovered ? USF.lemongrass : USF.gold);
+      px(ctx, x - 1, y - 1, w + 2, h + 2, USF.green);
+    } else if (status === 'working') {
+      px(ctx, x - 2, y - 2, w + 4, h + 4, USF.craneGold);
+    } else if (status === 'ribbon') {
+      px(ctx, x - 2, y - 2, w + 4, h + 4, USF.apple);
+    }
+
+    // 2. Ground drop shadow (crisp south-east pixel depth)
+    px(ctx, x + 3, y + 4, w, h, 'rgba(0, 56, 34, 0.42)');
+
+    // 3. Detailed Architectural Pixel Art by Building Landmark
+    if (b.roofStyle === 'dome') {
+      // ======================================================================
+      // SUN DOME (Yuengling Center) — Ribbed Octagonal Arena Dome + SSP Annex
+      // ======================================================================
+      const cx = x + Math.floor(w / 2);
+      const domeH = h - 10;
+      const cy = y + Math.floor(domeH / 2);
+
+      // Outer stepped octagonal concrete apron & perimeter columns
+      px(ctx, x + 8, y, w - 16, domeH, USF.ink);
+      px(ctx, x + 4, y + 4, w - 8, domeH - 8, USF.ink);
+      px(ctx, x, y + 8, w, domeH - 16, USF.ink);
+
+      // Concrete facade base wall
+      px(ctx, x + 9, y + 1, w - 18, domeH - 2, USF.bldgDark);
+      px(ctx, x + 5, y + 5, w - 10, domeH - 10, USF.bldgMid);
+      px(ctx, x + 1, y + 9, w - 2, domeH - 18, USF.bldgMid);
+
+      // Exterior arena buttress pillars along perimeter
+      for (let bx = x + 12; bx < x + w - 12; bx += 8) {
+        px(ctx, bx, y + 2, 2, 3, USF.sand);
+        px(ctx, bx, y + domeH - 5, 2, 3, USF.sand);
+      }
+      for (let by = y + 12; by < y + domeH - 12; by += 7) {
+        px(ctx, x + 2, by, 3, 2, USF.sand);
+        px(ctx, x + w - 5, by, 3, 2, USF.sand);
+      }
+
+      // USF Green structural tension ring
+      px(ctx, x + 10, y + 5, w - 20, domeH - 10, USF.evergreen);
+      px(ctx, x + 6, y + 9, w - 12, domeH - 18, USF.green);
+
+      // Stepped white/sand fiberglass stadium dome roof
+      px(ctx, x + 12, y + 7, w - 24, domeH - 14, USF.sand);
+      px(ctx, x + 8, y + 11, w - 16, domeH - 22, USF.sand);
+      px(ctx, x + 15, y + 9, w - 30, domeH - 18, USF.white);
+      px(ctx, x + 12, y + 13, w - 24, domeH - 26, USF.white);
+
+      // 8 radial USF Gold & Silver stadium dome ribs
+      px(ctx, cx - 1, y + 6, 2, domeH - 12, USF.gold);
+      px(ctx, x + 7, cy - 1, w - 14, 2, USF.gold);
+      for (let d = 5; d <= 16; d++) {
+        px(ctx, cx - d, cy - Math.round(d * 0.7), 1, 1, USF.silver);
+        px(ctx, cx + d, cy - Math.round(d * 0.7), 1, 1, USF.silver);
+        px(ctx, cx - d, cy + Math.round(d * 0.7), 1, 1, USF.silver);
+        px(ctx, cx + d, cy + Math.round(d * 0.7), 1, 1, USF.silver);
+      }
+
+      // Central glowing oculus skylight crown
+      px(ctx, cx - 7, cy - 5, 14, 10, USF.green);
+      px(ctx, cx - 5, cy - 3, 10, 6, USF.storm);
+      px(ctx, cx - 4, cy - 2, 8, 3, USF.sky);
+      px(ctx, cx - 2, cy - 2, 3, 1, USF.white);
+
+      // West concourse entrance doors facing Genshaft Dr
+      px(ctx, x + 1, cy - 5, 3, 10, USF.evergreen);
+      px(ctx, x + 2, cy - 3, 2, 6, USF.lemongrass);
+
+      // Circular SSP South Annex with skylight
+      px(ctx, cx - 13, y + h - 13, 26, 13, USF.ink);
+      px(ctx, cx - 12, y + h - 12, 24, 11, USF.bldgDark);
+      px(ctx, cx - 10, y + h - 11, 20, 8, USF.bldgLight);
+      px(ctx, cx - 6, y + h - 9, 12, 4, USF.storm);
+      px(ctx, cx - 5, y + h - 8, 10, 2, USF.sky);
+
+    } else if (b.roofStyle === 'marshall') {
+      // ======================================================================
+      // MARSHALL STUDENT CENTER — Grand U-Wing Union, Atrium Skylight & Plaza
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      // Warm sandstone main facade
+      px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
+
+      // Raised U-shaped tiled roof wings with crisp cornice bevels
+      px(ctx, x + 2, y + 2, w - 4, 12, USF.bldgLight);
+      px(ctx, x + 3, y + 3, w - 6, 3, USF.sand); // sun-lit north parapet
+      px(ctx, x + 2, y + 2, 16, h - 11, USF.bldgLight);
+      px(ctx, x + w - 18, y + 2, 16, h - 11, USF.bldgLight);
+      // Roof mechanical boxes on side wings
+      px(ctx, x + 5, y + 7, 7, 5, USF.silver);
+      px(ctx, x + 6, y + 8, 5, 3, USF.gray);
+      px(ctx, x + w - 13, y + 7, 7, 5, USF.silver);
+      px(ctx, x + w - 12, y + 8, 5, 3, USF.gray);
+
+      // Stepped Blue-Sky Glass Central Atrium Skylight!
+      const ax = x + 19, ay = y + 12, aw = w - 38, ah = 15;
+      px(ctx, ax, ay, aw, ah, USF.ink);
+      px(ctx, ax + 1, ay + 1, aw - 2, ah - 2, USF.storm);
+      px(ctx, ax + 2, ay + 2, aw - 4, 5, USF.sky);
+      px(ctx, ax + 3, ay + 3, aw - 12, 2, USF.white); // glass specular shine
+      // Skylight steel mullions
+      for (let mx = ax + 6; mx < ax + aw - 3; mx += 6) {
+        px(ctx, mx, ay + 1, 1, ah - 2, USF.evergreen);
+      }
+
+      // Lower colonnade facade + 2 floors of glowing student union windows
+      px(ctx, x + 2, y + h - 11, w - 4, 9, USF.sand);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 10, 3, 3, USF.storm);
+        px(ctx, wx, y + h - 10, 2, 1, USF.sky);
+        px(ctx, wx, y + h - 5, 3, 3, USF.slate);
+      }
+      // Iconic USF Green & Gold Front Entrance Awning + double glass doors
+      const ex = x + Math.floor(w / 2) - 10;
+      px(ctx, ex, y + h - 9, 20, 4, USF.green);
+      px(ctx, ex, y + h - 6, 20, 1, USF.gold);
+      px(ctx, ex + 4, y + h - 5, 12, 4, USF.evergreen);
+      px(ctx, ex + 5, y + h - 4, 4, 3, USF.lemongrass);
+      px(ctx, ex + 11, y + h - 4, 4, 3, USF.lemongrass);
+
+    } else if (b.roofStyle === 'engineering') {
+      // ======================================================================
+      // ENGINEERING BUILDING II — Solar Array, Animated HVAC Fans & Skybridge
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 11, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 15, USF.bldgLight);
+      px(ctx, x + 3, y + 3, w - 6, 2, USF.sand);
+
+      // Twin Rooftop Industrial HVAC Fan Units (with animated spinning blades!)
+      const fanSpin = Math.floor(time * 8) % 2;
+      [x + 6, x + 18].forEach(fx => {
+        px(ctx, fx, y + 6, 9, 9, USF.slate);
+        px(ctx, fx + 1, y + 7, 7, 7, USF.silver);
+        px(ctx, fx + 2, y + 8, 5, 5, USF.ink);
+        if (fanSpin === 0) {
+          px(ctx, fx + 4, y + 8, 1, 5, USF.gray);
+          px(ctx, fx + 2, y + 10, 5, 1, USF.gray);
+        } else {
+          px(ctx, fx + 3, y + 9, 3, 3, USF.gray);
+          px(ctx, fx + 4, y + 10, 1, 1, USF.white);
+        }
+      });
+
+      // Rooftop Solar Panel Array (angled dark-blue grid with sun glare!)
+      const sx = x + 31, sy = y + 6, sw = 24, sh = 11;
+      px(ctx, sx, sy, sw, sh, USF.ink);
+      px(ctx, sx + 1, sy + 1, sw - 2, sh - 2, USF.storm);
+      for (let gx = sx + 5; gx < sx + sw - 2; gx += 5) {
+        px(ctx, gx, sy + 1, 1, sh - 2, USF.silver);
+      }
+      px(ctx, sx + 1, sy + 5, sw - 2, 1, USF.silver);
+      px(ctx, sx + 2, sy + 2, 3, 2, USF.sky);
+      px(ctx, sx + 12, sy + 2, 3, 2, USF.sky);
+
+      // East Glass Skybridge Wing
+      px(ctx, x + w - 13, y + 7, 12, 16, USF.evergreen);
+      px(ctx, x + w - 12, y + 8, 10, 14, USF.teal);
+      px(ctx, x + w - 11, y + 9, 8, 3, USF.sky);
+      px(ctx, x + w - 11, y + 14, 8, 3, USF.sky);
+
+      // Two-Story Curtain-Wall Tech Facade with Lit Workstations!
+      px(ctx, x + 2, y + h - 13, w - 4, 11, USF.bldgDark);
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        // Upper lab floor
+        px(ctx, wx, y + h - 12, 4, 4, USF.evergreen);
+        px(ctx, wx + 1, y + h - 11, 2, 2, (wx % 12 === 0) ? USF.lemongrass : USF.sky);
+        // Ground floor
+        px(ctx, wx, y + h - 6, 4, 4, USF.slate);
+        px(ctx, wx + 1, y + h - 5, 2, 2, USF.seaglass);
+      }
+      // Main USF Green Engineering Canopy Entrance
+      const ex = x + Math.floor(w / 2) - 9;
+      px(ctx, ex, y + h - 8, 18, 3, USF.green);
+      px(ctx, ex, y + h - 6, 18, 1, USF.gold);
+      px(ctx, ex + 4, y + h - 5, 10, 4, USF.ink);
+      px(ctx, ex + 5, y + h - 4, 3, 3, USF.sky);
+      px(ctx, ex + 10, y + h - 4, 3, 3, USF.sky);
+
+    } else if (b.roofStyle === 'library') {
+      // ======================================================================
+      // USF TAMPA LIBRARY — Tall Brutalist Tower, Concrete Fins & 3 Study Floors
+      // ======================================================================
+      px(ctx, x, y - 4, w, h + 4, USF.ink);
+      px(ctx, x + 1, y - 3, w - 2, h + 2, USF.bldgDark);
+      px(ctx, x + 1, y - 3, w - 2, h - 4, USF.sand);
+
+      // Stepped Mechanical Penthouse + Glowing Roof Skylight Strip
+      px(ctx, x + 6, y - 1, w - 12, 9, USF.bldgMid);
+      px(ctx, x + 7, y, w - 14, 7, USF.bldgLight);
+      px(ctx, x + 10, y + 2, w - 20, 4, USF.storm);
+      px(ctx, x + 11, y + 3, w - 22, 2, USF.sky);
+
+      // Iconic Vertical Concrete Brise-Soleil Fins + 3 Full Study Window Floors!
+      for (let fx = x + 3; fx < x + w - 4; fx += 5) {
+        px(ctx, fx, y + 10, 2, h - 13, USF.bldgLight);
+        px(ctx, fx + 1, y + 10, 1, h - 13, USF.white);
+        // Floor 3 (top study floor)
+        px(ctx, fx + 2, y + 11, 3, 4, USF.evergreen);
+        px(ctx, fx + 3, y + 12, 2, 2, (fx % 10 === 0) ? USF.lemongrass : USF.sky);
+        // Floor 2 (middle stacks)
+        px(ctx, fx + 2, y + 17, 3, 4, USF.slate);
+        px(ctx, fx + 3, y + 18, 2, 2, USF.lemongrass);
+        // Floor 1 (reading lounge)
+        px(ctx, fx + 2, y + 23, 3, 4, USF.storm);
+        px(ctx, fx + 3, y + 24, 2, 2, USF.sky);
+      }
+
+      // Grand USF Green Library Entrance Steps & Glass Portico
+      const ex = x + Math.floor(w / 2) - 9;
+      px(ctx, ex - 2, y + h - 8, 22, 3, USF.green);
+      px(ctx, ex - 2, y + h - 6, 22, 1, USF.gold);
+      px(ctx, ex + 2, y + h - 5, 14, 4, USF.evergreen);
+      px(ctx, ex + 4, y + h - 4, 4, 3, USF.lemongrass);
+      px(ctx, ex + 10, y + h - 4, 4, 3, USF.lemongrass);
+
+    } else if (b.roofStyle === 'courtyard') {
+      // ======================================================================
+      // MUMA COLLEGE OF BUSINESS — 4-Wing Quad + Inner Garden Courtyard & Fountain
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 7, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 10, USF.bldgLight);
+      px(ctx, x + 3, y + 3, w - 6, 2, USF.sand);
+
+      // Detailed Inner Academic Courtyard Garden!
+      const qx = x + 11, qy = y + 10, qw = w - 22, qh = h - 24;
+      px(ctx, qx, qy, qw, qh, USF.ink);
+      px(ctx, qx + 1, qy + 1, qw - 2, qh - 2, USF.evergreen);
+      px(ctx, qx + 2, qy + 2, qw - 4, qh - 4, USF.apple);
+      // Stone cross walkways
+      px(ctx, qx + Math.floor(qw / 2) - 1, qy + 1, 3, qh - 2, USF.sand);
+      px(ctx, qx + 1, qy + Math.floor(qh / 2) - 1, qw - 2, 3, USF.sand);
+      // Sparkling central pixel fountain!
+      const fcx = qx + Math.floor(qw / 2);
+      const fcy = qy + Math.floor(qh / 2);
+      px(ctx, fcx - 4, fcy - 4, 9, 9, USF.silver);
+      px(ctx, fcx - 3, fcy - 3, 7, 7, USF.sky);
+      px(ctx, fcx - 1, fcy - 1, 3, 3, (Math.floor(time * 5) % 2 === 0) ? USF.white : USF.seaglass);
+
+      // Symmetrical south-wing facade windows + entrance
+      px(ctx, x + 2, y + h - 8, w - 4, 6, USF.bldgDark);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 7, 3, 3, USF.storm);
+        px(ctx, wx, y + h - 7, 2, 1, USF.sky);
+      }
+      px(ctx, x + Math.floor(w / 2) - 6, y + h - 7, 12, 5, USF.green);
+      px(ctx, x + Math.floor(w / 2) - 4, y + h - 6, 8, 4, USF.gold);
+
+    } else if (b.roofStyle === 'science') {
+      // ======================================================================
+      // INTERDISCIPLINARY SCIENCES (ISA) — Curved Glass Lab Wing & Fume Stacks
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 10, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 13, USF.bldgLight);
+
+      // Rooftop science lab fume exhaust stacks
+      for (let sx = x + 6; sx < x + 26; sx += 6) {
+        px(ctx, sx, y + 5, 4, 5, USF.slate);
+        px(ctx, sx + 1, y + 6, 2, 3, USF.silver);
+      }
+      // Curved modern blue-glass lab wing on east side
+      px(ctx, x + w - 18, y + 4, 15, h - 15, USF.storm);
+      px(ctx, x + w - 16, y + 6, 11, 5, USF.sky);
+      px(ctx, x + w - 15, y + 7, 5, 2, USF.white);
+      px(ctx, x + w - 16, y + 13, 11, 5, USF.seaglass);
+
+      // Multi-floor banded laboratory windows
+      for (let wx = x + 4; wx < x + w - 6; wx += 5) {
+        px(ctx, wx, y + h - 9, 3, 3, USF.storm);
+        px(ctx, wx, y + h - 9, 2, 1, USF.sky);
+        px(ctx, wx, y + h - 5, 3, 3, USF.evergreen);
+      }
+      px(ctx, x + Math.floor(w / 2) - 6, y + h - 6, 12, 4, USF.green);
+
+    } else if (b.roofStyle === 'rec') {
+      // ======================================================================
+      // CAMPUS RECREATION CENTER (REC) — Ribbed Gym Roof & Clerestory Skylight
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 12, USF.bldgLight);
+
+      // Standing-seam ribbed gym roof texture
+      for (let rx = x + 5; rx < x + w - 4; rx += 5) {
+        px(ctx, rx, y + 3, 1, h - 15, USF.bldgDark);
+        px(ctx, rx + 1, y + 3, 1, h - 15, USF.sand);
+      }
+      // Long central clerestory skylight bar
+      px(ctx, x + 8, y + 10, w - 16, 7, USF.ink);
+      px(ctx, x + 9, y + 11, w - 18, 5, USF.storm);
+      px(ctx, x + 10, y + 12, w - 20, 2, USF.sky);
+
+      // Tall gym glass curtain wall + USF Green entrance portico
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        px(ctx, wx, y + h - 8, 4, 5, USF.storm);
+        px(ctx, wx + 1, y + h - 7, 2, 2, USF.sky);
+      }
+      px(ctx, x + 4, y + h - 9, 14, 3, USF.green);
+      px(ctx, x + 4, y + h - 7, 14, 1, USF.gold);
+
+    } else if (b.roofStyle === 'arts') {
+      // ======================================================================
+      // FINE ARTS HALL (FAH) — Sawtooth North-Light Studio Skylights & Gallery
+      // ======================================================================
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 12, USF.bldgLight);
+
+      for (let sy = y + 5; sy <= y + 19; sy += 7) {
+        px(ctx, x + 5, sy, w - 10, 5, USF.bldgDark);
+        px(ctx, x + 6, sy, w - 12, 2, USF.sky);
+        px(ctx, x + 7, sy, 8, 1, USF.white);
+        px(ctx, x + 6, sy + 2, w - 12, 2, USF.sand);
+      }
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        px(ctx, wx, y + h - 8, 4, 5, USF.slate);
+        px(ctx, wx + 1, y + h - 7, 2, 2, USF.lemongrass);
+      }
+      px(ctx, x + Math.floor(w / 2) - 6, y + h - 7, 12, 5, USF.green);
+      px(ctx, x + Math.floor(w / 2) - 5, y + h - 7, 10, 1, USF.gold);
+
+    } else if (b.roofStyle === 'cooper') {
+      // COOPER HALL — Long Academic Hall with Twin Skylights & Brick Trim
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 8, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 11, USF.bldgLight);
+      px(ctx, x + 6, y + 5, 14, 5, USF.storm);
+      px(ctx, x + 7, y + 6, 12, 2, USF.sky);
+      px(ctx, x + w - 20, y + 5, 14, 5, USF.storm);
+      px(ctx, x + w - 19, y + 6, 12, 2, USF.sky);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 6, 3, 3, USF.evergreen);
+      }
+      px(ctx, x + Math.floor(w / 2) - 5, y + h - 6, 10, 4, USF.green);
+
+    } else if (b.roofStyle === 'services') {
+      // STUDENT SERVICES (SVC) — Stepped Glass Corner Atrium
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 8, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 11, USF.sand);
+      px(ctx, x + 5, y + 5, w - 10, 9, USF.teal);
+      px(ctx, x + 6, y + 6, w - 12, 4, USF.sky);
+      px(ctx, x + 7, y + 7, 8, 2, USF.white);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 6, 3, 3, USF.slate);
+      }
+
+    } else if (b.roofStyle === 'education') {
+      // COLLEGE OF EDUCATION — Courtyard Terrace & Stepped Roof
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 8, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 11, USF.bldgLight);
+      px(ctx, x + 6, y + 5, w - 12, 8, USF.evergreen);
+      px(ctx, x + 7, y + 6, w - 14, 6, USF.apple);
+      for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+        px(ctx, wx, y + h - 7, 3, 4, USF.storm);
+        px(ctx, wx, y + h - 7, 2, 1, USF.sky);
+      }
+
+    } else if (b.roofStyle === 'residence') {
+      // JUNIPER-POPLAR HALL — Twin Wing Modern Complex with Balconies
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 9, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, 12, USF.bldgLight);
+      px(ctx, x + 4, y + 5, w - 8, 5, USF.silver);
+      for (let ry = y + 16; ry < y + h - 6; ry += 6) {
+        for (let wx = x + 4; wx < x + w - 5; wx += 5) {
+          px(ctx, wx, ry, 3, 3, USF.storm);
+          px(ctx, wx + 1, ry, 2, 1, USF.lemongrass);
+        }
+      }
+      px(ctx, x + Math.floor(w / 2) - 5, y + h - 6, 10, 4, USF.green);
+
+    } else if (b.roofStyle === 'tower') {
+      // UNIVERSITY TOWER SOUTH — Multi-Floor Terraced Complex with Solar Roof
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 11, USF.bldgMid);
+      px(ctx, x + 2, y + 2, w - 4, h - 14, USF.sand);
+      px(ctx, x + 6, y + 5, w - 12, 10, USF.storm);
+      px(ctx, x + 7, y + 6, w - 14, 4, USF.sky);
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        px(ctx, wx, y + h - 10, 4, 3, USF.evergreen);
+        px(ctx, wx, y + h - 5, 4, 3, USF.slate);
+      }
+      px(ctx, x + Math.floor(w / 2) - 6, y + h - 7, 12, 5, USF.green);
+
+    } else {
+      // USF ALUMNI CENTER — Pitched Green-Trimmed Pavilion & Columned Portico
+      px(ctx, x, y, w, h, USF.ink);
+      px(ctx, x + 1, y + 1, w - 2, h - 2, USF.bldgDark);
+      px(ctx, x + 1, y + 1, w - 2, h - 10, USF.bldgMid);
+      px(ctx, x + 3, y + 3, w - 6, h - 14, USF.green);
+      px(ctx, x + 6, y + 6, w - 12, h - 20, USF.evergreen);
+      px(ctx, x + Math.floor(w / 2) - 5, y + 8, 10, 8, USF.gold);
+      px(ctx, x + Math.floor(w / 2) - 3, y + 10, 6, 4, USF.lemongrass);
+      for (let wx = x + 4; wx < x + w - 5; wx += 6) {
+        px(ctx, wx, y + h - 8, 4, 5, USF.sand);
+        px(ctx, wx + 1, y + h - 7, 2, 3, USF.slate);
+      }
+    }
+
+    // 4. Guarded Zone USF Shield Emblem (e.g. /database)
+    if (b.guarded) {
+      const sx = x + w - 10;
+      const sy = y - 2;
+      px(ctx, sx, sy, 10, 11, USF.ink);
+      px(ctx, sx + 1, sy + 1, 8, 7, USF.green);
+      px(ctx, sx + 2, sy + 8, 6, 1, USF.green);
+      px(ctx, sx + 3, sy + 9, 4, 1, USF.green);
+      px(ctx, sx + 4, sy + 2, 2, 5, USF.lemongrass);
+      px(ctx, sx + 2, sy + 4, 6, 1, USF.lemongrass);
+    }
+
+    // 5. Folder Name Plaque (replaces building code abbreviation!)
+    const pillBg = status === 'kickout'
+      ? USF.alertRed
+      : (status === 'working' ? USF.evergreen : (b.primary ? USF.green : USF.slate));
+    const pillFg = status === 'kickout' ? USF.white : (b.primary ? USF.lemongrass : USF.sand);
+    drawPixelPill(ctx, folderLabel, x + w / 2, y + h - 3, pillBg, pillFg, USF.ink);
+  }
+
+  // ==========================================================================
+  // CONSTRUCTION SITE FX (Cones, Multi-Tier Scaffolding, Tall Animated Crane!)
+  // ==========================================================================
+  function drawConstructionSite(ctx, b, time) {
+    const x = Math.round(b.x);
+    const y = Math.round(b.y);
+    const w = Math.round(b.w);
+    const h = Math.round(b.h);
+
+    // 1. Yellow/black hazard tape flanking left & right of the folder name plaque
+    const folderLabel = window.BullpenCampusData.getFolderLabel(b.folder);
+    const pillHalfW = Math.ceil((folderLabel.length * 4 + 7) / 2);
+    const cx = Math.round(x + w / 2);
+    for (let tx = x - 4; tx < x + w + 3; tx += 4) {
+      if (tx + 3 > cx - pillHalfW && tx < cx + pillHalfW) continue;
+      px(ctx, tx, y + h + 1, 2, 2, USF.craneGold);
+      px(ctx, tx + 2, y + h + 1, 2, 2, USF.ink);
+    }
+
+    // 2. Multi-Tier Pixel Scaffolding wrapping the enlarged building facade
+    const scafColor = USF.silver;
+    const scafDark  = USF.slate;
+    for (let sx = x - 1; sx <= x + w; sx += 12) {
+      px(ctx, sx, y - 4, 1, h + 4, scafDark);
+      px(ctx, sx + 1, y - 4, 1, h + 4, scafColor);
+    }
+    const levels = [y + 2, y + Math.floor(h * 0.36), y + Math.floor(h * 0.68), y + h - 4];
+    levels.forEach(ly => {
+      px(ctx, x - 2, ly, w + 4, 2, USF.bldgDark);
+      px(ctx, x - 2, ly, w + 4, 1, USF.gold);
+    });
+    // Diagonal cross X-bracing pixels on left & right bays
+    for (let i = 0; i < 9; i++) {
+      px(ctx, x + 2 + i, y + 4 + i, 1, 1, scafColor);
+      px(ctx, x + 10 - i, y + 4 + i, 1, 1, scafColor);
+      px(ctx, x + w - 11 + i, y + 4 + i, 1, 1, scafColor);
+      px(ctx, x + w - 3 - i, y + 4 + i, 1, 1, scafColor);
+    }
+
+    // 3. Orange Traffic Cones with white reflective bands around perimeter
+    const cones = [
+      [x - 7, y + h - 1],
+      [x + w + 3, y + h - 1],
+      [x - 7, y + 4],
+      [x + w + 3, y + 4],
+      [x + Math.floor(w * 0.3), y + h + 4],
+      [x + Math.floor(w * 0.7), y + h + 4],
+    ];
+    cones.forEach(([cx, cy]) => {
+      px(ctx, cx - 1, cy + 4, 5, 1, USF.ink);
+      px(ctx, cx,     cy + 2, 3, 2, USF.coneOrange);
+      px(ctx, cx,     cy + 1, 3, 1, USF.white);
+      px(ctx, cx + 1, cy,     1, 1, USF.coneOrange);
+    });
+
+    // 4. Tall Animated Pixel Tower Crane beside the building!
+    const craneX = x + w + 5;
+    const craneBaseY = y + h;
+    const towerH = Math.max(42, h + 14);
+    const topY = craneBaseY - towerH;
+
+    // Concrete crane base
+    px(ctx, craneX - 3, craneBaseY - 3, 10, 5, USF.slate);
+    px(ctx, craneX - 2, craneBaseY - 2, 8, 3, USF.silver);
+
+    // Lattice mast tower
+    px(ctx, craneX, topY, 1, towerH - 3, USF.ink);
+    px(ctx, craneX + 4, topY, 1, towerH - 3, USF.ink);
+    px(ctx, craneX + 1, topY, 3, towerH - 3, USF.craneGold);
+    for (let ty = topY + 2; ty < craneBaseY - 4; ty += 4) {
+      px(ctx, craneX + 1, ty, 3, 1, USF.ink);
+    }
+
+    // Operator cab
+    px(ctx, craneX - 3, topY + 5, 8, 5, USF.ink);
+    px(ctx, craneX - 2, topY + 6, 6, 3, USF.sky);
+
+    // Horizontal jib arm extending LEFT over the building + counterweight RIGHT
+    const jibLeft = x + 4;
+    const jibRight = craneX + 14;
+    px(ctx, jibLeft, topY - 1, jibRight - jibLeft, 3, USF.ink);
+    px(ctx, jibLeft + 1, topY, jibRight - jibLeft - 2, 1, USF.craneGold);
+    px(ctx, jibRight - 5, topY - 1, 6, 5, USF.slate);
+    px(ctx, jibRight - 4, topY, 4, 3, USF.silver);
+    // Apex mast & tension cables
+    px(ctx, craneX + 1, topY - 7, 3, 7, USF.craneGold);
+    px(ctx, craneX - 8, topY - 4, 9, 1, USF.ink);
+    px(ctx, craneX + 4, topY - 4, 7, 1, USF.ink);
+
+    // Animated trolley sliding back & forth along jib + hanging gold I-beam!
+    const swing = (Math.sin(time * 2.2) + 1) * 0.5;
+    const trolleyX = Math.round(jibLeft + 6 + swing * Math.max(10, (craneX - jibLeft - 14)));
+    const cableLen = Math.round(9 + Math.sin(time * 3.1) * 4);
+    px(ctx, trolleyX - 2, topY + 2, 5, 2, USF.ink);
+    px(ctx, trolleyX, topY + 4, 1, cableLen, USF.ink);
+    const hookY = topY + 4 + cableLen;
+    px(ctx, trolleyX - 1, hookY, 3, 2, USF.coneOrange);
+    px(ctx, trolleyX - 6, hookY + 2, 13, 3, USF.ink);
+    px(ctx, trolleyX - 5, hookY + 3, 11, 1, USF.gold);
+
+    // 5. Twinkling pixel welding sparks
+    const sparkPhase = Math.floor(time * 10);
+    for (let s = 0; s < 4; s++) {
+      if ((sparkPhase + s) % 3 === 0) {
+        const sx = x + ((s * 17 + sparkPhase * 5) % Math.max(12, w - 6));
+        const sy = y + ((s * 11 + sparkPhase * 3) % Math.max(10, h - 6));
+        px(ctx, sx, sy, 2, 2, s % 2 === 0 ? USF.lemongrass : USF.white);
+      }
+    }
+  }
+
+  // ==========================================================================
+  // RIBBON-CUTTING TRANSITION FX (Ribbon, Golden Scissors, Confetti, Banner!)
+  // progress: 0.0 -> 1.0 over ~3.6 seconds
+  // ==========================================================================
+  function drawRibbonCutting(ctx, b, progress) {
+    const x = Math.round(b.x);
+    const y = Math.round(b.y);
+    const w = Math.round(b.w);
+    const h = Math.round(b.h);
+    const cx = Math.round(x + w / 2);
+    const ribbonY = Math.round(y + h * 0.55);
+
+    // Gold stanchion posts on both sides of building
+    const leftPost = x - 5;
+    const rightPost = x + w + 3;
+    const postAlpha = progress < 0.85 ? 1 : Math.max(0, (1 - progress) / 0.15);
+    ctx.save();
+    ctx.globalAlpha = postAlpha;
+
+    [leftPost, rightPost].forEach(postX => {
+      px(ctx, postX, ribbonY - 2, 3, 9, USF.ink);
+      px(ctx, postX + 1, ribbonY - 1, 1, 7, USF.gold);
+      px(ctx, postX, ribbonY - 3, 3, 2, USF.lemongrass);
+    });
+
+    const cutAt = 0.34; // moment scissors snip the ribbon!
+
+    if (progress < cutAt) {
+      // Intact ceremonial crimson & USF gold ribbon stretched across building
+      px(ctx, leftPost + 2, ribbonY - 1, rightPost - leftPost - 2, 5, USF.ink);
+      px(ctx, leftPost + 2, ribbonY, rightPost - leftPost - 2, 3, USF.ribbonRed);
+      px(ctx, leftPost + 2, ribbonY + 1, rightPost - leftPost - 2, 1, USF.gold);
+
+      // Golden pixel scissors gliding toward center
+      const t = progress / cutAt;
+      const scX = Math.round(leftPost + (cx - leftPost - 2) * t);
+      const scY = ribbonY - 7 + Math.round(t * 4);
+      const bladesOpen = Math.floor(progress * 24) % 2 === 0;
+      drawPixelScissors(ctx, scX, scY, bladesOpen);
+    } else {
+      // SNIPPED! Ribbon halves flutter outward & downward!
+      const after = (progress - cutAt) / (1 - cutAt); // 0..1
+      const gap = Math.round(2 + after * 12);
+      const droop = Math.round(after * 8);
+
+      // Left half fluttering left
+      const leftLen = Math.max(2, (cx - leftPost - 2) - gap);
+      px(ctx, leftPost + 2, ribbonY + Math.floor(droop * 0.4), leftLen, 3, USF.ribbonRed);
+      px(ctx, leftPost + 2, ribbonY + Math.floor(droop * 0.4) + 1, leftLen, 1, USF.gold);
+
+      // Right half fluttering right
+      const rightStart = cx + gap;
+      const rightLen = Math.max(2, rightPost - rightStart);
+      px(ctx, rightStart, ribbonY + Math.floor(droop * 0.4), rightLen, 3, USF.ribbonRed);
+      px(ctx, rightStart, ribbonY + Math.floor(droop * 0.4) + 1, rightLen, 1, USF.gold);
+
+      // Snip flash burst right after cut
+      if (after < 0.25) {
+        drawPixelScissors(ctx, cx - 2, ribbonY - 3, false);
+        px(ctx, cx - 4, ribbonY - 4, 9, 1, USF.white);
+        px(ctx, cx, ribbonY - 8, 1, 9, USF.white);
+        px(ctx, cx - 2, ribbonY - 2, 5, 5, USF.lemongrass);
+      }
+
+      // Deterministic festive pixel confetti burst (USF Green, Gold, Lemongrass, Apple, White!)
+      const confettiColors = [USF.green, USF.gold, USF.lemongrass, USF.apple, USF.white, USF.sky];
+      for (let i = 0; i < 24; i++) {
+        const angle = (i / 24) * Math.PI * 2 + (i % 3) * 0.2;
+        const speed = 14 + (i % 5) * 6;
+        const pxX = cx + Math.cos(angle) * speed * after;
+        const pxY = (ribbonY - 6) + Math.sin(angle) * speed * 0.7 * after + (after * after * 26) - (16 * after);
+        const col = confettiColors[i % confettiColors.length];
+        px(ctx, pxX, pxY, i % 3 === 0 ? 3 : 2, 2, col);
+      }
+
+      // Floating "DONE!" pixel banner rising over the building
+      const floatY = y - 15 - Math.round(after * 10);
+      drawPixelPill(ctx, 'COMPLETE!', cx, floatY, USF.green, USF.lemongrass, USF.gold);
+    }
+
+    ctx.restore();
+  }
+
+  function drawPixelScissors(ctx, x, y, open) {
+    // Golden handles
+    px(ctx, x - 3, y - 3, 3, 3, USF.gold);
+    px(ctx, x - 2, y - 2, 1, 1, USF.ink);
+    px(ctx, x - 3, y + 2, 3, 3, USF.gold);
+    px(ctx, x - 2, y + 3, 1, 1, USF.ink);
+    // Pivot
+    px(ctx, x, y, 2, 2, USF.lemongrass);
+    // Silver blades
+    if (open) {
+      px(ctx, x + 2, y - 2, 4, 1, USF.white);
+      px(ctx, x + 2, y + 3, 4, 1, USF.silver);
+    } else {
+      px(ctx, x + 2, y, 5, 2, USF.white);
+    }
+  }
+
+  // ==========================================================================
+  // PIXEL BULL MASCOT (Rocky-style USF Bull in its agent color)
+  // ==========================================================================
+  function drawBull(ctx, agent, time, timeLimitSec = 15) {
+    const model = AGENT_COLORS[agent.modelId] || AGENT_COLORS['agent-api'];
+    const facingLeft = agent.facing < 0;
+    const state = agent.state; // 'idle' | 'walking' | 'waiting' | 'working' | 'kicked' | 'celebrating'
+
+    let bx = Math.round(agent.x);
+    let by = Math.round(agent.y);
+
+    // Motion offsets per state
+    let hoverOffset = 0;
+    let legStep = 0;
+    let tapFoot = false;
+    if (state === 'working') {
+      // Hovering over the building!
+      hoverOffset = -6 + Math.round(Math.sin(time * 5.2 + agent.phase) * 2.5);
+    } else if (state === 'walking' || state === 'idle') {
+      legStep = Math.floor(time * 8 + agent.phase) % 2;
+      hoverOffset = legStep ? -1 : 0;
+    } else if (state === 'waiting') {
+      // Impatiently tapping foot while waiting outside the building!
+      tapFoot = Math.floor(time * 5 + agent.phase) % 2 === 1;
+      hoverOffset = Math.floor(time * 2.5 + agent.phase) % 4 === 0 ? -1 : 0;
+    } else if (state === 'celebrating') {
+      hoverOffset = -Math.abs(Math.round(Math.sin(time * 12) * 5));
+    }
+
+    // 1. Ground / Roof Shadow (shrinks dynamically while airborne!)
+    if (state === 'working') {
+      const pulseW = 14 + (Math.floor(time * 6) % 2) * 2;
+      px(ctx, bx - Math.floor(pulseW / 2), by + 4, pulseW, 4, 'rgba(219, 228, 66, 0.35)');
+      px(ctx, bx - 5, by + 5, 10, 2, 'rgba(0, 56, 34, 0.55)');
+    } else if (state === 'kicked' && Math.abs(agent.spinAngle || 0) > 0.05) {
+      // Small shadow beneath airborne kicked Bull
+      px(ctx, bx - 3, by + 10, 6, 2, 'rgba(0, 56, 34, 0.25)');
+    } else {
+      px(ctx, bx - 5, by + 4, 10, 3, 'rgba(0, 56, 34, 0.40)');
+    }
+
+    const sy = by + hoverOffset;
+
+    // 2. Walking dust puffs
+    if ((state === 'walking' || state === 'idle') && legStep === 1) {
+      const dustX = facingLeft ? bx + 6 : bx - 8;
+      px(ctx, dustX, by + 3, 2, 2, 'rgba(237, 235, 209, 0.7)');
+    }
+
+    ctx.save();
+    ctx.translate(bx, sy);
+    if (state === 'kicked' && agent.spinAngle) {
+      ctx.rotate(agent.spinAngle);
+    } else if (facingLeft) {
+      ctx.scale(-1, 1);
+    }
+
+    // --- BODY & MODEL-COLORED JERSEY (origin = center of Bull) ---
+    px(ctx, -6, -6, 12, 11, USF.ink);
+    px(ctx, -5, -5, 10, 5, model.bullFur);
+    px(ctx, -4, -5, 8, 2, model.bullFurLight);
+
+    // Curved USF Bull Horns
+    px(ctx, -8, -8, 3, 2, USF.ink);
+    px(ctx, -7, -7, 2, 2, model.horns);
+    px(ctx, -6, -6, 2, 1, USF.gold);
+
+    px(ctx, 5, -8, 3, 2, USF.ink);
+    px(ctx, 5, -7, 2, 2, model.horns);
+    px(ctx, 4, -6, 2, 1, USF.gold);
+
+    // Ears
+    px(ctx, -7, -4, 2, 2, model.bullFur);
+    px(ctx, 5, -4, 2, 2, model.bullFur);
+
+    // Eyes (expression changes by state!)
+    if (state === 'kicked') {
+      // Shocked / Dizzy X_X eyes!
+      px(ctx, -3, -4, 2, 2, USF.alertRed);
+      px(ctx, 1, -4, 2, 2, USF.alertRed);
+      px(ctx, -3, -4, 1, 1, USF.white);
+      px(ctx, 2, -4, 1, 1, USF.white);
+    } else if (state === 'celebrating') {
+      px(ctx, -3, -3, 2, 1, USF.white);
+      px(ctx, 1, -3, 2, 1, USF.white);
+    } else if (state === 'waiting') {
+      // Looking up expectantly at the building!
+      px(ctx, -3, -4, 2, 2, USF.white);
+      px(ctx, -2, -4, 1, 1, USF.ink);
+      px(ctx, 1, -4, 2, 2, USF.white);
+      px(ctx, 2, -4, 1, 1, USF.ink);
+    } else {
+      px(ctx, -3, -4, 2, 2, USF.white);
+      px(ctx, -2, -3, 1, 1, USF.ink);
+      px(ctx, 1, -4, 2, 2, USF.white);
+      px(ctx, 2, -3, 1, 1, USF.ink);
+    }
+
+    // Snout & nostrils
+    px(ctx, -3, -1, 6, 2, '#D7A984');
+    px(ctx, -2, -1, 1, 1, USF.ink);
+    px(ctx, 1, -1, 1, 1, USF.ink);
+
+    // Agent-Colored Jersey / Vest
+    px(ctx, -5, 1, 10, 4, model.primary);
+    px(ctx, -5, 3, 10, 1, model.secondary);
+    px(ctx, -1, 1, 2, 3, USF.white);
+
+    // Arms / Hooves
+    if (state === 'working') {
+      const armBob = Math.floor(time * 10) % 2;
+      px(ctx, -7, 0 - armBob, 2, 3, model.bullFur);
+      px(ctx, 5, -1 + armBob, 2, 3, model.bullFur);
+      // Golden pixel wrench in right hand
+      px(ctx, 6, -4 + armBob, 2, 4, USF.silver);
+      px(ctx, 5, -5 + armBob, 4, 2, USF.craneGold);
+    } else if (state === 'kicked') {
+      // Flailing arms while flying!
+      px(ctx, -8, -3, 3, 2, model.bullFur);
+      px(ctx, 5, -3, 3, 2, model.bullFur);
+    } else if (state === 'celebrating') {
+      px(ctx, -7, -2, 2, 3, model.bullFur);
+      px(ctx, 5, -2, 2, 3, model.bullFur);
+    } else if (state === 'waiting') {
+      // Arms crossed / checking watch
+      px(ctx, -6, 2, 2, 2, model.bullFur);
+      px(ctx, 4, 2, 2, 2, model.bullFur);
+    } else {
+      px(ctx, -6, 1, 1, 3, model.bullFur);
+      px(ctx, 5, 1, 1, 3, model.bullFur);
+    }
+
+    // Legs / Hooves
+    const leftLegY  = state === 'waiting' ? 5 : (legStep === 0 ? 5 : 4);
+    const rightLegY = state === 'waiting' ? (tapFoot ? 4 : 5) : (legStep === 0 ? 4 : 5);
+    px(ctx, -4, leftLegY, 3, 2, USF.ink);
+    px(ctx, 1, rightLegY, 3, 2, USF.ink);
+
+    // Little hard-hat when working!
+    if (state === 'working') {
+      px(ctx, -5, -8, 10, 3, USF.ink);
+      px(ctx, -4, -7, 8, 2, USF.craneGold);
+      px(ctx, -2, -8, 4, 1, USF.lemongrass);
+    }
+
+    ctx.restore();
+
+    // 3. State indicators above/beside the Bull
+    if (state === 'working') {
+      const prog = Math.max(0, Math.min(1, agent.workProgress || 0));
+      const remaining = Math.max(0, timeLimitSec - (agent.workElapsed || 0));
+      const nearTimeout = remaining <= 3.5;
+      const barW = 22;
+      const barX = bx - 11;
+      const barY = sy - 15;
+      const borderCol = (nearTimeout && Math.floor(time * 8) % 2 === 0) ? USF.alertRed : USF.ink;
+      px(ctx, barX, barY, barW, 5, borderCol);
+      px(ctx, barX + 1, barY + 1, barW - 2, 3, USF.deepForest);
+      px(ctx, barX + 1, barY + 1, Math.round((barW - 2) * prog), 3, nearTimeout ? USF.coneOrange : model.primary);
+      // Tiny code sparks
+      const sp = Math.floor(time * 6) % 4;
+      px(ctx, bx - 10 + sp * 6, sy - 18, 2, 2, USF.lemongrass);
+    } else if (state === 'waiting') {
+      // Animated pixel hourglass right next to the waiting Bull!
+      drawPixelHourglass(ctx, bx + 9, sy - 6, time);
+      const qLabel = `WAIT #${agent.queuePos || 1}`;
+      drawPixelPill(ctx, qLabel, bx, sy - 18, USF.evergreen, USF.lemongrass, USF.gold);
+    } else if (state === 'kicked') {
+      // Orbiting dizzy pixel stars!
+      for (let i = 0; i < 3; i++) {
+        const a = time * 8 + (i * Math.PI * 2) / 3;
+        const sx = bx + Math.round(Math.cos(a) * 9);
+        const starY = sy - 11 + Math.round(Math.sin(a) * 3);
+        px(ctx, sx, starY, 2, 2, i % 2 === 0 ? USF.lemongrass : USF.alertRed);
+      }
+    }
+
+    // 4. Crisp Agent Tag below/above Bull
+    const labelY = state === 'working' ? sy - 23 : sy + 8;
+    drawPixelPill(ctx, agent.shortLabel, bx, labelY, model.badgeBg, model.badgeText, model.primary);
+  }
+
+  // Animated 5x7 Pixel Hourglass beside Waiting Bulls
+  function drawPixelHourglass(ctx, x, y, time) {
+    const ix = Math.round(x);
+    const iy = Math.round(y);
+    const phase = Math.floor(time * 4) % 4;
+    // Gold caps
+    px(ctx, ix, iy, 5, 1, USF.gold);
+    px(ctx, ix, iy + 6, 5, 1, USF.gold);
+    // Glass body
+    px(ctx, ix + 1, iy + 1, 3, 2, USF.sky);
+    px(ctx, ix + 2, iy + 3, 1, 1, USF.white);
+    px(ctx, ix + 1, iy + 4, 3, 2, USF.sky);
+    // Animated falling USF gold sand!
+    if (phase < 3) px(ctx, ix + 1, iy + 1, 3, phase === 0 ? 2 : 1, USF.lemongrass);
+    if (phase >= 1) px(ctx, ix + 2, iy + 3, 1, 2, USF.lemongrass);
+    if (phase >= 2) px(ctx, ix + 1, iy + 5, 3, 1, USF.lemongrass);
+    if (phase === 3) px(ctx, ix + 1, iy + 4, 3, 2, USF.lemongrass);
+  }
+
+  // ==========================================================================
+  // DRAMATIC KICK-OUT FX (Giant Pixel Boot, Smoke Trail, Ground THUD!)
+  // ==========================================================================
+  function drawKickOutFX(ctx, b, kickout, time) {
+    const p = Math.max(0, Math.min(1, kickout.progress));
+    const doorX = Math.round(kickout.startX);
+    const doorY = Math.round(kickout.startY);
+    const dir = kickout.dirX; // +1 right or -1 left
+    const pulse = Math.floor(time * 14) % 2;
+
+    // 1. Beat 1 (0..0.38): Red alert burst + GIANT PIXEL BOOT kicking out of doorway!
+    if (p < 0.40) {
+      const bt = p / 0.40;
+      const extend = Math.sin(Math.min(1, bt * 1.4) * Math.PI * 0.5) * 14;
+      const bootX = Math.round(doorX + dir * (extend - 4));
+      const bootY = doorY - 4;
+
+      // Doorway impact shockwave flash
+      if (p < 0.24) {
+        const r = Math.round(4 + (p / 0.24) * 14);
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2;
+          px(ctx, doorX + Math.round(Math.cos(a) * r), doorY + Math.round(Math.sin(a) * r * 0.7), 2, 2, i % 2 === 0 ? USF.alertRed : USF.lemongrass);
+        }
+      }
+
+      // Giant Comic Pixel Boot!
+      ctx.save();
+      ctx.translate(bootX, bootY);
+      if (dir < 0) ctx.scale(-1, 1);
+      // Motion speed-lines behind boot
+      px(ctx, -14, -2, 8, 1, USF.white);
+      px(ctx, -12, 1, 6, 1, USF.lemongrass);
+      px(ctx, -13, 4, 7, 1, USF.white);
+      // Boot leg & heel (USF Evergreen + Gold trim!)
+      px(ctx, -6, -6, 7, 11, USF.ink);
+      px(ctx, -5, -5, 5, 9, USF.evergreen);
+      px(ctx, -5, -5, 5, 2, USF.gold);
+      // Boot toe cap kicking forward!
+      px(ctx, 0, -1, 8, 6, USF.ink);
+      px(ctx, 0, 0, 7, 4, USF.green);
+      px(ctx, 4, 0, 3, 3, USF.gold); // gold toe cap!
+      // Thick sole
+      px(ctx, -6, 4, 14, 2, USF.ink);
+      ctx.restore();
+
+      // Comic impact starburst right at toe!
+      if (p < 0.28) {
+        const tag = kickout.reasonType === 'timeout' ? 'TIME UP!' : 'ERROR!';
+        drawPixelPill(ctx, tag, doorX, Math.round(b.y) - 13, pulse ? USF.alertRed : USF.ink, USF.white, USF.lemongrass);
+      }
+    }
+
+    // 2. Beat 2 (0.16..0.78): Smoke puffs & sparks trailing the airborne Bull!
+    if (p >= 0.16 && p < 0.78) {
+      const flightT = (p - 0.16) / 0.56;
+      for (let s = 1; s <= 4; s++) {
+        const st = Math.max(0, flightT - s * 0.12);
+        const sx = kickout.startX + (kickout.landX - kickout.startX) * st;
+        const sy = kickout.startY + (kickout.landY - kickout.startY) * st - Math.sin(st * Math.PI) * 38;
+        const size = Math.max(2, 5 - s);
+        px(ctx, sx - 1, sy - 1, size, size, s % 2 === 0 ? USF.sand : USF.gold);
+      }
+      if (p >= 0.28) {
+        drawPixelPill(
+          ctx,
+          'KICKED OUT!',
+          Math.round(b.x + b.w / 2),
+          Math.round(b.y) - 14 - (pulse ? 2 : 0),
+          USF.alertRed,
+          USF.lemongrass,
+          USF.white
+        );
+      }
+    }
+
+    // 3. Beat 3 (0.70..0.98): Ground landing THUD dust-cloud poof!
+    if (p >= 0.70 && p < 0.98) {
+      const lt = (p - 0.70) / 0.28;
+      const spread = Math.round(4 + lt * 12);
+      const lx = Math.round(kickout.landX);
+      const ly = Math.round(kickout.landY) + 4;
+      px(ctx, lx - spread - 2, ly - 2, 4, 3, USF.sand);
+      px(ctx, lx + spread - 2, ly - 2, 4, 3, USF.sand);
+      px(ctx, lx - Math.round(spread * 0.5), ly - 4, 3, 3, USF.gold);
+      px(ctx, lx + Math.round(spread * 0.5), ly - 4, 3, 3, USF.gold);
+      if (lt < 0.55) {
+        drawPixelPill(ctx, 'THUD!', lx, ly - 18, USF.ink, USF.lemongrass, USF.alertRed);
+      }
+    }
+  }
+
+  return {
+    px,
+    drawPixelText,
+    drawPixelPill,
+    drawPixelTree,
+    drawInteractiveBuilding,
+    drawConstructionSite,
+    drawRibbonCutting,
+    drawKickOutFX,
+    drawBull,
+  };
+})();
+
+/* ============================================================================
+   BULLPEN — Adaptive Cropping Pixel-Art USF Tampa Campus Map Renderer
+   Pre-renders the 580 x 364 USF Tampa Campus Greenway master map and crops
+   dynamically around all active repository folders so every folder is visible.
+   ============================================================================ */
+
+window.BullpenMapRenderer = (function () {
+  const { USF } = window.BullpenPalette;
+  const Data = window.BullpenCampusData;
+  const Sprites = window.BullpenSprites;
+  const { px } = Sprites;
+
+  class CampusMapRenderer {
+    constructor(canvas) {
+      this.canvas = canvas;
+      this.ctx = canvas.getContext('2d');
+      this.ctx.imageSmoothingEnabled = false;
+      this.crop = { x: 0, y: 0, w: Data.WORLD_W, h: Data.WORLD_H, tierLabel: 'FULL CAMPUS' };
+
+      // Offscreen static master terrain cache (580 x 364)
+      this.baseCanvas = document.createElement('canvas');
+      this.baseCanvas.width = Data.WORLD_W;
+      this.baseCanvas.height = Data.WORLD_H;
+      this.baseCtx = this.baseCanvas.getContext('2d');
+      this.baseCtx.imageSmoothingEnabled = false;
+
+      this.buildStaticTerrain();
+      this.applyCrop(this.crop);
+    }
+
+    applyCrop(crop) {
+      if (!crop) return;
+      this.crop = { ...crop };
+      if (this.canvas.width !== crop.w || this.canvas.height !== crop.h) {
+        this.canvas.width = crop.w;
+        this.canvas.height = crop.h;
+        this.ctx.imageSmoothingEnabled = false;
+      }
+      const frame = this.canvas.parentElement;
+      if (frame) {
+        frame.style.aspectRatio = `${crop.w} / ${crop.h}`;
+      }
+    }
+
+    buildStaticTerrain() {
+      const ctx = this.baseCtx;
+      const W = Data.WORLD_W;
+      const H = Data.WORLD_H;
+
+      // 1. Campus base lawn (USF light green turf with subtle pixel grass dither)
+      px(ctx, 0, 0, W, H, '#B6CE96');
+
+      for (let gy = 2; gy < H - 2; gy += 6) {
+        for (let gx = 2; gx < W - 2; gx += 8) {
+          const hash = ((gx * 37 + gy * 17) % 13);
+          if (hash < 4) {
+            px(ctx, gx, gy, 3, 2, '#A7C385');
+          } else if (hash === 5) {
+            px(ctx, gx, gy, 2, 1, '#C5DA9F');
+          }
+        }
+      }
+
+      // 2. Concrete / plaza quads matching the USF Tampa Central Campus reference map
+      const quads = [
+        [14, 160, 168, 108],  // Engineering / Beard Garage / Juniper-Poplar quad
+        [198, 106, 130, 56],  // Collins Garage & EDU plaza
+        [266, 206, 64, 72],   // Muma Business quad
+        [340, 186, 114, 98],  // Sun Dome concourse & lots
+        [146, 18, 92, 52],    // Marshall Student Center / MLK Plaza pad
+      ];
+      quads.forEach(([qx, qy, qw, qh]) => {
+        px(ctx, qx, qy, qw, qh, '#D5DDD7');
+        px(ctx, qx + 2, qy + 2, qw - 4, 2, '#B6CE96');
+      });
+
+      // Legacy Park (south of Library) & South Campus Lawn
+      px(ctx, 200, 222, 58, 58, '#93BB6E');
+      px(ctx, 4, 280, W - 8, 80, '#9EC378');
+
+      // 3. Diagonal-hatched USF Tampa Campus Greenway corridors
+      this.drawGreenwayPolygons(ctx);
+
+      // 4. Castor Pond
+      Data.PONDS.forEach(p => this.drawPond(ctx, p));
+
+      // 5. USF Recreation & Athletics venues
+      Data.ATHLETICS.forEach(a => this.drawAthleticVenue(ctx, a));
+
+      // 6. Campus Roads
+      this.drawRoads(ctx);
+
+      // 7. Always-context supporting structures (garages & minor halls)
+      Data.CONTEXT_BUILDINGS.forEach(cb => this.drawContextBuilding(ctx, cb));
+
+      // 8. Pixel Trees around campus parks, greenways & lawns
+      Data.TREES.forEach(([tx, ty], idx) => Sprites.drawPixelTree(ctx, tx, ty, idx));
+
+      // 9. District Labels
+      Data.DISTRICT_LABELS.forEach(lbl => {
+        Sprites.drawPixelText(ctx, lbl.text, lbl.x, lbl.y, USF.sand, 'center', USF.deepForest);
+      });
+    }
+
+    drawGreenwayPolygons(ctx) {
+      const patCanvas = document.createElement('canvas');
+      patCanvas.width = 6;
+      patCanvas.height = 6;
+      const pctx = patCanvas.getContext('2d');
+      pctx.fillStyle = '#5CA050';
+      pctx.fillRect(0, 0, 6, 6);
+      pctx.fillStyle = USF.evergreen;
+      for (let i = 0; i < 6; i++) {
+        pctx.fillRect(i, 5 - i, 1, 1);
+        pctx.fillRect((i + 1) % 6, 5 - i, 1, 1);
+      }
+      const hatch = ctx.createPattern(patCanvas, 'repeat');
+
+      Data.GREENWAY_POLYGONS.forEach(poly => {
+        ctx.save();
+        ctx.beginPath();
+        poly.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+        ctx.closePath();
+        ctx.fillStyle = hatch;
+        ctx.fill();
+        ctx.strokeStyle = USF.evergreen;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    drawPond(ctx, p) {
+      for (let dy = -p.ry; dy <= p.ry; dy++) {
+        const span = Math.round(p.rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (p.ry * p.ry))));
+        if (span <= 0) continue;
+        px(ctx, p.x - span - 1, p.y + dy, span * 2 + 2, 1, USF.seaglass);
+        px(ctx, p.x - span, p.y + dy, span * 2, 1, USF.sky);
+        if (span > 4 && Math.abs(dy) < p.ry * 0.65) {
+          px(ctx, p.x - span + 3, p.y + dy, (span - 3) * 2, 1, USF.storm);
+        }
+      }
+    }
+
+    drawAthleticVenue(ctx, a) {
+      const { x, y, w, h, type } = a;
+      if (type === 'track') {
+        px(ctx, x, y, w, h, '#87A96B');
+        px(ctx, x + 4, y + 2, w - 8, h - 4, USF.ink);
+        px(ctx, x + 5, y + 3, w - 10, h - 6, '#B86A4B');
+        px(ctx, x + 10, y + 7, w - 20, h - 14, '#5D9B4C');
+        px(ctx, x + 11, y + 8, w - 22, h - 16, '#77B55A');
+      } else if (type === 'football') {
+        px(ctx, x, y, w, h, USF.evergreen);
+        px(ctx, x + 1, y + 1, w - 2, h - 2, '#5F9E4E');
+        for (let lx = x + 5; lx < x + w - 4; lx += 6) {
+          px(ctx, lx, y + 2, 1, h - 4, 'rgba(255,255,255,0.55)');
+        }
+      } else if (type === 'soccer') {
+        px(ctx, x, y, w, h, USF.slate);
+        px(ctx, x + 3, y + 3, w - 6, h - 6, '#599A49');
+        px(ctx, x + 4, y + 4, w - 8, h - 8, '#72B256');
+        px(ctx, x + Math.floor(w / 2), y + 4, 1, h - 8, USF.white);
+        px(ctx, x + 4, y + 10, 6, h - 20, 'rgba(255,255,255,0.35)');
+        px(ctx, x + w - 10, y + 10, 6, h - 20, 'rgba(255,255,255,0.35)');
+      } else if (type === 'baseball' || type === 'softball') {
+        px(ctx, x, y, w, h, '#599A49');
+        px(ctx, x + 2, y + 2, w - 4, h - 4, '#73B258');
+        const cx = x + Math.floor(w * 0.45);
+        const cy = y + Math.floor(h * 0.58);
+        const r = Math.min(w, h) * 0.28;
+        for (let dy = -r; dy <= r; dy++) {
+          const span = Math.round(r - Math.abs(dy));
+          px(ctx, cx - span, cy + dy, span * 2 + 1, 1, USF.gold);
+        }
+        px(ctx, cx, cy, 2, 2, USF.white);
+      } else if (type === 'courts') {
+        px(ctx, x, y, w, h, USF.evergreen);
+        px(ctx, x + 2, y + 2, w - 4, h - 4, USF.teal);
+        for (let cx = x + 7; cx < x + w - 4; cx += 6) {
+          px(ctx, cx, y + 2, 1, h - 4, USF.white);
+        }
+      } else {
+        px(ctx, x, y, w, h, '#69A754');
+      }
+    }
+
+    drawRoads(ctx) {
+      Data.ROADS.forEach(r => {
+        ctx.save();
+        ctx.strokeStyle = USF.roadDark;
+        ctx.lineWidth = r.width + 2;
+        ctx.lineCap = 'square';
+        ctx.lineJoin = 'miter';
+        ctx.beginPath();
+        r.pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      Data.ROADS.forEach(r => {
+        ctx.save();
+        ctx.strokeStyle = USF.roadLight;
+        ctx.lineWidth = r.width;
+        ctx.lineCap = 'square';
+        ctx.lineJoin = 'miter';
+        ctx.beginPath();
+        r.pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      const mainStreets = ['USF Leroy Collins Blvd', 'USF Genshaft Dr', 'USF Alumni Dr'];
+      Data.ROADS.filter(r => mainStreets.includes(r.name)).forEach(r => {
+        ctx.save();
+        ctx.strokeStyle = USF.gold;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        r.pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    drawContextBuilding(ctx, cb) {
+      const { x, y, w, h, isGarage } = cb;
+      px(ctx, x + 2, y + 3, w, h, 'rgba(0, 56, 34, 0.26)');
+      px(ctx, x, y, w, h, '#7E6D4D');
+      if (isGarage) {
+        px(ctx, x + 1, y + 1, w - 2, h - 2, '#D9A773');
+        px(ctx, x + 2, y + 2, w - 4, 2, '#E8BE8E');
+        for (let py = y + 6; py < y + h - 4; py += 5) {
+          px(ctx, x + 3, py, w - 6, 1, '#9E744B');
+        }
+        px(ctx, x + Math.floor(w / 2), y + 4, 2, h - 8, '#B88959');
+      } else {
+        px(ctx, x + 1, y + 1, w - 2, h - 2, '#E5C689');
+        px(ctx, x + 2, y + 2, w - 4, h - 7, '#EED59F');
+        px(ctx, x + 2, y + 2, w - 4, 2, '#F6E5BD');
+        for (let wx = x + 3; wx < x + w - 4; wx += 5) {
+          px(ctx, wx, y + h - 4, 3, 2, '#9A8863');
+        }
+      }
+    }
+
+    drawCompassRose(ctx, cx, cy) {
+      px(ctx, cx - 7, cy - 7, 15, 15, USF.evergreen);
+      px(ctx, cx - 6, cy - 6, 13, 13, USF.sand);
+      px(ctx, cx, cy - 5, 1, 11, USF.green);
+      px(ctx, cx - 2, cy - 3, 5, 1, USF.green);
+      px(ctx, cx - 1, cy - 4, 3, 1, USF.green);
+      px(ctx, cx - 4, cy, 9, 1, USF.gold);
+      Sprites.drawPixelText(ctx, 'N', cx, cy - 13, USF.evergreen, 'center', USF.sand);
+    }
+
+    // ========================================================================
+    // FRAME RENDER (60 FPS dynamically cropped pixel campus!)
+    // ========================================================================
+    render(state, time) {
+      if (state.cropRect && (
+        state.cropRect.x !== this.crop.x ||
+        state.cropRect.y !== this.crop.y ||
+        state.cropRect.w !== this.crop.w ||
+        state.cropRect.h !== this.crop.h
+      )) {
+        this.applyCrop(state.cropRect);
+      }
+
+      const crop = this.crop;
+      const ctx = this.ctx;
+      ctx.save();
+
+      // Micro screen-shake during dramatic kick-out impact
+      if (state.screenShake > 0) {
+        const sx = Math.round((Math.random() - 0.5) * state.screenShake * 3);
+        const sy = Math.round((Math.random() - 0.5) * state.screenShake * 3);
+        ctx.translate(sx, sy);
+      }
+
+      // 1. Draw the dynamically cropped slice of the USF Tampa Campus terrain
+      ctx.drawImage(this.baseCanvas, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.w, crop.h);
+
+      // 2. Enter world-space offset by (-crop.x, -crop.y)
+      ctx.save();
+      ctx.translate(-crop.x, -crop.y);
+
+      // Animated water shimmer glints on ponds
+      Data.PONDS.forEach((p, i) => {
+        const gx = p.x - Math.floor(p.rx * 0.4) + Math.round(Math.sin(time * 2 + i) * 3);
+        const gy = p.y - 2 + ((Math.floor(time * 2 + i) % 2) * 3);
+        px(ctx, gx, gy, 4, 1, USF.white);
+      });
+
+      // Walk path previews & waiting-line tethers
+      state.agents.forEach(agent => {
+        const model = window.BullpenPalette.AGENT_COLORS[agent.modelId];
+        if (agent.state === 'walking' && agent.path && agent.path.length) {
+          ctx.save();
+          ctx.strokeStyle = model ? model.primary : USF.gold;
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(agent.x, agent.y);
+          agent.path.forEach(pt => ctx.lineTo(pt.x, pt.y));
+          ctx.stroke();
+          ctx.restore();
+        } else if (agent.state === 'waiting' && agent.targetBuildingId) {
+          const b = state.getBuilding(agent.targetBuildingId);
+          if (b) {
+            ctx.save();
+            ctx.strokeStyle = USF.lemongrass;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+            ctx.beginPath();
+            ctx.moveTo(agent.x, agent.y);
+            ctx.lineTo(b.door.x, b.door.y - 3);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      });
+
+      // Draw ONLY the active repository buildings (exact count matching analyzed repo!)
+      state.buildings.forEach(b => {
+        const status = state.getBuildingStatus(b.id);
+        Sprites.drawInteractiveBuilding(ctx, b, {
+          hovered: state.hoveredBuildingId === b.id,
+          selected: state.selectedBuildingId === b.id,
+          status,
+          time,
+        });
+
+        if (status === 'working') {
+          Sprites.drawConstructionSite(ctx, b, time);
+        }
+      });
+
+      // Draw Bulls: ground -> hovering working -> kickout FX & airborne kicked Bulls
+      const groundAgents = state.agents.filter(a => a.state !== 'working' && a.state !== 'kicked');
+      const hoveringAgents = state.agents.filter(a => a.state === 'working');
+      const kickedAgents = state.agents.filter(a => a.state === 'kicked');
+
+      groundAgents.sort((a, b) => a.y - b.y);
+      groundAgents.forEach(agent => Sprites.drawBull(ctx, agent, time, state.timeLimitSec));
+      hoveringAgents.forEach(agent => Sprites.drawBull(ctx, agent, time, state.timeLimitSec));
+
+      state.kickouts.forEach(k => {
+        const b = state.getBuilding(k.buildingId);
+        if (b) Sprites.drawKickOutFX(ctx, b, k, time);
+      });
+      kickedAgents.forEach(agent => Sprites.drawBull(ctx, agent, time, state.timeLimitSec));
+
+      state.ribbons.forEach(rib => {
+        const b = state.getBuilding(rib.buildingId);
+        if (b) Sprites.drawRibbonCutting(ctx, b, rib.progress);
+      });
+
+      ctx.restore(); // exit world space -> back to cropped screen space (0..crop.w, 0..crop.h)
+
+      // 3. Screen-space USF Green Border Frame, Compass Rose, & Root Folder Plaque
+      ctx.strokeStyle = USF.green;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(1, 1, crop.w - 2, crop.h - 2);
+
+      this.drawCompassRose(ctx, 16, crop.h - 16);
+
+      const rootLabel = `${state.rootFolder} (${state.buildings.length})`;
+      const rw = rootLabel.length * 4 + 12;
+      const rx = crop.w - rw - 6;
+      const ry = crop.h - 18;
+      px(ctx, rx, ry, rw, 13, USF.ink);
+      px(ctx, rx + 1, ry + 1, rw - 2, 11, USF.green);
+      px(ctx, rx + 1, ry + 1, rw - 2, 1, USF.gold);
+      Sprites.drawPixelText(ctx, rootLabel, rx + 6, ry + 4, USF.gold, 'left');
+
+      ctx.restore();
+    }
+
+    // Convert mouse client coords -> exact world coordinates through the active crop!
+    clientToWorld(clientX, clientY) {
+      const rect = this.canvas.getBoundingClientRect();
+      const nx = (clientX - rect.left) / rect.width;
+      const ny = (clientY - rect.top) / rect.height;
+      return {
+        x: this.crop.x + nx * this.crop.w,
+        y: this.crop.y + ny * this.crop.h,
+      };
+    }
+
+    hitTestBuilding(buildings, wx, wy) {
+      for (let i = buildings.length - 1; i >= 0; i--) {
+        const b = buildings[i];
+        if (wx >= b.x - 3 && wx <= b.x + b.w + 3 && wy >= b.y - 4 && wy <= b.y + b.h + 7) {
+          return b;
+        }
+      }
+      return null;
+    }
+  }
+
+  return { CampusMapRenderer };
+})();
+
+
+</script>
+<script>
+/* Campus = Caua's USF Tampa renderer from design/js (PR #1), run as is on this page.
+   His buildBuildingsForFolders maps the demo repo's folders (campus.json) onto his USF building slots;
+   his CampusMapRenderer draws the map, buildings, construction sites, bulls and the door queue.
+   Data mirrors web/lib/fake.ts on main: agents, leases with waiters, approvals. */
+(() => {
+  const { AGENT, drawText, textWidth, plate, animate } = BP;
+  const Data = window.BullpenCampusData, Sprites = window.BullpenSprites, PAL = window.BullpenPalette;
+  const C = window.CAMPUS;
+  const B = Object.fromEntries(C.buildings.map(b => [b.id, { ...b }])); // campus.json buildings (interior rooms)
+
+  // Agent jerseys in main's colors so the map agrees with the evidence panel. His bull fur and horns stay.
+  const JERSEY = { api: ['#e5484d', '#a3262c', '#3a1214', '#ff9d9f'], web: ['#3e63dd', '#253c96', '#121c45', '#a2b6ff'], db: ['#f5b400', '#a87400', '#3d2c00', '#ffe58a'] };
+  Object.entries(JERSEY).forEach(([a, [p, s, bg, tx]]) => { const m = PAL.AGENT_COLORS['agent-' + a]; if (m) Object.assign(m, { primary: p, secondary: s, badgeBg: bg, badgeText: tx }); });
+
+  const DATA = {
+    worktrees: [
+      { agent: 'api', branch: 'agent/api', task: 'Add /users endpoint', status: 'working', building: 'enb', claims: ['enb', 'library'], ahead: 2 },
+      { agent: 'web', branch: 'agent/web', task: 'Users page', status: 'working', building: 'msc', claims: ['msc'], ahead: 1 },
+      { agent: 'db', branch: 'agent/db', task: 'Users table', status: 'waiting', building: 'enb', claims: [], ahead: 1 },
+    ],
+    leases: [
+      { file: 'api/users.ts', agent: 'api', ttl: 78, waiters: ['db'] },
+      { file: 'shared/auth.ts', agent: 'api', ttl: 64, waiters: ['web'] },
+      { file: 'web/login.tsx', agent: 'web', ttl: 85, waiters: [] },
+    ],
+    approvals: [{ id: 'ap1', agent: 'db', tool: 'Edit', target: 'db/schema.sql', reason: 'Sun Dome is guarded', ttl: 48 }],
+  };
+  const folderOf = f => { let best = null; for (const b of C.buildings) if (b.folder && f.startsWith(b.folder) && b.folder.length > (best?.folder.length || 0)) best = b; return best ? best.id : 'bullrunner'; };
+  const queue = new Map(); // same rule as waitQueue() in web/lib/campus.ts
+  DATA.leases.forEach(l => l.waiters.forEach((a, i) => { if (!queue.has(a)) queue.set(a, { file: l.file, building: folderOf(l.file), pos: i + 1 }); }));
+
+  // Each campus.json building sits on Caua's slot for the real USF building (his BUILDING_CATALOG positions).
+  // Building art = the real-USF sprites in design/mockups-v3/sprites/ (same names as campus.json ids), drawn in his style.
+  const SLOT = { enb: 'ENB', library: 'LIB', msc: 'MSC', sundome: 'SUN', muma: 'BSN', enc: 'ISA', rec: 'REC', cooper: 'CPR', juniper: 'JP', bullrunner: 'EDU', 'mlk-plaza': 'SVC' };
+  const ours2his = {}, his2ours = {}, IMG = {};
+  const HIS = Object.entries(SLOT).map(([ours, sid]) => {
+    const slot = Data.BUILDING_CATALOG.find(c => c.id === sid), f = window.BP_ATLAS.frames[ours], cb = B[ours];
+    ours2his[ours] = sid; his2ours[sid] = ours;
+    const img = new Image(); img.src = window.BP_SPRITES[ours]; IMG[sid] = img;
+    const folder = ours === 'mlk-plaza' ? '' : cb.folder === null ? 'unmapped' : cb.folder === '' ? '/' : Data.normalizeFolder(cb.folder);
+    return { ...slot, name: f.name, w: f.w, h: f.h, door: { x: slot.x + f.w / 2, y: slot.y + f.h + 4 }, folder, guarded: !!(cb && cb.guarded), primary: ['enb', 'library', 'msc', 'sundome'].includes(ours), landmark: ours === 'mlk-plaza' };
+  });
+  const crop = Data.computeCropRect(HIS);
+  const hisB = id => HIS.find(h => h.id === ours2his[id]);
+  // Swap only the building art inside Caua's drawInteractiveBuilding; his glow, shadow, shield and folder plaque stay.
+  const U = PAL.USF, px = Sprites.px;
+  Sprites.drawInteractiveBuilding = (ctx, b, { hovered, selected, status }) => {
+    const { x, y, w, h } = b, img = IMG[b.id];
+    if (hovered || selected) { px(ctx, x - 3, y - 3, w + 6, h + 6, hovered ? U.lemongrass : U.gold); px(ctx, x - 1, y - 1, w + 2, h + 2, U.green); }
+    else if (status === 'working') px(ctx, x - 2, y - 2, w + 4, h + 4, U.craneGold);
+    if (!b.landmark) px(ctx, x + 3, y + 4, w, h, 'rgba(0, 56, 34, 0.42)');
+    if (img && img.complete) ctx.drawImage(img, x, y);
+    if (b.guarded) { const sx = x + w - 10, sy = y - 2; px(ctx, sx, sy, 10, 11, U.ink); px(ctx, sx + 1, sy + 1, 8, 7, U.green); px(ctx, sx + 2, sy + 8, 6, 1, U.green); px(ctx, sx + 3, sy + 9, 4, 1, U.green); px(ctx, sx + 4, sy + 2, 2, 5, U.lemongrass); px(ctx, sx + 2, sy + 4, 6, 1, U.lemongrass); }
+    const label = b.landmark ? 'MLK PLAZA' : Data.getFolderLabel(b.folder);
+    Sprites.drawPixelPill(ctx, label, x + w / 2, y + h - 3 + (b.landmark ? 6 : 0), status === 'working' ? U.evergreen : (b.primary ? U.green : U.slate), b.primary ? U.lemongrass : U.sand, U.ink);
+  };
+
+  // Hover tooltip text: who is in this building, their task, and the file they edit (leases, queue, approvals).
+  function tipFor(ours) {
+    const cb = B[ours], f = window.BP_ATLAS.frames[ours], lines = [];
+    const task = a => DATA.worktrees.find(w => w.agent === a).task;
+    DATA.leases.filter(l => folderOf(l.file) === ours).forEach(l => { lines.push([l.agent, `editing ${l.file}`, `${task(l.agent)} · lease ${l.ttl} s`]); l.waiters.forEach((wa, i) => lines.push([wa, `waiting #${i + 1} for ${l.file}`, task(wa)])); });
+    DATA.approvals.filter(a => folderOf(a.target) === ours).forEach(a => lines.push([a.agent, `asks to edit ${a.target}`, `${task(a.agent)} · needs your approval`]));
+    const folder = ours === 'mlk-plaza' ? 'landmark' : cb.folder === null ? 'unmapped' : cb.folder || '/ (root files)';
+    return { title: f.name, folder, files: cb ? cb.files : 0, lines };
+  }
+
+  function agents(tab) {
+    const shown = a => tab === 'main' || tab === a;
+    return DATA.worktrees.filter(w => shown(w.agent)).map((w, i) => {
+      const base = { id: w.agent, modelId: 'agent-' + w.agent, shortLabel: w.agent.toUpperCase(), phase: i * 1.3, facing: 1, workProgress: 0.55 + i * 0.1, workElapsed: 4 };
+      const q = queue.get(w.agent);
+      if (q) { const b = hisB(q.building); // his getQueueSlotPosition, slot 0 sits right of the door
+        return { ...base, state: 'waiting', targetBuildingId: b.id, queuePos: q.pos, x: b.door.x + 14 + (q.pos - 1) * 16, y: b.door.y + 4, facing: -1 }; }
+      const b = hisB(w.building); return { ...base, state: 'working', targetBuildingId: b.id, x: b.x + b.w / 2, y: b.y + b.h * 0.42 };
+    });
+  }
+
+  BP.mountCampus = (cv, opts = {}) => {
+    const st = { tab: 'main', selected: null, hover: null, ...opts };
+    const off = document.createElement('canvas'), R = new window.BullpenMapRenderer.CampusMapRenderer(off);
+    const W = Math.round(crop.w), H = Math.round(crop.h);
+    if (!cv.style.width) cv.style.width = '100%';
+    cv.style.height = 'auto'; cv.style.aspectRatio = W + ' / ' + H;
+    const { ctx } = plate(cv, W, H, opts.scale || 2);
+    const toWorld = e => { const r = cv.getBoundingClientRect(); return { x: crop.x + (e.clientX - r.left) / r.width * crop.w, y: crop.y + (e.clientY - r.top) / r.height * crop.h }; };
+    const hit = e => { const p = toWorld(e); const h = HIS.find(b => p.x >= b.x - 3 && p.x <= b.x + b.w + 3 && p.y >= b.y - 3 && p.y <= b.y + b.h + 6); return h ? his2ours[h.id] : null; };
+    if (opts.onPick) {
+      const host = cv.parentElement; host.style.position = 'relative';
+      const tip = document.createElement('div'); tip.className = 'campus-tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true; host.appendChild(tip);
+      const C2 = { api: '#ff8a8e', web: '#93b4ff', db: '#ffd34d' };
+      cv.addEventListener('pointermove', e => {
+        st.hover = hit(e); cv.style.cursor = st.hover ? 'pointer' : 'default';
+        if (!st.hover) { tip.hidden = true; return; }
+        const d = tipFor(st.hover), r = host.getBoundingClientRect();
+        tip.innerHTML = `<b>${d.title}</b><span class="f">${d.folder}${d.files ? ' · ' + d.files + ' files' : ''}</span>` +
+          (d.lines.length ? d.lines.map(([a, what, sub]) => `<div class="l"><i style="background:${C2[a]}"></i><span><b style="color:${C2[a]}">${a}</b> ${what}<small>${sub}</small></span></div>`).join('') : '<div class="l"><span>No agent here right now.</span></div>') + '<small class="hint">Click to zoom in</small>';
+        tip.hidden = false;
+        const x = e.clientX - r.left, y = e.clientY - r.top, tw = tip.offsetWidth, th = tip.offsetHeight;
+        tip.style.left = Math.min(r.width - tw - 6, Math.max(6, x + 14)) + 'px'; tip.style.top = (y + th + 20 > r.height ? y - th - 12 : y + 16) + 'px';
+      });
+      cv.addEventListener('pointerleave', () => { st.hover = null; tip.hidden = true; });
+      cv.addEventListener('click', e => { const id = hit(e); if (id && id !== 'mlk-plaza') opts.onPick(id); });
+    }
+    const claimed = tab => { const s = new Set(); DATA.worktrees.forEach(w => { if (tab === 'main' || tab === w.agent) w.claims.forEach(c => s.add(ours2his[c])); }); return s; };
+    function frame(t) {
+      const tab = st.tab, work = claimed(tab);
+      const state = {
+        cropRect: crop, screenShake: 0, agents: agents(tab), buildings: HIS, ribbons: [], kickouts: [], timeLimitSec: 90, rootFolder: 'demo/',
+        hoveredBuildingId: ours2his[st.hover] || null, selectedBuildingId: ours2his[st.selected] || null,
+        getBuilding: id => HIS.find(h => h.id === id), getBuildingStatus: id => work.has(id) ? 'working' : null,
+      };
+      R.render(state, t);
+      ctx.drawImage(off, 0, 0);
+      if (tab !== 'main') { ctx.fillStyle = 'rgba(11,16,51,0.28)'; ctx.fillRect(0, 0, W, H); drawText(ctx, 'AGENT/' + tab, 8, 8, { color: '#fff', shadow: '#0D231B' }); }
+      // Guarded approval waiting on the Sun Dome (Leases & approvals panel)
+      const sd = hisB('sundome'); if (sd && (tab === 'main' || tab === 'db')) { const x = sd.x + sd.w / 2 - crop.x, y = sd.y - crop.y - 14 + (Math.sin(t * 3) > 0 ? 0 : -1), w = textWidth('? APPROVE') + 6;
+        ctx.fillStyle = '#0D231B'; ctx.fillRect(x - w / 2 - 1, y - 1, w + 2, 11); ctx.fillStyle = '#CFC493'; ctx.fillRect(x - w / 2, y, w, 9); drawText(ctx, '? APPROVE', x - w / 2 + 3, y + 1, { color: '#0D231B' }); }
+    }
+    animate(cv, frame, { still: 1.2 });
+    Promise.all(Object.values(IMG).map(i => i.decode().catch(() => {}))).then(() => frame(1.2)); // art is ready for the reduced-motion still too
+    return { set: p => Object.assign(st, p), W, H };
+  };
+  BP.CAMPUS_DATA = DATA; BP.CAMPUS_B = B; BP.campusFolderOf = folderOf; BP.CAUA = { HIS, ours2his, his2ours, crop, agents, tipFor };
+})();
+
+</script>
+</head>
+<body>
+<style>/* Bullpen app, light theme for readability. Ink on paper, USF green as the one accent, agent colors only as markers. */
+:root { --paper: #F6F4E8; --panel: #FFFFFF; --line: #DCD7C2; --line-2: #EAE6D6; --ink: #0D231B; --ink-2: #33473F; --ink-3: #5E6F68;
+  --green: #006747; --green-bg: #E3F1EA; --gold: #CFC493; --gold-bg: #F6F1D9; --red: #B42318; --red-bg: #FDECEA; --amber: #8A5A00; --amber-bg: #FFF3D6;
+  --api: #D93A40; --web: #3557C9; --db: #B88400; }
+html, body { background: var(--paper); color: var(--ink); }
+body { font: 14px/1.5 var(--font-body); }
+.app { display: grid; grid-template-rows: auto auto 1fr; }
+.mono { font-family: var(--font-mono); }
+.top { display: flex; align-items: center; gap: 18px; padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 9px; font: 700 19px var(--font-display); color: var(--green); text-decoration: none; }
+.crumb { font: 500 14px var(--font-mono); color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
+.crumb b { color: var(--ink); font-weight: 600; }
+.health { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); background: var(--paper); font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.pill b { color: var(--ink); font-weight: 600; }
+.pill i { width: 8px; height: 8px; background: #1F9D55; display: inline-block; }
+.nav { display: flex; gap: 2px; padding: 0 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.nav a { padding: 11px 14px; font-weight: 600; color: var(--ink-3); text-decoration: none; border-bottom: 3px solid transparent; display: flex; gap: 8px; align-items: center; }
+.nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--green); }
+.nav a .n { font: 600 11.5px var(--font-mono); padding: 1px 7px; background: var(--line-2); color: var(--ink-2); }
+.nav a .n.bad { background: var(--red-bg); color: var(--red); }
+.card { background: var(--panel); border: 1px solid var(--line); }
+.card > h2, .card > header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line-2); font: 600 15px var(--font-body); margin: 0; }
+.card > header h2 { font: 600 15px var(--font-body); margin: 0; }
+.card > header .src, .card > h2 .src { margin-left: auto; font: 400 12px var(--font-mono); color: var(--ink-3); }
+.btn { font: 600 13px var(--font-body); padding: 6px 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; transition: background 150ms var(--ease-out); white-space: nowrap; }
+.btn:hover { background: var(--paper); }
+.btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+.btn.primary:hover { background: #00563B; }
+.btn.danger { color: var(--red); border-color: #F1B8B3; }
+.dot { width: 10px; height: 10px; display: inline-block; flex: none; }
+.tag { font: 600 11.5px var(--font-mono); padding: 2px 7px; white-space: nowrap; }
+.tag.ok { background: var(--green-bg); color: var(--green); }
+.tag.bad { background: var(--red-bg); color: var(--red); }
+.tag.warn { background: var(--amber-bg); color: var(--amber); }
+.tag.mute { background: var(--line-2); color: var(--ink-2); }
+.muted { color: var(--ink-3); }
+.btn { text-decoration: none; display: inline-block; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+</style>
+<style>
+.main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(420px, 1fr); gap: 16px; padding: 16px 20px 24px; align-items: start; }
+.campus-card .tabs { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--line-2); flex-wrap: wrap; align-items: center; }
+.campus-card .tab { display: inline-flex; gap: 7px; align-items: center; padding: 5px 11px; border: 1px solid var(--line); background: var(--panel); font: 600 13px var(--font-mono); color: var(--ink-2); cursor: pointer; }
+.campus-card .tab[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.campus-card .tab small { font-weight: 500; opacity: 0.75; }
+.campus-card .stage { position: relative; background: #B6CE96; }
+.campus-card .stage canvas { display: block; width: 100%; }
+.campus-card .foot { display: flex; gap: 16px; flex-wrap: wrap; padding: 10px 16px; font-size: 13px; color: var(--ink-2); border-top: 1px solid var(--line-2); }
+.campus-card .foot span { display: inline-flex; gap: 6px; align-items: center; }
+.under { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.side { display: grid; gap: 16px; }
+.alert { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center; padding: 12px 16px; border: 1px solid #F1B8B3; border-left: 4px solid var(--red); background: var(--red-bg); }
+.alert b { font-size: 14px; }
+.alert p { grid-column: 2; margin: 0; font-size: 13px; color: var(--ink-2); }
+.alert .act { grid-row: 1 / 3; grid-column: 3; display: flex; gap: 6px; }
+.alert.ask { border-color: #F0D590; border-left-color: var(--db); background: var(--amber-bg); }
+table.br { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.br th { text-align: left; font: 600 11.5px var(--font-body); color: var(--ink-3); text-transform: none; padding: 8px 12px; border-bottom: 1px solid var(--line-2); background: #FBFAF4; }
+table.br td { padding: 10px 12px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+table.br tr:last-child td { border-bottom: 0; }
+.bname { display: flex; gap: 8px; align-items: center; font: 600 13.5px var(--font-mono); }
+.bname small { display: block; font: 400 12.5px var(--font-body); color: var(--ink-3); }
+.ab { font: 500 13px var(--font-mono); white-space: nowrap; }
+.ab .up { color: var(--green); } .ab .down { color: var(--ink-3); }
+.acts { display: flex; gap: 6px; justify-content: flex-end; }
+.pairs { display: grid; }
+.pair { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line-2); font-size: 13.5px; }
+.pair:last-child { border-bottom: 0; }
+.pair .who { font: 600 13px var(--font-mono); }
+.pair .what { color: var(--ink-2); }
+.pair.bad { background: #FFF8F7; }
+.lease { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 10px 16px; border-bottom: 1px solid var(--line-2); }
+.lease:last-child { border-bottom: 0; }
+.lease .f { font: 600 13.5px var(--font-mono); display: flex; gap: 8px; align-items: center; }
+.lease .t { font: 600 13px var(--font-mono); color: var(--green); }
+.lease .bar { grid-column: 1 / 3; height: 4px; background: var(--line-2); }
+.lease .bar i { display: block; height: 100%; transition: width 900ms linear; }
+.lease .q { grid-column: 1 / 3; font-size: 12.5px; color: var(--ink-3); }
+.log { list-style: none; margin: 0; padding: 6px 0; }
+.log li { display: grid; grid-template-columns: 16px 1fr auto; gap: 10px; padding: 6px 16px; position: relative; font-size: 13.5px; }
+.log li::before { content: ''; position: absolute; left: 23px; top: 0; bottom: 0; width: 2px; background: var(--line); }
+.log li i { width: 10px; height: 10px; margin: 5px 0 0 3px; position: relative; z-index: 1; border: 2px solid var(--panel); box-sizing: content-box; }
+.log .m { color: var(--ink); }
+.log .m small { display: block; font: 12px var(--font-mono); color: var(--ink-3); }
+.log .sha { font: 500 12.5px var(--font-mono); color: var(--ink-3); }
+.ref { display: grid; }
+.ref div { display: grid; grid-template-columns: 54px 1fr auto; gap: 10px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--line-2); font-size: 13.5px; }
+.ref div:last-child { border-bottom: 0; }
+.ref .r { font: 12px var(--font-mono); color: var(--ink-3); }
+.ask { display: grid; gap: 10px; padding: 14px 16px; }
+.ask form { display: flex; gap: 8px; }
+.ask input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); font: 14px var(--font-body); background: #FBFAF4; color: var(--ink); }
+.plan { display: grid; gap: 6px; font-size: 13.5px; }
+.plan div { display: flex; gap: 10px; align-items: center; }
+.plan b { font: 600 13px var(--font-mono); width: 32px; }
+@media (max-width: 1100px) { .main { grid-template-columns: 1fr; } .under { grid-template-columns: 1fr; } }
+</style>
+
+<div class="app">
+  <div class="top">
+    <a class="brand" href="landing.html"><span data-bull></span>Bullpen</a>
+    <span class="crumb">demo <span class="muted">/</span> <b>main</b> <span class="tag mute">3 agent branches</span></span>
+    <div class="health" role="status" aria-label="System health">
+      <span class="pill"><i></i>Server <b>:8600</b></span>
+      <span class="pill"><i></i>WebSocket <b>live</b></span>
+      <span class="pill"><i></i>Jetson <b>3 ms</b></span>
+      <span class="pill"><i></i>Referee <b>rules</b></span>
+      <span class="pill"><i></i>Orchestrator <b>:8650</b></span>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Views">
+    <a href="dashboard.html" aria-current="page">Campus</a>
+    <a href="pr-conflict.html">Pull requests <span class="n bad">1 conflict</span></a>
+    <a href="#">History</a>
+    <a href="#">Settings</a>
+  </nav>
+
+  <div class="main">
+    <div>
+      <section class="card campus-card" aria-label="Campus">
+        <div class="tabs" role="group" aria-label="Branch view">
+          <button class="tab" type="button" data-tab="main" aria-pressed="true">main</button>
+          <button class="tab" type="button" data-tab="api" aria-pressed="false"><span class="dot" style="background:var(--api)"></span>agent/api <small>+2</small></button>
+          <button class="tab" type="button" data-tab="web" aria-pressed="false"><span class="dot" style="background:var(--web)"></span>agent/web <small>+1</small></button>
+          <button class="tab" type="button" data-tab="db" aria-pressed="false"><span class="dot" style="background:var(--db)"></span>agent/db <small>+1</small></button>
+          <span class="muted" style="margin-left:auto;font-size:13px">Hover a building for who is there. Click to open it.</span>
+        </div>
+        <div class="stage"><canvas id="cv" aria-label="USF campus. Each building is a top-level folder of the repo."></canvas></div>
+        <div class="foot">
+          <span><span class="dot" style="background:var(--api)"></span>api builds in ENB, holds shared/auth.ts</span>
+          <span><span class="dot" style="background:var(--web)"></span>web waits at the Library door</span>
+          <span><span class="dot" style="background:var(--db)"></span>db waits at ENB, needs approval at the Sun Dome</span>
+        </div>
+      </section>
+      <div class="under">
+        <section class="card">
+          <h2>Orchestrator <span class="src">POST :8650/orchestrate</span></h2>
+          <div class="ask">
+            <form onsubmit="return false"><input aria-label="Ask the orchestrator" value="Add a users feature: endpoint, page and table"><button class="btn primary" type="submit">Send</button></form>
+            <div class="plan">
+              <div><span class="dot" style="background:var(--api)"></span><b>api</b>Add /users endpoint</div>
+              <div><span class="dot" style="background:var(--web)"></span><b>web</b>Users page</div>
+              <div><span class="dot" style="background:var(--db)"></span><b>db</b>Users table</div>
+            </div>
+          </div>
+        </section>
+        <section class="card">
+          <h2>Referee <span class="src">Jetson /check</span></h2>
+          <div class="ref">
+            <div><span class="tag warn">ask</span><span><b style="color:var(--db)">db</b> Edit <span class="mono">db/schema.sql</span></span><span class="r">db/** · 3 ms</span></div>
+            <div><span class="tag bad">wait</span><span><b style="color:var(--web)">web</b> Edit <span class="mono">shared/auth.ts</span></span><span class="r">lease · api</span></div>
+            <div><span class="tag ok">allow</span><span><b style="color:var(--api)">api</b> Edit <span class="mono">api/users.ts</span></span><span class="r">default · 2 ms</span></div>
+            <div><span class="tag ok">allow</span><span><b style="color:var(--web)">web</b> Edit <span class="mono">web/login.tsx</span></span><span class="r">default · 2 ms</span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <aside class="side" aria-label="Source control">
+      <div class="alert">
+        <span class="tag bad">conflict</span><b>agent/api and agent/web both change shared/auth.ts, lines 12 to 18</b>
+        <p>Each branch merges cleanly into main. Together they do not.</p>
+        <span class="act"><a class="btn" href="pr-conflict.html">Review</a></span>
+      </div>
+      <div class="alert ask">
+        <span class="tag warn">approval</span><b>db wants to edit db/schema.sql</b>
+        <p>db/ is guarded. No answer in <span id="apcd">48</span> s means deny.</p>
+        <span class="act"><button class="btn primary" type="button">Approve</button><button class="btn danger" type="button">Deny</button></span>
+      </div>
+
+      <section class="card">
+        <header><h2>Branches</h2><span class="src">vs main</span></header>
+        <table class="br">
+          <thead><tr><th>Branch</th><th>Ahead</th><th>Files</th><th>Merge</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><div class="bname"><span class="dot" style="background:var(--api)"></span><span>agent/api<small>Add /users endpoint</small></span></div></td><td class="ab"><span class="up">↑2</span> <span class="down">↓0</span></td><td class="mono">3</td><td><span class="tag bad">blocked</span></td><td><div class="acts"><button class="btn" type="button">Undo</button><button class="btn" type="button" disabled>Merge</button></div></td></tr>
+            <tr><td><div class="bname"><span class="dot" style="background:var(--web)"></span><span>agent/web<small>Users page</small></span></div></td><td class="ab"><span class="up">↑1</span> <span class="down">↓0</span></td><td class="mono">3</td><td><span class="tag bad">blocked</span></td><td><div class="acts"><button class="btn" type="button">Undo</button><button class="btn" type="button" disabled>Merge</button></div></td></tr>
+            <tr><td><div class="bname"><span class="dot" style="background:var(--db)"></span><span>agent/db<small>Users table</small></span></div></td><td class="ab"><span class="up">↑1</span> <span class="down">↓0</span></td><td class="mono">1</td><td><span class="tag ok">clean</span></td><td><div class="acts"><button class="btn" type="button">Undo</button><button class="btn primary" type="button">Merge</button></div></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <header><h2>Cross-branch check</h2><span class="src">git merge-tree, every commit</span></header>
+        <div class="pairs">
+          <div class="pair bad"><span class="tag bad">overlap</span><span><span class="who">api × web</span> <span class="what">shared/auth.ts L12–18</span></span><a class="btn" href="pr-conflict.html">Open</a></div>
+          <div class="pair"><span class="tag ok">clean</span><span><span class="who">api × db</span> <span class="what">no shared files</span></span><span></span></div>
+          <div class="pair"><span class="tag ok">clean</span><span><span class="who">web × db</span> <span class="what">no shared files</span></span><span></span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <header><h2>File leases</h2><span class="src">90 s, renewed by the holder</span></header>
+        <div id="leases"></div>
+      </section>
+
+      <section class="card">
+        <header><h2>Commits</h2><span class="src">auto-commit per edit</span></header>
+        <ul class="log">
+          <li><i style="background:var(--web)"></i><span class="m">Add users page<small>Bullpen-Agent: web · Bullpen-Task: Users page</small></span><span class="sha">4c5d6e7</span></li>
+          <li><i style="background:var(--api)"></i><span class="m">Verify token in shared/auth.ts<small>Bullpen-Agent: api · Bullpen-Task: Add /users endpoint</small></span><span class="sha">a1b2c3d</span></li>
+          <li><i style="background:var(--web)"></i><span class="m">Session parsing in shared/auth.ts<small>Bullpen-Agent: web · Bullpen-Task: Users page</small></span><span class="sha">7e1f0aa</span></li>
+          <li><i style="background:var(--api)"></i><span class="m">Document users endpoint<small>Bullpen-Agent: api · Bullpen-Task: Add /users endpoint</small></span><span class="sha">9f8e7d6</span></li>
+          <li><i style="background:var(--db)"></i><span class="m">Seed users<small>Bullpen-Agent: db · Bullpen-Task: Users table</small></span><span class="sha">1a2b3c4</span></li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  document.querySelector('[data-bull]').append(BP.pixCanvas(BP.BULL_ROWS, BP.bullPal(BP.USF.green), 1.5, 'Bullpen'));
+  const campus = BP.mountCampus(document.getElementById('cv'), { onPick: id => { location.hash = id; } });
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.setAttribute('aria-pressed', String(x === b))); campus.set({ tab: b.dataset.tab });
+  }));
+  const C = { api: 'var(--api)', web: 'var(--web)', db: 'var(--db)' };
+  const L = [{ f: 'api/users.ts', a: 'api', t: 78, q: ['db'] }, { f: 'shared/auth.ts', a: 'api', t: 64, q: ['web'] }, { f: 'web/login.tsx', a: 'web', t: 85, q: [] }];
+  const draw = () => { document.getElementById('leases').innerHTML = L.map(l => `<div class="lease"><span class="f"><span class="dot" style="background:${C[l.a]}"></span>${l.f}</span><span class="t">${l.t} s</span>
+    <div class="bar"><i style="width:${l.t / 0.9}%;background:${C[l.a]}"></i></div><div class="q">Held by <b style="color:${C[l.a]}">${l.a}</b>${l.q.length ? ' · ' + l.q.map((w, i) => `#${i + 1} ${w} waiting`).join(', ') : ' · no queue'}</div></div>`).join(''); };
+  draw(); let ap = 48;
+  setInterval(() => { L.forEach(l => { l.t = l.t <= 6 ? 90 : l.t - 1; }); draw(); ap = ap <= 1 ? 60 : ap - 1; document.getElementById('apcd').textContent = ap; }, 1000);
+})();
+</script>
+
+</body>
+</html>
