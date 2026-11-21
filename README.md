@@ -46,13 +46,6 @@ flowchart TD
 - **Fail closed.** Server down, Jetson down, or a bad reply: the hook denies the edit.
 - **Contract.** Every request, response and event is in [`shared/events.md`](shared/events.md).
 
-| Service | Port |
-|---|---|
-| Web (Next.js + Phaser) | 5173 |
-| Server (FastAPI, leases, git) | 8600 |
-| Orchestrator (FastAPI + `claude` CLI) | 8650 |
-| Jetson (FastAPI + Ollama) | 8700 |
-
 ## What you see, and what is real underneath
 
 The pixel campus is the hero. Next to it is a live evidence panel, and every animation on the map maps to real data:
@@ -66,18 +59,30 @@ The pixel campus is the hero. Next to it is a live evidence panel, and every ani
 
 **Point it at any repo and it builds your campus.** `scripts/make_campus.py` scans the repo, ranks the top-level folders by file count, and puts the top 7 into fixed USF building slots. The guarded folder (`db/`) takes the Sun Dome, root files go to the Bull Runner stop, and everything else goes into one Annex building. The same repo always gives the same layout.
 
-## Models
+## Stack
 
-| Job | Where | Model |
+| Part | Port | Built with |
 |---|---|---|
-| The 3 agents | Claude Code (`claude` CLI) on the user's Claude Max subscription, OAuth login, no API key | Claude Sonnet (`--model sonnet` in `scripts/demo_start.sh`, override with `BULLPEN_AGENT_MODEL`) |
-| Orchestrator split | Claude Code (`claude` CLI), same subscription | Claude Haiku (`--model haiku` in `orchestrator/main.py`) |
-| Referee `/check` and secret guard `/scan` | Jetson Orin Nano Super | rules only, no model |
-| Commit messages `/commit_msg` | Ollama on the Jetson | qwen2.5-coder:3b |
-| Branch intent `/summarize` | Ollama on the Jetson | llama3.2:3b |
-| Ask why `/ask` | Ollama on the Jetson | nomic-embed-text + llama3.2:3b |
+| Web: landing, campus dashboard, evidence panel | 5173 | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Phaser 3 (the pixel campus) |
+| Server: leases, approvals, auto-commit, undo, merge, WebSocket | 8600 | Python, FastAPI, uvicorn, websockets, git worktrees |
+| Orchestrator: one ask to 3 tasks, ask-why | 8650 | Python, FastAPI, httpx, the `claude` CLI |
+| Jetson referee: `/check`, `/scan`, local models | 8700 | Jetson Orin Nano Super, Python, FastAPI, Ollama |
+| Agents | none | 3 Claude Code agents (`claude -p`) on the user's Claude Max subscription, OAuth login, no API key. Sonnet runs the agents (`BULLPEN_AGENT_MODEL`), Haiku splits the ask |
+| Hook | none | `hooks/bullpen_hook.py`, Python standard library |
+| CI | none | GitHub Actions: web test, typecheck and build; server, Jetson and hook checks; one required `ci-ok` |
+| Demo video | none | Remotion, ffmpeg, Playwright, ElevenLabs voice |
 
-All Jetson chat calls use `num_ctx` 4096, so the three models stay loaded together in 8 GB. Each model is an env var in [`jetson/README.md`](jetson/README.md).
+## On-device models (Jetson)
+
+| Job | Endpoint | Model |
+|---|---|---|
+| Commit messages | `/commit_msg` | qwen2.5-coder:3b |
+| Ask-why and branch summaries | `/ask`, `/summarize` | llama3.2:3b |
+| Search over the event log for ask-why | `/ask` | nomic-embed-text |
+| Referee | `/check` | rules only, no model. **Fails closed:** Jetson down or a bad reply means every edit is denied |
+| Secret guard | `/scan` | rules only. Checks each diff for keys and `.env` values before the commit, and blocks the commit if it finds one |
+
+All three models stay loaded together in 8 GB (`num_ctx` 4096), so this work costs no Claude usage and no code leaves the room. Each model is an env var in [`jetson/README.md`](jetson/README.md).
 
 ## How to run
 
@@ -116,13 +121,20 @@ web/           Next.js + Phaser campus view
 
 One ask to the orchestrator starts three agents. Two of them collide on one file and one waits. The db agent hits the guarded Sun Dome, gets denied, and adapts. We ask why, undo one agent, merge another, then unplug the Jetson and every edit stops. The full script is in [`docs/DEMO.md`](docs/DEMO.md).
 
+## How we built it
+
+Caua built the web app and design with Antigravity. Dev and Monisha built the rest with Claude Code.
+
 ## Credits: AI tools and frameworks
 
 Everything in this repo was built during HackJam '26, starting at 11:00 AM on Nov 21, 2026.
 
 **AI tools we used to build it**
 
-- **Claude Code** (Anthropic), with the Claude Opus 5.5, Claude Fable 5.2, Claude Sonnet 5.5 and Claude Haiku 5.5 models, run through T3 Code and the Claude Code extension for VS Code. It wrote most of the code, docs, tests and design mockups, and reviewed its own changes, under our direction. We set the product, the architecture, the contract in `shared/events.md`, the work split and the demo, and we reviewed and tested what it produced.
+- **Claude Code** (Anthropic), with the Claude Opus 5.5, Claude Fable 5.2, Claude Sonnet 5.5 and Claude Haiku 5.5 models, run through T3 Code and the Claude Code extension for VS Code. Used by Dev and Monisha.
+- **Antigravity**, used by Caua for the web app and design.
+
+The AI tools wrote most of the code, docs, tests and design mockups, and reviewed their own changes, under our direction. We set the product, the architecture, the contract in `shared/events.md`, the work split and the demo, and we reviewed and tested what it produced.
 
 **AI the product uses at run time**
 
@@ -144,4 +156,4 @@ Everything in this repo was built during HackJam '26, starting at 11:00 AM on No
 - Models: Ollama. Voice input and output (whisper.cpp, Piper) was planned as a stretch goal and not built.
 - Video: Remotion, React, TypeScript, ffmpeg, and Playwright (`playwright-core`) to drive Chrome for the automated video recorder.
 - Testing: pytest (Jetson, orchestrator), Python unittest (server), the Node.js test runner (web).
-- Tooling: git worktrees, tmux, GitHub Actions, ruff, npm.
+- Tooling: git worktrees, GitHub Actions, ruff, npm.
