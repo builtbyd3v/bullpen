@@ -56,4 +56,6 @@ Shared files:
 - Folder to building map: `campus/campus.json`.
 - Demo repo and agent worktrees: `scripts/make_demo.sh`.
 
+main is protected: open a PR, CI must pass.
+
 Mode: hackathon
