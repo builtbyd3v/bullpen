@@ -45,6 +45,27 @@ const cues = [];
 let at = 0;
 
 for (const slot of timeline.slots) {
+  // Voiceover: the team's take if present, else a spoken placeholder that proves the line fits the slot.
+  const voOut = `public/vo/${slot.id}.wav`;
+  const take = find("raw/vo", slot.id);
+  if (take) {
+    ffmpeg(["-i", p("raw/vo", take), "-af", `${TRIM},areverse,${TRIM},areverse,${LOUD}`, "-ar", "48000", "-ac", "2", p(voOut)]);
+  } else if (slot.vo) {
+    const spoken = slot.vo.replaceAll("auth.ts", "auth dot T S");
+    run("say", ["-r", "150", "-o", p("out/say.aiff"), spoken]);
+    ffmpeg(["-i", p("out/say.aiff"), "-ar", "48000", "-ac", "2", p(voOut)]);
+  }
+  // A slot with no line and no take stays silent and gets no captions.
+  const silent = !take && !slot.vo;
+  slot.voFile = silent ? null : `vo/${slot.id}.wav`;
+  const voDur = silent ? 0 : seconds(p(voOut));
+  slot.voDur = voDur;
+  // "fit": the slot lasts as long as its line plus "pad" seconds, so every cut lands on the voice.
+  if (slot.fit) slot.dur = Math.round((voDur + (slot.pad ?? 0.5)) * timeline.fps) / timeline.fps;
+  if (voDur > slot.dur - VO_MARGIN) {
+    problems.push(`${slot.id}: voiceover is ${voDur.toFixed(1)} s, the slot is ${slot.dur} s. Cut words or raise "dur".`);
+  }
+
   // Clip: QuickTime gives HEVC, odd sizes and a variable frame rate, so every input becomes 1080p30 H.264.
   slot.clip = null;
   // "src" lets several slots cut from one long take, for example raw/take-live.webm.
@@ -89,25 +110,6 @@ for (const slot of timeline.slots) {
     }
   }
 
-  // Voiceover: the team's take if present, else a spoken placeholder that proves the line fits the slot.
-  const voOut = `public/vo/${slot.id}.wav`;
-  const take = find("raw/vo", slot.id);
-  if (take) {
-    ffmpeg(["-i", p("raw/vo", take), "-af", `${TRIM},areverse,${TRIM},areverse,${LOUD}`, "-ar", "48000", "-ac", "2", p(voOut)]);
-  } else if (slot.vo) {
-    const spoken = slot.vo.replaceAll("auth.ts", "auth dot T S");
-    run("say", ["-r", "150", "-o", p("out/say.aiff"), spoken]);
-    ffmpeg(["-i", p("out/say.aiff"), "-ar", "48000", "-ac", "2", p(voOut)]);
-  }
-  // A slot with no line and no take stays silent and gets no captions.
-  const silent = !take && !slot.vo;
-  slot.voFile = silent ? null : `vo/${slot.id}.wav`;
-  const voDur = silent ? 0 : seconds(p(voOut));
-  slot.voDur = voDur;
-  if (voDur > slot.dur - VO_MARGIN) {
-    problems.push(`${slot.id}: voiceover is ${voDur.toFixed(1)} s, the slot is ${slot.dur} s. Cut words or raise "dur".`);
-  }
-
   // Captions: lines of up to 8 words, timed by their share of the characters in the take.
   const lines = [];
   for (const sentence of slot.vo ? slot.vo.split(/(?<=[.?!])\s+/) : []) {
@@ -120,7 +122,7 @@ for (const slot of timeline.slots) {
   let t = at;
   for (const text of lines) {
     const len = (text.length / chars) * voDur;
-    cues.push({ from: t, to: t + len, text, burn: slot.kind !== "title" });
+    cues.push({ from: t, to: t + len, text, burn: slot.kind !== "title" && !slot.overlay });
     t += len;
   }
 
@@ -136,7 +138,7 @@ const bed = find("raw", "music");
 if (bed) ffmpeg(["-i", p("raw", bed), "-ar", "48000", "-ac", "2", p("public/music.wav")]);
 console.log(`music: ${bed ? "raw/" + bed : "none"}`);
 writeFileSync(p("out/props.json"), JSON.stringify({ slots: timeline.slots, cues: cues.filter((c) => c.burn), mix: timeline.mix, music: bed ? "music.wav" : null }));
-console.log(`total ${at} s, ${cues.length} captions -> subtitles.srt`);
+console.log(`total ${at.toFixed(1)} s, ${cues.length} captions -> subtitles.srt`);
 
 if (problems.length) {
   console.error("\nFix these, then run again:\n- " + problems.join("\n- "));

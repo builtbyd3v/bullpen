@@ -1,135 +1,123 @@
 1
-00:00:00,000 --> 00:00:02,266
-Two agents, two worktrees, one file.
+00:00:00,000 --> 00:00:01,386
+Two AI agents, two branches.
 
 2
-00:00:02,266 --> 00:00:04,595
-Both pull requests pass against main.
+00:00:01,386 --> 00:00:02,773
+Both are green against main.
 
 3
-00:00:06,500 --> 00:00:07,928
-Merge one, and the other breaks.
+00:00:04,067 --> 00:00:06,622
+But both rewrite the same lines of auth.ts.
 
 4
-00:00:10,000 --> 00:00:11,037
-This is Bullpen.
+00:00:07,933 --> 00:00:09,178
+Git only finds out at merge.
 
 5
-00:00:11,037 --> 00:00:12,917
-Source control for AI agents.
+00:00:09,178 --> 00:00:10,602
+One lands, and the other breaks.
 
 6
-00:00:15,000 --> 00:00:15,476
-One ask.
+00:00:11,900 --> 00:00:13,327
+Bullpen stops it before it happens.
 
 7
-00:00:15,476 --> 00:00:17,676
-The orchestrator splits it into three
+00:00:15,133 --> 00:00:15,961
+You type one ask.
 
 8
-00:00:17,676 --> 00:00:19,757
-tasks for three Claude Code agents.
+00:00:17,767 --> 00:00:19,233
+Three Claude Code agents start work,
 
 9
-00:00:22,000 --> 00:00:23,633
-Two agents want auth.ts.
+00:00:19,233 --> 00:00:20,170
+each on its own branch.
 
 10
-00:00:23,633 --> 00:00:25,538
-The first takes a live lock.
+00:00:21,467 --> 00:00:22,849
+Two of them want the same file.
 
 11
-00:00:25,538 --> 00:00:27,512
-The second waits at the door.
+00:00:22,849 --> 00:00:23,652
+One gets the lock.
 
 12
-00:00:30,000 --> 00:00:32,144
-The database folder is guarded, so
+00:00:24,967 --> 00:00:25,805
+The other waits in line,
 
 13
-00:00:32,144 --> 00:00:33,720
-the referee asks a human.
+00:00:25,805 --> 00:00:26,714
+so nothing is overwritten.
 
 14
-00:00:33,720 --> 00:00:36,242
-Denied: the agent writes a plan instead.
+00:00:28,000 --> 00:00:29,374
+A guarded folder needs a human.
 
 15
-00:00:39,000 --> 00:00:40,844
-Don't like one agent's work?
+00:00:29,374 --> 00:00:30,749
+Bullpen shows an approval card.
 
 16
-00:00:40,844 --> 00:00:42,292
-Undo that agent alone.
+00:00:32,033 --> 00:00:33,021
+Deny it, and the agent
 
 17
-00:00:42,292 --> 00:00:43,873
-The others keep working.
+00:00:33,021 --> 00:00:34,008
+writes a plan instead.
 
 18
-00:00:47,000 --> 00:00:48,055
-Happy with another?
+00:00:35,300 --> 00:00:36,755
+Don't like one agent's work?
 
 19
-00:00:48,055 --> 00:00:49,555
-Open its building, read the
+00:00:36,755 --> 00:00:37,587
+Undo that agent.
 
 20
-00:00:49,555 --> 00:00:50,721
-real diff, and merge.
+00:00:37,587 --> 00:00:38,990
+Only its branch rolls back.
 
 21
-00:00:50,721 --> 00:00:53,053
-The other branches sync with main at once.
+00:00:40,100 --> 00:00:40,979
+Happy with another?
 
 22
-00:00:55,000 --> 00:00:57,210
-Under the pixels, everything is real.
+00:00:40,979 --> 00:00:41,766
+Merge it to main.
 
 23
-00:00:57,210 --> 00:00:59,420
-Agents lock a file before every edit,
+00:00:43,567 --> 00:00:44,997
+The other branches sync with it at once.
 
 24
-00:00:59,420 --> 00:01:01,809
-and each lock expires in ninety seconds.
+00:00:46,700 --> 00:00:48,092
+Every edit is checked by a referee,
 
 25
-00:01:03,000 --> 00:01:04,281
-The referee runs on a
+00:00:48,092 --> 00:00:49,843
+on separate hardware the agents can't touch.
 
 26
-00:01:04,281 --> 00:01:06,172
-Jetson the agents cannot reach.
+00:00:51,133 --> 00:00:53,234
+Pause the referee, and every edit is denied.
 
 27
-00:01:06,172 --> 00:01:08,552
-On-device models write the history, and
+00:00:53,234 --> 00:00:53,999
+It fails closed.
 
 28
-00:01:08,552 --> 00:01:10,504
-a secret guard scans every diff.
+00:00:55,300 --> 00:00:56,823
+And every edit is a commit, tagged
 
 29
-00:01:12,000 --> 00:01:13,987
-Unplug it, and every edit is denied.
+00:00:56,823 --> 00:00:58,077
+with the agent that made it.
 
 30
-00:01:13,987 --> 00:01:15,146
-Bullpen fails closed.
-
-31
-00:01:17,000 --> 00:01:18,831
-Every edit is a commit, tagged with
-
-32
-00:01:18,831 --> 00:01:21,080
-its agent, on your own Claude subscription.
-
-33
-00:01:23,000 --> 00:01:24,283
+00:00:59,367 --> 00:01:00,420
 Git tracks what changed.
 
-34
-00:01:24,283 --> 00:01:26,635
+31
+00:01:00,420 --> 00:01:02,352
 Bullpen controls who's allowed to change it.

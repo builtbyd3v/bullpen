@@ -65,7 +65,7 @@ export function Film({ slots, cues, mix, music }: FilmProps) {
         return (
           <Sequence key={slot.id} from={from} durationInFrames={frames}>
             {slot.kind === "title" ? (
-              <TitleCard tagline={slot.tagline ?? ""} still={slot.still} />
+              <TitleCard tagline={slot.tagline ?? ""} still={slot.still} speed={slot.speed} />
             ) : slot.kind === "problem" ? (
               <ProblemCard speed={slot.speed} />
             ) : slot.clip ? (
@@ -85,6 +85,15 @@ export function Film({ slots, cues, mix, music }: FilmProps) {
                 <Audio src={staticFile(n.file)} volume={duck(n.at, slot.voFile ? [[0, slot.voDur ?? slot.dur]] : [], mix.app, mix.appUnderVoice)} />
               </Sequence>
             ))}
+            {slot.overlay ? (
+              <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+                <div style={{ background: C.ink, color: C.sand, fontFamily: MONO, fontSize: 56, lineHeight: 1.4, padding: "28px 44px", textAlign: "center" }}>
+                  {slot.overlay.split(/(?<=\.)\s/).map((line, i) => (
+                    <div key={i}>{line}</div>
+                  ))}
+                </div>
+              </AbsoluteFill>
+            ) : null}
             {slot.label ? <LowerThird text={slot.label} /> : null}
             {slot.voFile ? <Audio src={staticFile(slot.voFile)} volume={mix.voice} /> : null}
           </Sequence>
